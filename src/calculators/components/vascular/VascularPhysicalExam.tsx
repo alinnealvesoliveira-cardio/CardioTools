@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Info, AlertCircle, CheckCircle2, Thermometer, Droplets, Fingerprint, Layers, HelpCircle, X } from 'lucide-react';
-import { usePatient } from '../../hooks/usePatient';
+import { usePatient } from '../../context/PatientContext';
 import { MedicationAlert } from '../../components/shared/MedicationAlert';
 import { VascularDiagnosticHelp } from '../../components/shared/VascularDiagnosticHelp';
 

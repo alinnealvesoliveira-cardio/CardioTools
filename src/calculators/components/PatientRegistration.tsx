@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pill, Info, CheckCircle2, User, Ruler, Weight, Activity } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 export const PatientRegistration: React.FC = () => {
   const { medications, updateMedications, patientInfo, updatePatientInfo } = usePatient();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Activity, Info, AlertCircle, CheckCircle2, HelpCircle, X, Save } from 'lucide-react';
 import { VascularDiagnosticHelp } from '../../../components/shared/VascularDiagnosticHelp';
 import { usePatient } from '../../../context/PatientContext';

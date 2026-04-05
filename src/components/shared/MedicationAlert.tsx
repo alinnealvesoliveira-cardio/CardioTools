@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 interface MedicationAlertProps {
   type: 'betablockers' | 'bcc' | 'digitalis';

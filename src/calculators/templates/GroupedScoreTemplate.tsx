@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Info, BookOpen, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { ScoreGroup } from '../../types';
 

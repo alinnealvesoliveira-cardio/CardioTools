@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Layout } from './components/layout/Layout';
 import { Category, Calculator } from './types';
 import { CALCULATORS } from './data/registry';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 
 import { PatientProvider } from './context/PatientContext';

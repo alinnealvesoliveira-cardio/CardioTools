@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Play, Square, RotateCcw, Plus, Minus, Info, AlertCircle, BookOpen, Save, CheckCircle2 } from 'lucide-react';
 import { getCIFClassification } from '../../utils/cif';
 import { usePatient } from '../../context/PatientContext';

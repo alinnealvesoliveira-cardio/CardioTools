@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Activity, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export const ClaudicationScale: React.FC = () => {

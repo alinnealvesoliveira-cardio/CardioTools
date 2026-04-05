@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Activity, Info, AlertCircle, CheckCircle2, ChevronRight, RefreshCcw, Save } from 'lucide-react';
 import { usePatient } from '../../../context/PatientContext';
 

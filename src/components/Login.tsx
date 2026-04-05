@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Lock, User, Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export const Login: React.FC = () => {

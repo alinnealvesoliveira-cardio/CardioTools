@@ -3,7 +3,7 @@ import { FileText, Download, User, Activity, Zap, Wind, AlertCircle, CheckCircle
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 export const FinalReport: React.FC = () => {
   const { patientInfo, medications, testResults, updatePatientInfo } = usePatient();
