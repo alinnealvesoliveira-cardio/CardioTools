@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Activity, Info, AlertCircle, CheckCircle2, Thermometer, Droplets, Fingerprint, Layers, HelpCircle, X } from 'lucide-react';
-import { usePatient } from '../../../context/PatientContext';
-import { MedicationAlert } from '../../../components/shared/MedicationAlert';
-import { VascularDiagnosticHelp } from '../../../components/shared/VascularDiagnosticHelp';
+import { usePatient } from '../../hooks/usePatient';
+import { MedicationAlert } from '../../components/shared/MedicationAlert';
+import { VascularDiagnosticHelp } from '../../components/shared/VascularDiagnosticHelp';
 
 type System = 'Arterial' | 'Venoso' | 'Linfático';
 
