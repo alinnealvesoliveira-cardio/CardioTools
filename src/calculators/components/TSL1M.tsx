@@ -122,7 +122,7 @@ export const TSL1M: React.FC = () => {
             <label className="text-sm font-medium text-slate-700">Altura (cm)</label>
             <input
               type="number"
-              value={Number.isNaN(height) ? '' : height}
+              value={patientInfo.height || ''}
               onChange={(e) => updatePatientInfo({ height: e.target.value })}
               className="w-full p-3 rounded-xl border-2 border-slate-100 focus:border-vitality-lime outline-none transition-all"
             />
@@ -132,7 +132,7 @@ export const TSL1M: React.FC = () => {
             <label className="text-sm font-medium text-slate-700">Peso (kg)</label>
             <input
               type="number"
-              value={Number.isNaN(weight) ? '' : weight}
+              value={patientInfo.weight || ''}
               onChange={(e) => updatePatientInfo({ weight: e.target.value })}
               className="w-full p-3 rounded-xl border-2 border-slate-100 focus:border-vitality-lime outline-none transition-all"
             />
