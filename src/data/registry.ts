@@ -5,6 +5,7 @@ import { TD2M } from '../calculators/components/TD2M';
 import { TSL1M } from '../calculators/components/TSL1M';
 import { TC6M } from '../calculators/components/TC6M';
 import { VSAQ } from '../calculators/components/VSAQ';
+import { DASI } from '../calculators/components/DASI';
 import { TUG } from '../calculators/components/TUG';
 import { HRR } from '../calculators/components/hemodynamics/HRR';
 import { ABI } from '../calculators/components/hemodynamics/ABI';
@@ -147,6 +148,14 @@ export const CALCULATORS: Calculator[] = [
     reference: 'Myers J, et al. J Cardiopulm Rehabil. 1994.'
   },
   {
+    id: 'dasi',
+    name: 'DASI Index',
+    description: 'Questionário Duke para estimativa robusta de METs (Recomendado AHA).',
+    category: 'Capacidade Aeróbica',
+    component: DASI,
+    reference: 'Hlatky MA, et al. Am J Cardiol. 1989.'
+  },
+{
     id: 'tug',
     name: 'Timed Up and Go (TUG)',
     description: 'Avaliação de mobilidade funcional, equilíbrio dinâmico e risco de queda.',
