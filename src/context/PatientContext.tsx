@@ -1,78 +1,72 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Medications, PatientInfo, TestResults } from '../types';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+// Importamos as regras que acabamos de salvar no types.ts
+import { PatientInfo, TestResults, Medications } from '../types';
 
 interface PatientContextType {
-  medications: Medications;
   patientInfo: PatientInfo;
+  setPatientInfo: (info: PatientInfo) => void;
+  medications: Medications;
+  setMedications: (meds: Medications) => void;
   testResults: TestResults;
-  updateMedications: (newMeds: Partial<Medications>) => void;
-  updatePatientInfo: (newInfo: Partial<PatientInfo>) => void;
-  updateTestResults: (newResults: Partial<TestResults>) => void;
+  setTestResults: (results: TestResults) => void;
+  resetData: () => void;
 }
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
-export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [medications, setMedications] = useState<Medications>({
-    betablockers: false,
-    bcc: false,
-    digitalis: false,
-    diuretics: false,
-    ieca: false,
-    statins: false,
-    nitrates: false,
-    antiarrhythmics: false,
-  });
+// Valores iniciais (o "estado zero" do seu formulário)
+const initialPatientInfo: PatientInfo = {
+  name: '',
+  age: '',
+  sex: 'male',
+  weight: '',
+  height: '',
+  imc: null,
+  goals: '',
+  structureAlteration: false,
+  ejectionFraction: undefined,
+  obstructionSeverity: 'none'
+};
 
-  const [patientInfo, setPatientInfo] = useState<PatientInfo>({
-    name: '',
-    age: '',
-    sex: 'male',
-    weight: '',
-    height: '',
-    imc: null,
-    goals: '',
-    structureAlteration: false,
-  });
+const initialMedications: Medications = {
+  betablockers: false,
+  bcc: false,
+  digitalis: false,
+  diuretics: false,
+  ieca: false,
+  statins: false,
+  nitrates: false,
+  antiarrhythmics: false
+};
 
+export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [patientInfo, setPatientInfo] = useState<PatientInfo>(initialPatientInfo);
+  const [medications, setMedications] = useState<Medications>(initialMedications);
   const [testResults, setTestResults] = useState<TestResults>({
     fatigabilityScales: {
       rest: { dyspnea: 0, fatigue: 0 },
-      exercise: { dyspnea: 0, fatigue: 0 },
+      exercise: { dyspnea: 0, fatigue: 0 }
     }
   });
 
-  const updateMedications = (newMeds: Partial<Medications>) => {
-    setMedications(prev => ({ ...prev, ...newMeds }));
-  };
-
-  const updatePatientInfo = (newInfo: Partial<PatientInfo>) => {
-    setPatientInfo(prev => {
-      const updated = { ...prev, ...newInfo };
-      // Auto-calculate IMC
-      const w = parseFloat(updated.weight);
-      const h = parseFloat(updated.height) / 100;
-      if (w && h) {
-        updated.imc = w / (h * h);
-      } else {
-        updated.imc = null;
+  // Função para limpar tudo e começar um novo atendimento
+  const resetData = () => {
+    setPatientInfo(initialPatientInfo);
+    setMedications(initialMedications);
+    setTestResults({
+      fatigabilityScales: {
+        rest: { dyspnea: 0, fatigue: 0 },
+        exercise: { dyspnea: 0, fatigue: 0 }
       }
-      return updated;
     });
-  };
-
-  const updateTestResults = (newResults: Partial<TestResults>) => {
-    setTestResults(prev => ({ ...prev, ...newResults }));
   };
 
   return (
     <PatientContext.Provider value={{ 
-      medications, 
-      patientInfo, 
-      testResults,
-      updateMedications, 
-      updatePatientInfo,
-      updateTestResults
+      patientInfo, setPatientInfo, 
+      medications, setMedications, 
+      testResults, setTestResults,
+      resetData 
     }}>
       {children}
     </PatientContext.Provider>
@@ -81,11 +75,6 @@ export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children })
 
 export const usePatient = () => {
   const context = useContext(PatientContext);
-  if (context === undefined) {
-    throw new Error('usePatient must be used within a PatientProvider');
-  }
+  if (!context) throw new Error('usePatient deve ser usado dentro de um PatientProvider');
   return context;
 };
-
-// For backward compatibility during refactoring
-export const useMedications = usePatient;

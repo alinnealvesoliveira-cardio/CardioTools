@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { ClipboardList, Info, AlertTriangle } from 'lucide-react';
+import { ClipboardList, Info, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
+import { usePatient } from '../../context/PatientContext';
+import { useAuth } from '../../context/AuthContext';
+import { logActivity } from '../../lib/supabase';
 
 const DASI_QUESTIONS = [
   { id: 1, text: "Cuidar de si mesmo (comer, vestir-se, banhar-se ou usar o banheiro)?", weight: 2.75 },
@@ -11,13 +14,19 @@ const DASI_QUESTIONS = [
   { id: 7, text: "Fazer trabalhos moderados em casa (passar aspirador, carregar compras)?", weight: 3.50 },
   { id: 8, text: "Fazer trabalhos pesados em casa (esfregar o chão, carregar móveis)?", weight: 8.00 },
   { id: 9, text: "Fazer trabalhos de quintal/jardim (rastelar, podar, cortar grama)?", weight: 4.50 },
-  // Item 10 (Atividade Sexual) omitido por padrão
   { id: 11, text: "Participar de atividades recreativas moderadas (dança, boliche, tênis dupla)?", weight: 6.00 },
   { id: 12, text: "Participar de esportes extenuantes (natação, corrida, tênis individual)?", weight: 7.50 }
 ];
 
 export const DASI: React.FC = () => {
+  const { patientInfo, testResults, setTestResults } = usePatient();
+  const { user } = useAuth();
   const [answers, setAnswers] = useState<Record<number, boolean>>({});
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Dados do paciente para cálculos
+  const age = parseInt(patientInfo.age?.toString() || '0');
+  const feve = Number(patientInfo.ejectionFraction) || 60;
 
   const calculateResults = () => {
     const score = DASI_QUESTIONS.reduce((acc, q) => acc + (answers[q.id] ? q.weight : 0), 0);
@@ -27,85 +36,127 @@ export const DASI: React.FC = () => {
   };
 
   const { score, vo2, mets } = calculateResults();
+  
+  // Predito simplificado baseado na idade para cálculo de %
+  const predictedMETs = age > 0 ? 14.7 - (0.11 * age) : null;
+  const percentage = predictedMETs ? (mets / predictedMETs) * 100 : null;
 
-  const getInterpretation = () => {
-    if (score > 34) return { label: "Adequada", risk: "Baixo Risco", color: "text-emerald-400", bg: "bg-emerald-950/20" };
-    if (score >= 25) return { label: "Limítrofe", risk: "Risco Moderado", color: "text-yellow-400", bg: "bg-yellow-950/20" };
-    if (score > 8) return { label: "Reduzida", risk: "Alto Risco", color: "text-orange-400", bg: "bg-orange-950/20" };
-    return { label: "Muito Reduzida", risk: "Muito Alto Risco", color: "text-red-400", bg: "bg-red-950/20" };
+  // Lógica de Classificação CBDF-1 (Cruzamento METs + FEVE)
+  const getCBDF = () => {
+    if (!percentage) return null;
+    if (percentage < 25 || feve < 30) return { qualifier: 4, severity: "Deficiência Completa", range: "96-100%" };
+    if (percentage < 50 || feve < 40) return { qualifier: 3, severity: "Deficiência Grave", range: "50-95%" };
+    if (percentage < 75) return { qualifier: 2, severity: "Deficiência Moderada", range: "25-49%" };
+    if (percentage < 95) return { qualifier: 1, severity: "Deficiência Leve", range: "5-24%" };
+    return { qualifier: 0, severity: "Sem Deficiência", range: "0-4%" };
   };
 
-  const interp = getInterpretation();
+  const cbdf = getCBDF();
+
+  const handleSave = async () => {
+    setTestResults({
+      ...testResults,
+      dasi: {
+        score,
+        estimatedMETs: mets,
+        predictedMETs: predictedMETs || 0,
+        percentage: percentage || 0,
+        interpretation: cbdf?.severity || "Normal",
+        cif: cbdf ? { qualifier: cbdf.qualifier, severity: cbdf.severity } : undefined
+      }
+    });
+
+    if (user) await logActivity(user.id, 'Finalizou DASI');
+    setIsSaved(true);
+  };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
+    <div className="max-w-4xl mx-auto p-4 space-y-6 pb-20">
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
-        <div className="bg-emerald-500 p-6">
-          <h2 className="text-2xl font-black text-white flex items-center gap-2">
-            <ClipboardList className="w-8 h-8" /> DASI Index
-          </h2>
-          <p className="text-emerald-50 text-xs mt-1 font-medium">Versão Omitida Item 10 (AHA/ACC 2024)</p>
+        <div className="bg-emerald-600 p-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-black text-white flex items-center gap-2">
+              <ClipboardList className="w-8 h-8" /> DASI Index + CBDF-1
+            </h2>
+            <p className="text-emerald-50 text-xs mt-1 font-medium">Capacidade Funcional e Função Cardíaca (FEVE: {feve}%)</p>
+          </div>
+          {mets > 0 && (
+            <button 
+              onClick={handleSave}
+              className={`px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
+                isSaved ? 'bg-white text-emerald-600' : 'bg-emerald-800 text-white hover:bg-emerald-900'
+              }`}
+            >
+              {isSaved ? <CheckCircle2 size={18} /> : <Save size={18} />}
+              {isSaved ? 'SALVO' : 'SALVAR'}
+            </button>
+          )}
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="bg-slate-50 p-4 rounded-2xl flex gap-3 text-slate-600 text-[11px] border border-slate-100">
-            <Info className="w-4 h-4 shrink-0 text-emerald-500" />
-            <p>Instruções: Marque as atividades realizadas <strong>sem sintomas limitantes</strong> (dispneia, dor ou cansaço excessivo).</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            {DASI_QUESTIONS.map((q) => (
-              <button
-                key={q.id}
-                onClick={() => setAnswers(prev => ({ ...prev, [q.id]: !prev[q.id] }))}
-                className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                  answers[q.id] ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-50 bg-white'
-                }`}
-              >
-                <span className={`text-left text-sm font-bold ${answers[q.id] ? 'text-emerald-900' : 'text-slate-600'}`}>
-                  {q.text}
-                </span>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                  answers[q.id] ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
-                }`}>
-                  {answers[q.id] && <div className="w-2 h-2 bg-white rounded-full" />}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-8 bg-slate-900 rounded-3xl p-6 text-white border-b-8 border-emerald-500 shadow-2xl">
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
-                <p className="text-[10px] uppercase font-bold text-slate-400">Escore DASI</p>
-                <p className="text-3xl font-black text-emerald-400">{score.toFixed(1)}</p>
-                <p className="text-[9px] text-slate-500 mt-1 italic">Máx: 52.95</p>
-              </div>
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
-                <p className="text-[10px] uppercase font-bold text-slate-400">METs Estimados</p>
-                <p className="text-3xl font-black text-emerald-400">{mets.toFixed(1)}</p>
-                <p className="text-[9px] text-slate-500 mt-1 italic">{vo2.toFixed(1)} mL/kg/min</p>
-              </div>
-            </div>
-
-            <div className={`${interp.bg} ${interp.color} p-4 rounded-2xl border-l-4 border-current mb-4`}>
-              <p className="text-[10px] uppercase font-bold opacity-70">Risco Funcional</p>
-              <p className="text-lg font-black">{interp.label} — {interp.risk}</p>
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <div className="bg-slate-50 p-4 rounded-2xl flex gap-3 text-slate-600 text-[11px] border border-slate-100">
+              <Info className="w-4 h-4 shrink-0 text-emerald-500" />
+              <p>Instruções: Marque as atividades realizadas <strong>sem sintomas limitantes</strong>.</p>
             </div>
 
             <div className="space-y-2">
-               {score <= 34 && (
-                 <div className="flex items-start gap-2 text-[11px] text-orange-200 bg-orange-950/40 p-3 rounded-xl border border-orange-500/20">
-                   <AlertTriangle className="w-4 h-4 shrink-0 text-orange-400" /> 
-                   <span><strong>Alerta:</strong> DASI ≤ 34 sugere necessidade de teste cardiopulmonar (Pré-Op).</span>
-                 </div>
-               )}
-               {score <= 23 && (
-                 <div className="flex items-start gap-2 text-[11px] text-red-200 bg-red-950/40 p-3 rounded-xl border border-red-500/20">
-                   <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" /> 
-                   <span><strong>IC:</strong> DASI ≤ 23 é preditor de mortalidade em 36 meses.</span>
-                 </div>
-               )}
+              {DASI_QUESTIONS.map((q) => (
+                <button
+                  key={q.id}
+                  onClick={() => { setAnswers(prev => ({ ...prev, [q.id]: !prev[q.id] })); setIsSaved(false); }}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                    answers[q.id] ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-50 bg-white hover:border-slate-200'
+                  }`}
+                >
+                  <span className={`text-left text-xs font-bold ${answers[q.id] ? 'text-emerald-900' : 'text-slate-600'}`}>
+                    {q.text}
+                  </span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    answers[q.id] ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
+                  }`}>
+                    {answers[q.id] && <div className="w-2 h-2 bg-white rounded-full" />}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-2xl space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
+                  <p className="text-[10px] uppercase font-bold text-slate-400">METs</p>
+                  <p className="text-4xl font-black text-emerald-400">{mets.toFixed(1)}</p>
+                </div>
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
+                  <p className="text-[10px] uppercase font-bold text-slate-400">% do Predito</p>
+                  <p className="text-4xl font-black text-emerald-400">{percentage?.toFixed(0)}%</p>
+                </div>
+              </div>
+
+              {cbdf && (
+                <div className="bg-emerald-500/10 border-l-4 border-emerald-500 p-4 rounded-r-2xl">
+                  <p className="text-[10px] uppercase font-bold text-emerald-400">Qualificador CBDF-1</p>
+                  <p className="text-xl font-black text-white">.{cbdf.qualifier} — {cbdf.severity}</p>
+                  <p className="text-[10px] text-emerald-200/60 mt-1 italic">Comprometimento: {cbdf.range}</p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {score <= 34 && (
+                  <div className="flex items-start gap-2 text-[10px] text-orange-200 bg-orange-950/40 p-3 rounded-xl border border-orange-500/20">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-orange-400" /> 
+                    <span>DASI ≤ 34: Necessidade de teste cardiopulmonar (Pré-Op).</span>
+                  </div>
+                )}
+                {score <= 23 && (
+                  <div className="flex items-start gap-2 text-[10px] text-red-200 bg-red-950/40 p-3 rounded-xl border border-red-500/20">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" /> 
+                    <span>DASI ≤ 23: Preditivo de mortalidade em 36 meses na IC.</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
