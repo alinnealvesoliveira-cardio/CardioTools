@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Wind, Info, AlertCircle, CheckCircle2, Clock, Zap, Save } from 'lucide-react';
 import { usePatient } from '../../../context/PatientContext';
+import { toast } from 'react-hot-toast';
 
 export const FatigabilityScales: React.FC = () => {
-  const { testResults, updateTestResults } = usePatient();
+  const { testResults, updateTestResult } = usePatient();
   const [mode, setMode] = useState<'rest' | 'exercise'>('rest');
   const [isSaved, setIsSaved] = useState(false);
 
@@ -56,15 +57,20 @@ export const FatigabilityScales: React.FC = () => {
       exercise: { dyspnea: 0, fatigue: 0 }
     };
 
-    updateTestResults({
-      fatigabilityScales: {
-        ...currentScales,
-        [mode]: {
-          ...currentScales[mode],
-          [id]: value
-        }
+    updateTestResult('fatigabilityScales', {
+      ...currentScales,
+      [mode]: {
+        ...currentScales[mode],
+        [id]: value
       }
     });
+    setIsSaved(false);
+  };
+
+  const handleSaveAll = () => {
+    setIsSaved(true);
+    toast.success(`Dados de ${mode === 'rest' ? 'Repouso' : 'Exercício'} gravados!`);
+    setTimeout(() => setIsSaved(false), 3000);
   };
 
   return (
@@ -78,7 +84,7 @@ export const FatigabilityScales: React.FC = () => {
 
           <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 w-fit">
             <button
-              onClick={() => setMode('rest')}
+              onClick={() => { setMode('rest'); setIsSaved(false); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 mode === 'rest' 
                   ? 'bg-white text-slate-900 shadow-sm' 
@@ -89,10 +95,10 @@ export const FatigabilityScales: React.FC = () => {
               Repouso
             </button>
             <button
-              onClick={() => setMode('exercise')}
+              onClick={() => { setMode('exercise'); setIsSaved(false); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 mode === 'exercise' 
-                  ? 'bg-vitality-lime text-slate-900 shadow-sm' 
+                  ? 'bg-indigo-600 text-white shadow-sm' 
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -118,7 +124,7 @@ export const FatigabilityScales: React.FC = () => {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {scale.levels.map((level) => {
-                const isSelected = (testResults.fatigabilityScales?.[mode]?.[scale.id as 'dyspnea' | 'fatigue'] || 0) === level.value;
+                const isSelected = (testResults.fatigabilityScales?.[mode]?.[scale.id as 'dyspnea' | 'fatigue'] ?? -1) === level.value;
                 return (
                   <button
                     key={level.value}
@@ -148,35 +154,30 @@ export const FatigabilityScales: React.FC = () => {
 
         <div className="flex justify-center pt-4">
           <button
-            onClick={() => {
-              // The data is already saved in the context via handleUpdateScale,
-              // but we provide this button for explicit feedback as requested.
-              setIsSaved(true);
-              setTimeout(() => setIsSaved(false), 3000);
-            }}
+            onClick={handleSaveAll}
             className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all shadow-lg ${
               isSaved 
                 ? 'bg-emerald-500 text-white' 
-                : 'bg-vitality-graphite text-white hover:opacity-90'
+                : 'bg-slate-900 text-white hover:opacity-90'
             }`}
           >
             {isSaved ? (
               <>
                 <CheckCircle2 className="w-5 h-5" />
-                Escalas Salvas no Relatório
+                Gravado com Sucesso
               </>
             ) : (
               <>
                 <Save className="w-5 h-5" />
-                Salvar no Relatório Final
+                Gravar no Relatório Final
               </>
             )}
           </button>
         </div>
 
-        <div className="bg-vitality-graphite rounded-3xl p-8 text-white space-y-6">
+        <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-vitality-lime text-slate-900 rounded-xl">
+            <div className="p-2 bg-indigo-500 text-white rounded-xl">
               <Info className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold">Interpretação Clínica</h3>
@@ -201,17 +202,6 @@ export const FatigabilityScales: React.FC = () => {
               <p className="text-xs text-slate-400 leading-relaxed">
                 Valores elevados de fadiga muscular com dispneia controlada sugerem 
                 descondicionamento periférico ou limitação por Doença Arterial Periférica (DAP).
-              </p>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-white/10">
-            <div className="flex items-start gap-3 p-4 bg-white/5 rounded-2xl border border-white/10">
-              <AlertCircle className="w-5 h-5 text-vitality-lime shrink-0 mt-0.5" />
-              <p className="text-[10px] text-slate-300 leading-relaxed">
-                <strong>Nota Técnica:</strong> Estas escalas devem ser aplicadas preferencialmente 
-                no pico do esforço durante os testes funcionais (TC6M, TD2M, TSL) para capturar a 
-                "assinatura do esforço" do paciente.
               </p>
             </div>
           </div>

@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-// Importamos as regras que acabamos de salvar no types.ts
+import React, { createContext, useContext, useState } from 'react';
 import { PatientInfo, TestResults, Medications } from '../types';
 
 interface PatientContextType {
@@ -9,16 +8,16 @@ interface PatientContextType {
   setMedications: (meds: Medications) => void;
   testResults: TestResults;
   setTestResults: (results: TestResults) => void;
+  updateTestResult: (testId: keyof TestResults, data: any) => void;
   resetData: () => void;
 }
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
-// Valores iniciais (o "estado zero" do seu formulário)
 const initialPatientInfo: PatientInfo = {
   name: '',
   age: '',
-  sex: 'male',
+  sex: '',
   weight: '',
   height: '',
   imc: null,
@@ -36,29 +35,35 @@ const initialMedications: Medications = {
   ieca: false,
   statins: false,
   nitrates: false,
-  antiarrhythmics: false
+  antiarrhythmics: false,
+  antihypertensives: false,
+  others: ''
+};
+
+const initialTestResults: TestResults = {
+  fatigabilityScales: {
+    rest: { dyspnea: 0, fatigue: 0 },
+    exercise: { dyspnea: 0, fatigue: 0 }
+  }
 };
 
 export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [patientInfo, setPatientInfo] = useState<PatientInfo>(initialPatientInfo);
   const [medications, setMedications] = useState<Medications>(initialMedications);
-  const [testResults, setTestResults] = useState<TestResults>({
-    fatigabilityScales: {
-      rest: { dyspnea: 0, fatigue: 0 },
-      exercise: { dyspnea: 0, fatigue: 0 }
-    }
-  });
+  const [testResults, setTestResults] = useState<TestResults>(initialTestResults);
 
-  // Função para limpar tudo e começar um novo atendimento
+  // Lógica para atualizar apenas um teste específico mantendo os outros
+  const updateTestResult = (testId: keyof TestResults, data: any) => {
+    setTestResults(prev => ({
+      ...prev,
+      [testId]: data
+    }));
+  };
+
   const resetData = () => {
     setPatientInfo(initialPatientInfo);
     setMedications(initialMedications);
-    setTestResults({
-      fatigabilityScales: {
-        rest: { dyspnea: 0, fatigue: 0 },
-        exercise: { dyspnea: 0, fatigue: 0 }
-      }
-    });
+    setTestResults(initialTestResults);
   };
 
   return (
@@ -66,6 +71,7 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
       patientInfo, setPatientInfo, 
       medications, setMedications, 
       testResults, setTestResults,
+      updateTestResult,
       resetData 
     }}>
       {children}
@@ -75,6 +81,8 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 export const usePatient = () => {
   const context = useContext(PatientContext);
-  if (!context) throw new Error('usePatient deve ser usado dentro de um PatientProvider');
+  if (!context) {
+    throw new Error('usePatient deve ser usado dentro de um PatientProvider');
+  }
   return context;
 };

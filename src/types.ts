@@ -1,26 +1,63 @@
-import React from 'react';
+export interface FunctionalTestResult {
+  distance?: number;
+  count?: number;
+  time?: number;
+  predicted: number;
+  efficiency: number;
+  interpretation: string;
+  estimatedMETs?: number;
+  hr?: {
+    pre: number;
+    post: number;
+  };
+}
 
-export type Category = 
-  | 'autonomic' 
-  | 'diagnosis' 
-  | 'hemodynamics' 
-  | 'vascular' 
-  | 'functional' 
-  | 'clinical'
-  | 'assessment'
-  | 'registration' 
-  | 'final-report' 
-  | 'symptoms' 
-  | 'aerobic-capacity';
+export interface TestResults {
+  // Todos os testes agora seguem o padrão FunctionalTestResult
+  vsaq?: FunctionalTestResult;
+  dasi?: FunctionalTestResult;
+  tc6m?: FunctionalTestResult;
+  tug?: FunctionalTestResult;
+  td2m?: FunctionalTestResult;
+  tsl1m?: FunctionalTestResult;
+  tsl30s?: FunctionalTestResult;
+  tsl5x?: FunctionalTestResult;
+  
+  fatigabilityScales?: {
+    rest: { dyspnea: number; fatigue: number };
+    exercise: { dyspnea: number; fatigue: number };
+  };
 
-export interface Calculator {
-  id: string;
+  vascularPhysicalExam?: {
+    arterial: {
+      pulse: string;
+      temp: string;
+      capillaryRefill: string;
+      cif: string;
+    };
+    venous: {
+      ceap: string[];
+      godet: string;
+      cif: string;
+    };
+    lymphatic: {
+      stemmer: string;
+      cif: string;
+    };
+  };
+}
+
+export interface PatientInfo {
   name: string;
-  description: string; 
-  category: Category;
-  path?: string; 
-  component: React.ComponentType<any>; 
-  reference?: string; 
+  age: string;
+  sex: 'male' | 'female' | '';
+  weight: string;
+  height: string;
+  imc: number | null;
+  goals?: string;
+  structureAlteration?: boolean;
+  ejectionFraction?: number;
+  obstructionSeverity?: 'none' | 'mild' | 'moderate' | 'severe';
 }
 
 export interface Medications {
@@ -32,91 +69,6 @@ export interface Medications {
   statins: boolean;
   nitrates: boolean;
   antiarrhythmics: boolean;
-}
-
-export interface PatientInfo {
-  name: string;
-  age: number | string;
-  sex: 'male' | 'female';
-  weight: number | string;
-  height: number | string;
-  imc: number | null;
-  goals: string;
-  structureAlteration: boolean;
-  restingPA?: string;
-  restingFC?: string;
-  restingSaO2?: string;
-  ejectionFraction?: number;
-  obstructionSeverity?: 'none' | 'mild' | 'moderate' | 'severe';
-}
-
-// Interface padronizada para os testes funcionais que usam METs e CIF
-export interface FunctionalTestResult {
-  score: number;
-  estimatedMETs: number;
-  predictedMETs: number;
-  percentage: number;
-  interpretation: string;
-  cif?: { 
-    qualifier: number; 
-    severity: string 
-  };
-}
-export interface TestResults {
-  vsaq?: FunctionalTestResult;
-  dasi?: FunctionalTestResult;
-  tug?: {
-    time: number;
-    predicted: number;
-    efficiency: number;
-    interpretation: string;
-    hr?: any;
-  };
-  td2m?: {
-    count: number;
-    predicted: number;
-    efficiency: number;
-    interpretation: string;
-    hr?: any;
-  };
-  tc6m?: {
-    distance: number;
-    predicted: number;
-    efficiency: number;
-    hr: { 
-      pre: number; 
-      post: number; 
-    };
-  };
-  tsl1m?: {
-    count: number;
-    predicted: number;
-    efficiency: number;
-    interpretation: string;
-    hr?: any;
-  };
-  tsl5x?: {
-    time: number;
-    predicted: number;
-    efficiency: number;
-    interpretation: string;
-    hr?: any;
-  };
-  tsl30s?: {
-    count: number;
-    predicted: number;
-    efficiency: number;
-    interpretation: string;
-    hr?: any;
-  };
-  fatigabilityScales?: {
-    rest: { 
-      dyspnea: number; 
-      fatigue: number 
-    };
-    exercise: { 
-      dyspnea: number; 
-      fatigue: number 
-    };
-  };
+  antihypertensives: boolean;
+  others: string;
 }

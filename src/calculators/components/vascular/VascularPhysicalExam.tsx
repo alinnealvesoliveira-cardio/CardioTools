@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Info, AlertCircle, CheckCircle2, Thermometer, Droplets, Fingerprint, Layers, HelpCircle, X } from 'lucide-react';
+import { Activity, Info, AlertCircle, CheckCircle2, Thermometer, Droplets, Fingerprint, Layers, HelpCircle, Save, Clock } from 'lucide-react';
 import { usePatient } from '../../../context/PatientContext';
 import { MedicationAlert } from '../../../components/shared/MedicationAlert';
 import { VascularDiagnosticHelp } from '../../../components/shared/VascularDiagnosticHelp';
@@ -8,7 +8,7 @@ import { VascularDiagnosticHelp } from '../../../components/shared/VascularDiagn
 type System = 'Arterial' | 'Venoso' | 'Linfático';
 
 export const VascularPhysicalExam: React.FC = () => {
-  const { patientInfo, medications, testResults, updateTestResults } = usePatient();
+  const { medications, updateTestResult } = usePatient();
   const [activeSystem, setActiveSystem] = useState<System>('Arterial');
   const [showHelp, setShowHelp] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -19,112 +19,108 @@ export const VascularPhysicalExam: React.FC = () => {
   const [capillaryRefill, setCapillaryRefill] = useState<string>('');
 
   // Venous State
-  const [ceap, setCeap] = useState<string>('C0');
+  const [ceap, setCeap] = useState<string[]>(['C0']);
   const [godet, setGodet] = useState<number | null>(null);
 
   // Lymphatic State
   const [stemmer, setStemmer] = useState<boolean | null>(null);
 
+  // Reseta o estado de salvo ao mudar qualquer valor
   React.useEffect(() => {
     setIsSaved(false);
   }, [pulse, temp, capillaryRefill, ceap, godet, stemmer]);
 
+  const PULSE_SCALE = [
+    { val: 0, label: "0", desc: "Ausente" },
+    { val: 1, label: "1+", desc: "Diminuído" },
+    { val: 2, label: "2+", desc: "Normal" },
+    { val: 3, label: "3+", desc: "Aumentado" },
+  ];
+
+  const GODET_SCALE = [
+    { val: 1, label: "1+", depth: "2mm", desc: "Leve" },
+    { val: 2, label: "2+", depth: "4mm", desc: "Moderado" },
+    { val: 3, label: "3+", depth: "6mm", desc: "Profundo" },
+    { val: 4, label: "4+", depth: "8mm", desc: "Muito profundo" },
+  ];
+
+  const CEAP_OPTIONS = [
+    { id: 'C0', label: 'C0', desc: 'Sem sinais' },
+    { id: 'C1', label: 'C1', desc: 'Telangiectasias' },
+    { id: 'C2', label: 'C2', desc: 'Varizes' },
+    { id: 'C3', label: 'C3', desc: 'Edema' },
+    { id: 'C4', label: 'C4', desc: 'Tróficas' },
+    { id: 'C5', label: 'C5', desc: 'Úlcera Cicatrizada' },
+    { id: 'C6', label: 'C6', desc: 'Úlcera Ativa' },
+  ];
+
+  const getArterialCIF = () => {
+    if (pulse === null) return null;
+    const refill = parseFloat(capillaryRefill);
+    if (pulse >= 2 && temp === 'Normal' && (refill <= 3 || isNaN(refill))) return { severity: "Normal" };
+    if (pulse === 1) return { severity: "Leve" };
+    if (pulse === 0) return { severity: "Grave" };
+    return { severity: "Leve" };
+  };
+
+  const getVenousCIF = () => {
+    const maxCeapLevel = Math.max(...ceap.map(c => parseInt(c.replace('C', '')) || 0));
+    if (maxCeapLevel === 0 && !godet) return { severity: "Normal" };
+    if (maxCeapLevel <= 2 && (godet || 0) <= 1) return { severity: "Leve" };
+    if (maxCeapLevel <= 4) return { severity: "Moderada" };
+    return { severity: "Grave" };
+  };
+
+  const getLymphaticCIF = () => {
+    if (stemmer === null) return null;
+    return stemmer ? { severity: "Moderada" } : { severity: "Normal" };
+  };
+
   const handleSave = () => {
-    updateTestResults({
-      vascularImpairment: {
-        arterial: arterialCIF ? { qualifier: arterialCIF.qualifier, severity: arterialCIF.severity } : undefined,
-        venous: venousCIF ? { qualifier: venousCIF.qualifier, severity: venousCIF.severity } : undefined,
-        lymphatic: lymphaticCIF ? { qualifier: lymphaticCIF.qualifier, severity: lymphaticCIF.severity } : undefined
+    updateTestResult('vascularPhysicalExam', {
+      arterial: { 
+        pulse: PULSE_SCALE.find(p => p.val === pulse)?.label || 'Não avaliado', 
+        temp, 
+        capillaryRefill: capillaryRefill ? `${capillaryRefill}s` : 'Não avaliado', 
+        cif: getArterialCIF()?.severity || 'Não avaliado' 
+      },
+      venous: { 
+        ceap, 
+        godet: godet ? `${godet}+` : 'Ausente', 
+        cif: getVenousCIF()?.severity || 'Não avaliado' 
+      },
+      lymphatic: { 
+        stemmer: stemmer === null ? 'Não avaliado' : (stemmer ? 'Positivo' : 'Negativo'), 
+        cif: getLymphaticCIF()?.severity || 'Não avaliado' 
       }
     });
     setIsSaved(true);
   };
 
-  const getArterialCIF = () => {
-    if (pulse === null) return null;
-    const refill = parseFloat(capillaryRefill);
-    
-    if (pulse >= 2 && temp === 'Normal' && (refill <= 3 || isNaN(refill))) 
-      return { qualifier: 0, severity: "Normal", color: "vitality-lime" };
-    if (pulse === 1 && temp === 'Normal') 
-      return { qualifier: 1, severity: "Leve", color: "blue-500" };
-    if (pulse === 1 && temp === 'Fria (Isquemia)') 
-      return { qualifier: 2, severity: "Moderada", color: "amber-500" };
-    if (pulse === 0 && temp === 'Fria (Isquemia)') 
-      return { qualifier: 3, severity: "Grave", color: "orange-500" };
-    if (pulse === 0 && refill > 5) 
-      return { qualifier: 4, severity: "Completa", color: "vitality-risk" };
-    
-    return { qualifier: 1, severity: "Leve", color: "blue-500" };
+  const toggleCEAP = (id: string) => {
+    if (id === 'C0') {
+      setCeap(['C0']);
+    } else {
+      const filtered = ceap.filter(item => item !== 'C0');
+      if (filtered.includes(id)) {
+        const next = filtered.filter(item => item !== id);
+        setCeap(next.length === 0 ? ['C0'] : next);
+      } else {
+        setCeap([...filtered, id].sort());
+      }
+    }
   };
-
-  const getVenousCIF = () => {
-    if (ceap === 'C0' && (godet === null || godet === 0)) 
-      return { qualifier: 0, severity: "Normal", color: "vitality-lime" };
-    if (ceap === 'C1' || ceap === 'C2') 
-      return { qualifier: 1, severity: "Leve", color: "blue-500" };
-    if (ceap === 'C3' || ceap === 'C4' || godet === 2) 
-      return { qualifier: 2, severity: "Moderada", color: "amber-500" };
-    if (ceap === 'C5' || godet === 3) 
-      return { qualifier: 3, severity: "Grave", color: "orange-500" };
-    if (ceap === 'C6' || godet === 4) 
-      return { qualifier: 4, severity: "Completa", color: "vitality-risk" };
-    
-    return { qualifier: 1, severity: "Leve", color: "blue-500" };
-  };
-
-  const getLymphaticCIF = () => {
-    if (stemmer === null) return null;
-    if (stemmer === false) 
-      return { qualifier: 0, severity: "Normal", color: "vitality-lime" };
-    if (stemmer === true) 
-      return { qualifier: 2, severity: "Moderada", color: "amber-500" };
-    return null;
-  };
-
-  const arterialCIF = getArterialCIF();
-  const venousCIF = getVenousCIF();
-  const lymphaticCIF = getLymphaticCIF();
-
-  const currentCIF = activeSystem === 'Arterial' ? arterialCIF : 
-                    activeSystem === 'Venoso' ? venousCIF : 
-                    lymphaticCIF;
-
-  const PULSE_SCALE = [
-    { val: 0, label: "0", desc: "Ausente (não palpável)" },
-    { val: 1, label: "1+", desc: "Diminuído (fraco, filiforme)" },
-    { val: 2, label: "2+", desc: "Normal (esperado)" },
-    { val: 3, label: "3+", desc: "Aumentado (cheio)" },
-    { val: 4, label: "4+", desc: "Forte (em martelo d'água)" },
-  ];
-
-  const GODET_SCALE = [
-    { val: 1, label: "1+", depth: "2mm", desc: "Depressão leve, desaparece rápido.", color: "bg-vitality-lime/20" },
-    { val: 2, label: "2+", depth: "4mm", desc: "Depressão moderada, desaparece em 10-15s.", color: "bg-vitality-lime/40" },
-    { val: 3, label: "3+", depth: "6mm", desc: "Depressão profunda, dura mais de 1 min.", color: "bg-vitality-lime/60" },
-    { val: 4, label: "4+", depth: "8mm", desc: "Depressão muito profunda, dura 2-5 min.", color: "bg-vitality-lime/80" },
-  ];
-
-  const CEAP_SCALE = [
-    { id: 'C0', label: 'C0', desc: 'Sem sinais visíveis ou palpáveis de doença venosa.' },
-    { id: 'C1', label: 'C1', desc: 'Telangiectasias ou veias reticulares.' },
-    { id: 'C2', label: 'C2', desc: 'Veias varicosas (varizes).' },
-    { id: 'C3', label: 'C3', desc: 'Edema.' },
-    { id: 'C4', label: 'C4', desc: 'Alterações tróficas (hiperpigmentação, eczema).' },
-    { id: 'C5', label: 'C5', desc: 'Úlcera venosa cicatrizada.' },
-    { id: 'C6', label: 'C6', desc: 'Úlcera venosa ativa.' },
-  ];
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8">
-      <header className="flex items-center justify-between">
-        <div className="space-y-2">
+    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24">
+      <header className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="space-y-1">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Exame Físico Vascular</h1>
-          <p className="text-slate-500 text-sm">Avaliação sistemática dos sistemas arterial, venoso e linfático.</p>
+          <p className="text-slate-500 text-sm">Avaliação sistemática arterial, venosa e linfática.</p>
         </div>
         <button
           onClick={() => setShowHelp(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-vitality-lime/10 text-vitality-lime rounded-xl font-bold text-sm hover:bg-vitality-lime/20 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors"
         >
           <HelpCircle className="w-4 h-4" />
           Ajuda Diagnóstica
@@ -132,17 +128,15 @@ export const VascularPhysicalExam: React.FC = () => {
       </header>
 
       <MedicationAlert type="bcc" active={medications.bcc} />
-
       <VascularDiagnosticHelp isOpen={showHelp} onClose={() => setShowHelp(false)} />
 
-      {/* Tabs */}
       <div className="flex p-1 bg-slate-100 rounded-2xl gap-1">
         {(['Arterial', 'Venoso', 'Linfático'] as System[]).map((sys) => (
           <button
             key={sys}
             onClick={() => setActiveSystem(sys)}
             className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-              activeSystem === sys ? 'bg-white text-vitality-lime shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              activeSystem === sys ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             {sys}
@@ -154,150 +148,68 @@ export const VascularPhysicalExam: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           <AnimatePresence mode="wait">
             {activeSystem === 'Arterial' && (
-              <motion.div
-                key="arterial"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-6"
-              >
-                {/* Pulso */}
+              <motion.div key="art" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
                 <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-2 text-slate-800 font-bold">
-                    <Activity className="w-5 h-5 text-vitality-risk" />
-                    Palpação de Pulsos (Escala de 0 a 4+)
-                  </div>
-                  <div className="grid grid-cols-1 gap-2">
+                  <h2 className="flex items-center gap-2 text-slate-800 font-bold"><Activity className="w-5 h-5 text-rose-500" /> Pulsos</h2>
+                  <div className="grid grid-cols-2 gap-2">
                     {PULSE_SCALE.map((p) => (
-                      <button
-                        key={p.val}
-                        onClick={() => setPulse(p.val)}
-                        className={`p-4 rounded-2xl text-left border-2 transition-all flex items-center gap-4 ${
-                          pulse === p.val ? 'bg-vitality-risk/10 border-vitality-risk/20 text-vitality-risk' : 'bg-slate-50 border-transparent text-slate-600'
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${pulse === p.val ? 'bg-vitality-risk text-white' : 'bg-white text-slate-400'}`}>
-                          {p.label}
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm">{p.desc}</div>
-                        </div>
+                      <button key={p.val} onClick={() => setPulse(p.val)} className={`p-4 rounded-2xl text-left border-2 transition-all ${pulse === p.val ? 'border-rose-500 bg-rose-50' : 'border-transparent bg-slate-50'}`}>
+                        <span className="block font-black text-lg">{p.label}</span>
+                        <span className="text-xs text-slate-500">{p.desc}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Temperatura */}
                 <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-2 text-slate-800 font-bold">
-                    <Thermometer className="w-5 h-5 text-vitality-lime" />
-                    Temperatura da Pele
+                  <h2 className="flex items-center gap-2 text-slate-800 font-bold"><Clock className="w-5 h-5 text-blue-500" /> Enchimento Capilar</h2>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={capillaryRefill} 
+                      onChange={(e) => setCapillaryRefill(e.target.value)}
+                      placeholder="Ex: 2"
+                      className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl outline-none transition-all font-bold"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">segundos</span>
                   </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                  <h2 className="flex items-center gap-2 text-slate-800 font-bold"><Thermometer className="w-5 h-5 text-orange-500" /> Temperatura</h2>
                   <div className="flex gap-2">
-                    {['Normal', 'Fria (Isquemia)', 'Quente (Inflamação)'].map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setTemp(t)}
-                        className={`flex-1 p-4 rounded-2xl border-2 font-bold text-sm transition-all ${
-                          temp === t ? 'bg-vitality-lime/10 border-vitality-lime/20 text-vitality-lime' : 'bg-slate-50 border-transparent text-slate-500'
-                        }`}
-                      >
-                        {t}
-                      </button>
+                    {['Normal', 'Fria (Isquemia)', 'Quente'].map((t) => (
+                      <button key={t} onClick={() => setTemp(t)} className={`flex-1 p-3 rounded-xl border-2 text-xs font-bold ${temp === t ? 'border-orange-500 bg-orange-50' : 'border-transparent bg-slate-50'}`}>{t}</button>
                     ))}
-                  </div>
-                </div>
-
-                {/* Enchimento Capilar */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-2 text-slate-800 font-bold">
-                    <Fingerprint className="w-5 h-5 text-vitality-lime" />
-                    Enchimento Capilar
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tempo (segundos)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={capillaryRefill}
-                        onChange={(e) => setCapillaryRefill(e.target.value)}
-                        placeholder="Ex: 2.5"
-                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-2xl font-bold text-slate-800 focus:border-vitality-lime outline-none transition-all"
-                      />
-                    </div>
-                    {capillaryRefill && (
-                      <div className={`p-4 rounded-2xl flex items-center gap-3 ${parseFloat(capillaryRefill) > 3 ? 'bg-vitality-risk/10 text-vitality-risk border border-vitality-risk/20' : 'bg-vitality-lime/10 text-vitality-lime border border-vitality-lime/20'}`}>
-                        {parseFloat(capillaryRefill) > 3 ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-                        <span className="font-bold text-sm">
-                          {parseFloat(capillaryRefill) > 3 ? 'Enchimento Lentificado (> 3s)' : 'Enchimento Normal (≤ 3s)'}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </motion.div>
             )}
 
             {activeSystem === 'Venoso' && (
-              <motion.div
-                key="venous"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-6"
-              >
-                {/* CEAP */}
+              <motion.div key="ven" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
                 <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-2 text-slate-800 font-bold">
-                    <Layers className="w-5 h-5 text-vitality-lime" />
-                    Classificação CEAP (Clínica)
-                  </div>
+                  <h2 className="flex items-center gap-2 text-slate-800 font-bold"><Layers className="w-5 h-5 text-indigo-500" /> CEAP (Múltipla Escolha)</h2>
                   <div className="grid grid-cols-1 gap-2">
-                    {CEAP_SCALE.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => setCeap(c.id)}
-                        className={`p-4 rounded-2xl text-left border-2 transition-all flex items-center gap-4 ${
-                          ceap === c.id ? 'bg-vitality-lime/10 border-vitality-lime/20 text-slate-900' : 'bg-slate-50 border-transparent text-slate-600'
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${ceap === c.id ? 'bg-vitality-lime text-white' : 'bg-white text-slate-400'}`}>
-                          {c.label}
-                        </div>
-                        <div className="text-sm font-bold">{c.desc}</div>
-                      </button>
-                    ))}
+                    {CEAP_OPTIONS.map((c) => {
+                      const isSelected = ceap.includes(c.id);
+                      return (
+                        <button key={c.id} onClick={() => toggleCEAP(c.id)} className={`p-4 rounded-2xl text-left border-2 transition-all flex items-center gap-3 ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-transparent bg-slate-50'}`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${isSelected ? 'bg-indigo-600 text-white' : 'bg-white'}`}>{c.label}</div>
+                          <span className="text-sm font-medium">{c.desc}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Godet */}
                 <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-2 text-slate-800 font-bold">
-                    <Fingerprint className="w-5 h-5 text-vitality-lime" />
-                    Sinal de Godet (Cacifo)
-                  </div>
-                  <div className="grid grid-cols-1 gap-3">
+                  <h2 className="flex items-center gap-2 text-slate-800 font-bold"><Fingerprint className="w-5 h-5 text-indigo-400" /> Edema (Godet)</h2>
+                  <div className="grid grid-cols-2 gap-2">
                     {GODET_SCALE.map((g) => (
-                      <button
-                        key={g.val}
-                        onClick={() => setGodet(g.val)}
-                        className={`p-4 rounded-2xl text-left border-2 transition-all flex items-center gap-4 ${
-                          godet === g.val ? 'bg-vitality-lime/10 border-vitality-lime/20 text-slate-900' : 'bg-slate-50 border-transparent text-slate-600'
-                        }`}
-                      >
-                        <div className="relative w-12 h-12 bg-slate-200 rounded-lg overflow-hidden flex-shrink-0">
-                          <div 
-                            className={`absolute bottom-0 left-0 right-0 ${g.color} transition-all duration-500`}
-                            style={{ height: `${g.val * 25}%` }}
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center font-black text-xs mix-blend-overlay">
-                            {g.depth}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm">{g.label} - {g.desc}</div>
-                        </div>
+                      <button key={g.val} onClick={() => setGodet(g.val)} className={`p-4 rounded-2xl text-left border-2 transition-all ${godet === g.val ? 'border-indigo-400 bg-indigo-50' : 'border-transparent bg-slate-50'}`}>
+                        <span className="block font-black">{g.label}</span>
+                        <span className="text-[10px] text-slate-500">{g.desc} ({g.depth})</span>
                       </button>
                     ))}
                   </div>
@@ -306,45 +218,14 @@ export const VascularPhysicalExam: React.FC = () => {
             )}
 
             {activeSystem === 'Linfático' && (
-              <motion.div
-                key="lymphatic"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-6"
-              >
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-slate-800 font-bold">
-                      <Droplets className="w-5 h-5 text-vitality-risk" />
-                      Sinal de Stemmer
-                    </div>
-                    <p className="text-sm text-slate-500 leading-relaxed">
-                      Incapacidade de pinçar a pele na base do segundo dedo do pé ou da mão. 
-                      É um sinal patognomônico de linfedema.
-                    </p>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => setStemmer(true)}
-                        className={`flex-1 p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
-                          stemmer === true ? 'bg-vitality-risk/10 border-vitality-risk/20 text-vitality-risk' : 'bg-slate-50 border-transparent text-slate-400'
-                        }`}
-                      >
-                        <CheckCircle2 className={`w-8 h-8 ${stemmer === true ? 'text-vitality-risk' : 'opacity-20'}`} />
-                        <span className="font-bold">Positivo</span>
-                        <span className="text-[10px] text-center opacity-70">Pele não pode ser pinçada</span>
-                      </button>
-                      <button
-                        onClick={() => setStemmer(false)}
-                        className={`flex-1 p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
-                          stemmer === false ? 'bg-vitality-lime/10 border-vitality-lime/20 text-vitality-lime' : 'bg-slate-50 border-transparent text-slate-400'
-                        }`}
-                      >
-                        <CheckCircle2 className={`w-8 h-8 ${stemmer === false ? 'text-vitality-lime' : 'opacity-20'}`} />
-                        <span className="font-bold">Negativo</span>
-                        <span className="text-[10px] text-center opacity-70">Pele pinçada normalmente</span>
-                      </button>
-                    </div>
+              <motion.div key="lin" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="bg-white rounded-3xl p-8 border border-slate-100 space-y-6 text-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="p-4 bg-amber-50 rounded-full text-amber-600"><Droplets className="w-12 h-12" /></div>
+                  <h2 className="text-xl font-bold">Sinal de Stemmer</h2>
+                  <p className="text-sm text-slate-500">Incapacidade de pinçar a pele na base do 2º dedo.</p>
+                  <div className="flex gap-4 w-full">
+                    <button onClick={() => setStemmer(true)} className={`flex-1 p-4 rounded-2xl border-2 font-bold ${stemmer === true ? 'border-amber-500 bg-amber-50 text-amber-700' : 'bg-slate-50 border-transparent'}`}>Positivo</button>
+                    <button onClick={() => setStemmer(false)} className={`flex-1 p-4 rounded-2xl border-2 font-bold ${stemmer === false ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'bg-slate-50 border-transparent'}`}>Negativo</button>
                   </div>
                 </div>
               </motion.div>
@@ -353,152 +234,32 @@ export const VascularPhysicalExam: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="sticky top-24 space-y-6">
-            {/* Summary Card */}
-            <div className="bg-vitality-graphite rounded-3xl p-6 text-white shadow-xl space-y-4 border-4 border-vitality-lime/20">
-              <h3 className="font-bold flex items-center gap-2 text-vitality-lime">
-                <Activity className="w-4 h-4" />
-                Resumo do Exame
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-white/10 pb-2">
-                  <span className="opacity-60">Sistema</span>
-                  <span className="font-bold">{activeSystem}</span>
-                </div>
-                {activeSystem === 'Arterial' && (
-                  <>
-                    <div className="flex justify-between border-b border-white/10 pb-2">
-                      <span className="opacity-60">Pulso</span>
-                      <span className="font-bold">{pulse !== null ? `${pulse}+` : '---'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/10 pb-2">
-                      <span className="opacity-60">Pele</span>
-                      <span className="font-bold">{temp}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/10 pb-2">
-                      <span className="opacity-60">Enchimento</span>
-                      <span className="font-bold">{capillaryRefill ? `${capillaryRefill}s` : '---'}</span>
-                    </div>
-                  </>
-                )}
-                {activeSystem === 'Venoso' && (
-                  <>
-                    <div className="flex justify-between border-b border-white/10 pb-2">
-                      <span className="opacity-60">CEAP</span>
-                      <span className="font-bold">{ceap}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/10 pb-2">
-                      <span className="opacity-60">Godet</span>
-                      <span className="font-bold">{godet !== null ? `${godet}+` : '---'}</span>
-                    </div>
-                  </>
-                )}
-                {activeSystem === 'Linfático' && (
-                  <div className="flex justify-between border-b border-white/10 pb-2">
-                    <span className="opacity-60">Stemmer</span>
-                    <span className="font-bold">{stemmer === null ? '---' : stemmer ? 'Positivo' : 'Negativo'}</span>
-                  </div>
-                )}
+          <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl space-y-6 sticky top-8">
+            <h3 className="font-bold text-indigo-400 flex items-center gap-2 italic">CIF / OMS</h3>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-center text-sm border-b border-white/10 pb-2">
+                <span className="opacity-60">Arterial:</span>
+                <span className="font-bold text-rose-400">{getArterialCIF()?.severity || '---'}</span>
               </div>
-
-              {currentCIF && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className={`mt-4 p-4 rounded-2xl border-2 text-center space-y-1 ${
-                    currentCIF.qualifier === 0 ? 'bg-vitality-lime/20 border-vitality-lime/30 text-white' :
-                    currentCIF.qualifier === 1 ? 'bg-blue-500/20 border-blue-500/30 text-white' :
-                    currentCIF.qualifier === 2 ? 'bg-amber-500/20 border-amber-500/30 text-white' :
-                    currentCIF.qualifier === 3 ? 'bg-orange-500/20 border-orange-500/30 text-white' :
-                    'bg-vitality-risk/20 border-vitality-risk/30 text-white'
-                  }`}
-                >
-                  <div className="text-[10px] font-black uppercase tracking-widest opacity-70">Comprometimento Funcional (CIF/OMS)</div>
-                  <div className="text-lg font-black">CIF/OMS</div>
-                  <div className="text-[10px] font-bold opacity-60">Qualificador {currentCIF.severity}</div>
-                </motion.div>
-              )}
-
-              {/* CIF/OMS Summary Table */}
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                <div className="flex items-center gap-2 text-slate-800 font-bold">
-                  <Layers className="w-5 h-5 text-vitality-lime" />
-                  Quadro de Comprometimento (CIF/OMS)
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'Arterial', cif: arterialCIF },
-                    { label: 'Venoso', cif: venousCIF },
-                    { label: 'Linfático', cif: lymphaticCIF }
-                  ].map((item) => (
-                    <div key={item.label} className="space-y-1">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase text-center">{item.label}</div>
-                      <div className={`p-3 rounded-xl border-2 text-center ${
-                        item.cif ? (
-                          item.cif.qualifier === 0 ? 'bg-vitality-lime/10 border-vitality-lime/20 text-vitality-lime' :
-                          item.cif.qualifier === 1 ? 'bg-blue-50 border-blue-200 text-blue-600' :
-                          item.cif.qualifier === 2 ? 'bg-amber-50 border-amber-200 text-amber-600' :
-                          item.cif.qualifier === 3 ? 'bg-orange-50 border-orange-200 text-orange-600' :
-                          'bg-red-50 border-red-200 text-red-600'
-                        ) : 'bg-slate-50 border-transparent text-slate-300'
-                      }`}>
-                        <div className="text-xs font-black">{item.cif?.severity || '---'}</div>
-                        <div className="text-[8px] opacity-60">{item.cif ? `${item.cif.severity}` : ''}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex justify-between items-center text-sm border-b border-white/10 pb-2">
+                <span className="opacity-60">Venoso:</span>
+                <span className="font-bold text-indigo-400">{getVenousCIF()?.severity || '---'}</span>
               </div>
-
-              <button
-                onClick={handleSave}
-                disabled={isSaved}
-                className={`w-full py-4 rounded-2xl font-black text-sm transition-all shadow-lg flex items-center justify-center gap-2 ${
-                  isSaved 
-                    ? 'bg-emerald-500 text-white shadow-emerald-500/20' 
-                    : 'bg-vitality-lime text-slate-900 shadow-vitality-lime/20 hover:opacity-90'
-                }`}
-              >
-                {isSaved ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Resultados Salvos
-                  </>
-                ) : (
-                  <>
-                    <Activity className="w-4 h-4" />
-                    Salvar Resultados
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Clinical Pearls */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-              <div className="flex items-center gap-2 text-vitality-lime font-bold text-sm">
-                <Info className="w-4 h-4" />
-                Guia Visual & Clínico
-              </div>
-              <div className="space-y-4">
-                {activeSystem === 'Arterial' && (
-                  <div className="text-[10px] text-slate-500 leading-relaxed space-y-2">
-                    <p><strong>Pele Fria:</strong> Sugere insuficiência arterial aguda ou crônica agudizada.</p>
-                    <p><strong>Pulsos:</strong> Avaliar pedioso, tibial posterior, poplíteo e femoral.</p>
-                  </div>
-                )}
-                {activeSystem === 'Venoso' && (
-                  <div className="text-[10px] text-slate-500 leading-relaxed space-y-2">
-                    <p><strong>Hiperpigmentação:</strong> Dermatite de estase (deposição de hemossiderina).</p>
-                    <p><strong>Godet:</strong> Avaliar em região maleolar e pré-tibial.</p>
-                  </div>
-                )}
-                {activeSystem === 'Linfático' && (
-                  <div className="text-[10px] text-slate-500 leading-relaxed space-y-2">
-                    <p><strong>Stemmer:</strong> Se positivo, confirma linfedema. Se negativo, não exclui (falso negativo em fases iniciais).</p>
-                  </div>
-                )}
+              <div className="flex justify-between items-center text-sm border-b border-white/10 pb-2">
+                <span className="opacity-60">Linfático:</span>
+                <span className="font-bold text-amber-400">{getLymphaticCIF()?.severity || '---'}</span>
               </div>
             </div>
+
+            <button
+              onClick={handleSave}
+              className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 ${
+                isSaved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20'
+              }`}
+            >
+              {isSaved ? <><CheckCircle2 className="w-5 h-5" /> Salvo</> : <><Save className="w-5 h-5" /> Salvar Exame</>}
+            </button>
           </div>
         </div>
       </div>

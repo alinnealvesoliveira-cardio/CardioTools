@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Play, Square, RotateCcw, Heart, Activity, Save, CheckCircle2 } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
+import { getCBDFClassification } from '../../utils/cbdf';
+import { toast } from 'react-hot-toast';
 
 export const TC6M: React.FC = () => {
-  const { patientInfo, testResults, setTestResults } = usePatient();
+  const { patientInfo, updateTestResult } = usePatient();
   const { user } = useAuth();
 
   const [time, setTime] = useState(360);
@@ -35,59 +36,58 @@ export const TC6M: React.FC = () => {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
-  // Cálculo da Distância Predita (Britto et al., 2013 - Equação Brasileira)
   const calculatePredicted = () => {
     const age = Number(patientInfo.age);
     const height = Number(patientInfo.height);
     const weight = Number(patientInfo.weight);
-    if (!age || !height || !weight) return null;
+    if (!age || !height || !weight) return 0;
 
     const imc = weight / ((height / 100) ** 2);
     const sexVal = patientInfo.sex === 'male' ? 1 : 0;
     
-    // Equação de Britto: 890.46 - (6.11 * idade) + (0.0345 * idade²) + (48.87 * sexo) - (4.87 * IMC)
+    // Equação de Britto (Brasileira)
     return 890.46 - (6.11 * age) + (0.0345 * (age ** 2)) + (48.87 * sexVal) - (4.87 * imc);
   };
 
   const predicted = calculatePredicted();
   const observed = parseFloat(distance);
-  const percentage = (predicted && observed) ? (observed / predicted) * 100 : null;
-  const feve = patientInfo.ejectionFraction || 60;
-
-  // Lógica de Classificação CBDF-1 (Cruzamento Distância + FEVE)
-  const getCBDF = () => {
-    if (!percentage) return null;
-    // Se FEVE grave ou Distância < 25%, deficiência completa
-    if (percentage < 25 || feve < 30) return { qualifier: 4, severity: "Deficiência Completa", range: "96-100%" };
-    if (percentage < 50 || feve < 40) return { qualifier: 3, severity: "Deficiência Grave", range: "50-95%" };
-    if (percentage < 75) return { qualifier: 2, severity: "Deficiência Moderada", range: "25-49%" };
-    if (percentage < 95) return { qualifier: 1, severity: "Deficiência Leve", range: "5-24%" };
-    return { qualifier: 0, severity: "Sem Deficiência", range: "0-4%" };
-  };
-
-  const cbdf = getCBDF();
+  const percentage = (predicted > 0 && observed > 0) ? (observed / predicted) * 100 : 0;
+  
+  // Usa a função global que criamos no utils/cbdf.ts
+  const cbdf = getCBDFClassification(percentage);
 
   const handleSave = async () => {
-    if (!observed) return;
-    setTestResults({
-      ...testResults,
-      tc6m: {
-        distance: observed,
-        predicted: predicted || 0,
-        efficiency: percentage || 0,
-        hr: { 
-          pre: parseInt(preHR) || 0, 
-          post: parseInt(postHR) || 0 
-        }
+    if (!observed) {
+      toast.error("Insira a distância percorrida");
+      return;
+    }
+
+    // ATENÇÃO: Usando updateTestResult para garantir que grave no Relatório Final
+    updateTestResult('tc6m', {
+      distance: observed,
+      predicted: predicted,
+      efficiency: percentage,
+      hr: { 
+        pre: parseInt(preHR) || 0, 
+        post: parseInt(postHR) || 0 
+      }
+    });
+
+    // Atualiza escalas de fadigabilidade globalmente
+    updateTestResult('fatigabilityScales', {
+      rest: { 
+        dyspnea: Number(borgData.min0.dyspnea), 
+        fatigue: Number(borgData.min0.fatigue) 
       },
-      fatigabilityScales: {
-        rest: { dyspnea: Number(borgData.min0.dyspnea), fatigue: Number(borgData.min0.fatigue) },
-        exercise: { dyspnea: Number(borgData.min6.dyspnea), fatigue: Number(borgData.min6.fatigue) }
+      exercise: { 
+        dyspnea: Number(borgData.min6.dyspnea), 
+        fatigue: Number(borgData.min6.fatigue) 
       }
     });
 
     if (user) await logActivity(user.id, 'Salvou TC6M');
     setIsSaved(true);
+    toast.success("Resultado enviado para o Relatório Final!");
   };
 
   return (
@@ -150,7 +150,7 @@ export const TC6M: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-              <div className="flex items-center gap-2 font-bold mb-4 text-slate-700"><Activity className="text-indigo-500" size={18}/> Escala de Borg</div>
+              <div className="flex items-center gap-2 font-bold mb-4 text-slate-700"><Activity className="text-indigo-500" size={18}/> Escala de Borg Manual</div>
               <div className="grid grid-cols-3 gap-2">
                 {[0, 3, 6].map(m => (
                   <div key={m} className="p-2 bg-slate-50 rounded-xl text-center">
@@ -158,15 +158,15 @@ export const TC6M: React.FC = () => {
                     <input 
                       type="number" 
                       placeholder="D" 
-                      value={(borgData as any)[`min${m}`].dyspnea || ''}
-                      onChange={(e) => setBorgData({...borgData, [`min${m}`]: {...(borgData as any)[`min${m}`], dyspnea: e.target.value}})}
+                      value={(borgData as any)[`min${m}`].dyspnea}
+                      onChange={(e) => setBorgData({...borgData, [`min${m}`]: {...(borgData as any)[`min${m}`], dyspnea: Number(e.target.value)}})}
                       className="w-full mt-1 p-1 text-center rounded-lg border text-xs font-bold" 
                     />
                     <input 
                       type="number" 
                       placeholder="F" 
-                      value={(borgData as any)[`min${m}`].fatigue || ''}
-                      onChange={(e) => setBorgData({...borgData, [`min${m}`]: {...(borgData as any)[`min${m}`], fatigue: e.target.value}})}
+                      value={(borgData as any)[`min${m}`].fatigue}
+                      onChange={(e) => setBorgData({...borgData, [`min${m}`]: {...(borgData as any)[`min${m}`], fatigue: Number(e.target.value)}})}
                       className="w-full mt-1 p-1 text-center rounded-lg border text-xs font-bold" 
                     />
                   </div>
@@ -180,27 +180,17 @@ export const TC6M: React.FC = () => {
           <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl space-y-6">
             <div className="text-center pb-4 border-b border-white/10">
               <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-1">Resultado Predito</p>
-              <h3 className="text-4xl font-black">{predicted?.toFixed(0)}m</h3>
+              <h3 className="text-4xl font-black">{predicted.toFixed(0)}m</h3>
               <p className="text-[10px] text-slate-400 italic">Equação de Britto (2013)</p>
             </div>
 
-            {cbdf && (
-              <div className="bg-white/5 p-4 rounded-2xl border-l-4 border-indigo-500">
-                <p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Classificação CBDF-1</p>
-                <h4 className="text-xl font-black">.{cbdf.qualifier} — {cbdf.severity}</h4>
-                <p className="text-[10px] text-slate-400 mt-1">Desempenho: {percentage?.toFixed(1)}% do esperado.</p>
+            {observed > 0 && (
+              <div className="p-4 rounded-2xl border-l-4 shadow-inner" style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderLeftColor: cbdf.color }}>
+                <p className="text-[10px] font-black uppercase mb-1" style={{ color: cbdf.color }}>Classificação CBDF-1</p>
+                <h4 className="text-xl font-black">{cbdf.severity} (Qualificador {cbdf.qualifier})</h4>
+                <p className="text-[10px] text-slate-400 mt-1">Eficiência: {percentage.toFixed(1)}% do esperado.</p>
               </div>
             )}
-
-            <div className="bg-white/5 p-4 rounded-2xl">
-              <p className="text-[10px] font-black uppercase text-rose-400 mb-2">Análise de Segurança</p>
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span>Reserva Cardíaca:</span>
-                <span className="text-emerald-400">
-                  {postHR && preHR ? (parseInt(postHR) - parseInt(preHR)) : 0} bpm
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
