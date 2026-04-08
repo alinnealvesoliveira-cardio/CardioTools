@@ -1,23 +1,18 @@
 import React from 'react';
-import { 
-  FileText, Download, User, Activity, Zap, Wind, 
-  Info, Clock, Heart, ShieldCheck 
-} from 'lucide-react';
+import { FileText, Download, User, Activity, Zap, Wind, Info, Clock, Heart, ShieldCheck } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
 import { getCBDFClassification } from '../../utils/cbdf.ts';
-import { generateCBDFCode, translateCBDFCode } from '../../utils/cbdfGenerator';
-import { FunctionalTestResult } from '../../types';
+import { generateCBDFCode } from '../../utils/cbdfGenerator';
 
 export const FinalReport: React.FC = () => {
   const { patientInfo, medications, testResults } = usePatient();
   const { user } = useAuth();
 
-  // Geração do Código Diagnóstico Estruturado e Tradução
+  // Geração do Código Diagnóstico Estruturado
   const cbdfFullCode = generateCBDFCode(patientInfo, testResults, medications);
   const codeParts = cbdfFullCode.split('.');
-  const diagnosisTranslation = translateCBDFCode(cbdfFullCode);
 
   const handlePrint = async () => {
     if (user) {
@@ -28,17 +23,9 @@ export const FinalReport: React.FC = () => {
 
   const hasData = Object.keys(testResults).length > 1 || (patientInfo.name && patientInfo.name !== '');
 
-  // Componente interno para Renderizar o Card de Teste CBDF com Tipagem Segura
-  const TestCard = ({ 
-    title, 
-    testData, 
-    badgeColor = "bg-slate-600" 
-  }: { 
-    title: string, 
-    testData?: FunctionalTestResult, 
-    badgeColor?: string 
-  }) => {
-    if (!testData || testData.efficiency === undefined) return null;
+  // Componente interno para Renderizar o Card de Teste CBDF
+  const TestCard = ({ title, testData, badgeColor = "bg-slate-600" }: { title: string, testData: any, badgeColor?: string }) => {
+    if (!testData) return null;
     const cbdf = getCBDFClassification(testData.efficiency);
 
     return (
@@ -100,49 +87,42 @@ export const FinalReport: React.FC = () => {
         </button>
       </header>
 
-      {/* 1. CARIMBO DIAGNÓSTICO CBDF COM TRADUÇÃO */}
+      {/* 1. CARIMBO DIAGNÓSTICO CBDF (NOVO) */}
       <section className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl border-b-8 border-vitality-lime break-inside-avoid relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10">
             <ShieldCheck className="w-32 h-32" />
         </div>
         
-        <div className="relative z-10 flex flex-col gap-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-vitality-lime font-black text-[10px] uppercase tracking-[0.3em]">
-                <Activity className="w-4 h-4" /> Diagnóstico Cinético-Funcional
-              </div>
-              <h2 className="text-5xl font-black tracking-tighter text-white font-mono">
-                {cbdfFullCode}
-              </h2>
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-vitality-lime font-black text-[10px] uppercase tracking-[0.3em]">
+              <Activity className="w-4 h-4" /> Diagnóstico Cinético-Funcional
             </div>
-            
-            <div className="bg-white/5 border border-white/10 p-5 rounded-3xl backdrop-blur-md grid grid-cols-4 gap-4 min-w-[300px]">
-              <div className="text-center">
-                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Estrutura</div>
-                <div className="text-xl font-black text-white">{codeParts[1]}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Capac.</div>
-                <div className="text-xl font-black text-vitality-lime">{codeParts[2]}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Vasc.</div>
-                <div className="text-xl font-black text-blue-400">{codeParts[3]}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Meds.</div>
-                <div className="text-xl font-black text-rose-400">{codeParts[5]}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tradução por Extenso (Novo campo de segurança) */}
-          <div className="p-5 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
-            <p className="text-slate-300 text-sm leading-relaxed italic">
-              <span className="text-vitality-lime font-bold not-italic mr-2">Conclusão:</span>
-              {diagnosisTranslation}
+            <h2 className="text-5xl font-black tracking-tighter text-white font-mono">
+              {cbdfFullCode}
+            </h2>
+            <p className="text-slate-400 text-xs font-medium max-w-sm leading-relaxed">
+              Codificação baseada na CBDF para deficiências do sistema cardiovascular e respiratório.
             </p>
+          </div>
+          
+          <div className="bg-white/5 border border-white/10 p-5 rounded-3xl backdrop-blur-md grid grid-cols-4 gap-4 min-w-[300px]">
+            <div className="text-center">
+              <div className="text-xs font-bold text-slate-500 uppercase mb-1">Estrutura</div>
+              <div className="text-xl font-black text-white">{codeParts[1]}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs font-bold text-slate-500 uppercase mb-1">Capac.</div>
+              <div className="text-xl font-black text-vitality-lime">{codeParts[2]}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs font-bold text-slate-500 uppercase mb-1">Vasc.</div>
+              <div className="text-xl font-black text-blue-400">{codeParts[3]}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs font-bold text-slate-500 uppercase mb-1">Meds.</div>
+              <div className="text-xl font-black text-rose-400">{codeParts[5]}</div>
+            </div>
           </div>
         </div>
       </section>
@@ -297,7 +277,7 @@ export const FinalReport: React.FC = () => {
           </div>
         </section>
 
-        {/* 5. Resposta Cronotrópica (Refatorada para múltiplos medicamentos) */}
+        {/* 5. Resposta Cronotrópica */}
         <section className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6 break-inside-avoid">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="p-3 bg-red-100 text-red-600 rounded-2xl"><Heart className="w-6 h-6" /></div>
@@ -308,8 +288,8 @@ export const FinalReport: React.FC = () => {
               <Info className="w-4 h-4" /> Contexto Farmacológico
             </div>
             <p className="text-xs text-slate-300 leading-relaxed italic">
-              {medications.betablockers || medications.bcc || medications.digitalis || medications.antiarrhythmics ? 
-                "Uso de medicação com efeito cronotrópico negativo confirmado (Betabloqueador, BCC, Antiarrítmicos ou Digitalis). A resposta da Frequência Cardíaca atenuada é esperada. O controle de intensidade do exercício DEVE priorizar a Percepção Subjetiva de Esforço (Escala de Borg)." :
+              {medications.betablockers ? 
+                "Uso de betabloqueador confirmado. Resposta da Frequência Cardíaca atenuada é esperada. Recomenda-se que o controle de intensidade do exercício priorize a Percepção Subjetiva de Esforço (Escala de Borg)." :
                 "Nenhuma medicação com efeito cronotrópico negativo foi relatada. A resposta da Frequência Cardíaca deve apresentar linearidade metabólica durante o esforço."
               }
             </p>
