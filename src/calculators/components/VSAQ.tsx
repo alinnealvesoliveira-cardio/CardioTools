@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Save, Activity, Heart, Info } from 'lucide-react';
+import { CheckCircle2, Save, Activity, Heart, Info, BookOpen } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
@@ -28,7 +28,6 @@ const VSAQ_ITEMS: VSAQItem[] = [
 ];
 
 export const VSAQ: React.FC = () => {
-  // Chamada correta das funções para remover os erros de tipo (cobrinhas)
   const { patientInfo, setPatientInfo, testResults, setTestResults } = usePatient();
   const { user } = useAuth();
   const [selectedScore, setSelectedScore] = useState<number | null>(null);
@@ -40,6 +39,7 @@ export const VSAQ: React.FC = () => {
   const imc = weight > 0 && height > 0 ? weight / (height * height) : 0;
   const feve = Number(patientInfo.ejectionFraction) || 60;
 
+  // Cálculo baseado em Myers et al. (Nomograma do VSAQ)
   const estimatedMETs = (selectedScore !== null && age > 0) 
     ? 4.7 + (0.97 * selectedScore) - (0.06 * age) - (imc > 25 ? (0.02 * (imc - 25)) : 0)
     : null;
@@ -47,7 +47,6 @@ export const VSAQ: React.FC = () => {
   const predictedMETs = age > 0 ? 14.7 - (0.11 * age) : null;
   const percentage = (estimatedMETs && predictedMETs) ? (estimatedMETs / predictedMETs) * 100 : null;
 
-  // Lógica de Classificação CBDF-1 (Cruzamento de Capacidade Funcional + FEVE)
   const getCBDF = () => {
     if (!percentage) return null;
     if (percentage < 25 || feve < 30) return { qualifier: 4, severity: "Deficiência Completa", range: "96-100%" };
@@ -62,7 +61,6 @@ export const VSAQ: React.FC = () => {
   const handleSave = async () => {
     if (estimatedMETs === null) return;
     
-    // Atualiza o estado global com os nomes de função corretos
     setTestResults({
       ...testResults,
       vsaq: {
@@ -83,7 +81,7 @@ export const VSAQ: React.FC = () => {
     <div className="max-w-4xl mx-auto p-4 space-y-6 pb-20">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">VSAQ + CBDF-1</h1>
-        <p className="text-slate-500 text-sm italic">Cálculo de METs por Myers et al. ajustado por IMC e FEVE.</p>
+        <p className="text-slate-500 text-sm italic">Veterans Specific Activity Questionnaire - Versão Validada Brasil.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -109,7 +107,12 @@ export const VSAQ: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-3">
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-3 relative overflow-hidden">
+             <div className="bg-slate-50 p-3 rounded-xl flex gap-3 text-slate-600 text-[10px] mb-2 border border-slate-100">
+              <Info className="w-4 h-4 shrink-0 text-emerald-500" />
+              <p>Selecione a atividade que causaria <strong>fadiga ou falta de ar</strong> se realizada hoje.</p>
+            </div>
+            
             {VSAQ_ITEMS.map((item) => (
               <button 
                 key={item.score}
@@ -127,16 +130,10 @@ export const VSAQ: React.FC = () => {
 
         <div className="space-y-4">
           <div className="sticky top-24 space-y-4">
-            {imc > 0 && (
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
-                <p className="text-[10px] uppercase font-black text-slate-400 mb-1">IMC</p>
-                <p className="text-3xl font-black text-slate-900">{imc.toFixed(1)}</p>
-              </div>
-            )}
-
             {estimatedMETs && (
               <>
-                <div className="bg-emerald-600 text-white p-6 rounded-3xl shadow-xl text-center space-y-4">
+                <div className="bg-emerald-600 text-white p-6 rounded-3xl shadow-xl text-center space-y-4 relative">
+                  <span className="absolute top-3 right-3 text-[8px] opacity-30 font-serif italic">[1]</span>
                   <div>
                     <p className="text-[10px] uppercase font-black opacity-60 mb-1">METs Estimados</p>
                     <p className="text-6xl font-black leading-none">{estimatedMETs.toFixed(1)}</p>
@@ -148,14 +145,27 @@ export const VSAQ: React.FC = () => {
                   </button>
                 </div>
 
-                {cbdf && (
-                  <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl text-center">
+                <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl space-y-6">
+                  <div className="text-center">
                     <p className="text-[10px] font-black uppercase text-emerald-400 mb-2">Qualificador CBDF-1</p>
-                    <p className="text-3xl font-black">.{cbdf.qualifier}</p>
-                    <p className="text-xs text-slate-400 mb-4">{cbdf.severity}</p>
-                    <div className="bg-white/5 p-3 rounded-xl text-[10px] font-bold text-emerald-300">Comprometimento: {cbdf.range}</div>
+                    <p className="text-3xl font-black">.{cbdf?.qualifier}</p>
+                    <p className="text-xs text-slate-400 mb-4">{cbdf?.severity}</p>
                   </div>
-                )}
+
+                  {/* Referências Bibliográficas Discretas */}
+                  <div className="pt-4 border-t border-white/5 space-y-2">
+                    <div className="flex items-center gap-1 text-slate-500">
+                      <BookOpen size={10} />
+                      <span className="text-[9px] font-bold uppercase tracking-widest">Base Científica</span>
+                    </div>
+                    <p className="text-[8px] text-slate-500 leading-tight">
+                      [1] <strong>Myers J, et al.</strong> (1994). Nomogram for estimating capacity from the VSAQ. <em>Circulation</em>.
+                    </p>
+                    <p className="text-[8px] text-slate-500 leading-tight">
+                      [2] <strong>Araújo CGS, et al.</strong> (2011). Validação do VSAQ em Português para a população brasileira. <em>Arquivos Brasileiros de Cardiologia</em>.
+                    </p>
+                  </div>
+                </div>
               </>
             )}
           </div>

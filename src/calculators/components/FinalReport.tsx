@@ -3,7 +3,7 @@ import { FileText, Download, User, Activity, Zap, Wind, Info, Clock, Heart, Shie
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
-import { getCBDFClassification } from '../../utils/cbdf.ts';
+import { getCBDFClassification } from '../../utils/cbdf';
 import { generateCBDFCode } from '../../utils/cbdfGenerator';
 
 export const FinalReport: React.FC = () => {
@@ -21,12 +21,16 @@ export const FinalReport: React.FC = () => {
     window.print();
   };
 
-  const hasData = Object.keys(testResults).length > 1 || (patientInfo.name && patientInfo.name !== '');
+  // Verifica se há dados para exibir o relatório
+  const hasData = !!(patientInfo.name || Object.keys(testResults).length > 2);
 
   // Componente interno para Renderizar o Card de Teste CBDF
   const TestCard = ({ title, testData, badgeColor = "bg-slate-600" }: { title: string, testData: any, badgeColor?: string }) => {
     if (!testData) return null;
-    const cbdf = getCBDFClassification(testData.efficiency);
+    
+    // Garantir que a eficiência seja um número para o cálculo da CBDF
+    const efficiencyValue = typeof testData.efficiency === 'number' ? testData.efficiency : 0;
+    const cbdf = getCBDFClassification(efficiencyValue);
 
     return (
       <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4 break-inside-avoid">
@@ -36,12 +40,14 @@ export const FinalReport: React.FC = () => {
           </span>
           <div className="text-right">
             <div className="text-2xl font-black text-slate-900">
-              {testData.distance || testData.count || testData.time || testData.estimatedMETs?.toFixed(1) || '--'}
+              {testData.distance || testData.count || testData.time || testData.score || '--'}
               <span className="text-xs ml-1 text-slate-500">
-                {testData.distance ? 'm' : testData.count ? 'rep' : testData.time ? 's' : 'METs'}
+                {testData.distance ? 'm' : testData.count ? 'rep' : testData.time ? 's' : 'pts'}
               </span>
             </div>
-            <div className="text-sm font-black text-slate-700">{testData.efficiency?.toFixed(1)}% do predito</div>
+            <div className="text-sm font-black text-slate-700">
+              {efficiencyValue.toFixed(1)}% do predito
+            </div>
           </div>
         </div>
         
@@ -87,7 +93,7 @@ export const FinalReport: React.FC = () => {
         </button>
       </header>
 
-      {/* 1. CARIMBO DIAGNÓSTICO CBDF (NOVO) */}
+      {/* 1. CARIMBO DIAGNÓSTICO CBDF */}
       <section className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl border-b-8 border-vitality-lime break-inside-avoid relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10">
             <ShieldCheck className="w-32 h-32" />
@@ -109,26 +115,26 @@ export const FinalReport: React.FC = () => {
           <div className="bg-white/5 border border-white/10 p-5 rounded-3xl backdrop-blur-md grid grid-cols-4 gap-4 min-w-[300px]">
             <div className="text-center">
               <div className="text-xs font-bold text-slate-500 uppercase mb-1">Estrutura</div>
-              <div className="text-xl font-black text-white">{codeParts[1]}</div>
+              <div className="text-xl font-black text-white">{codeParts[1] || '0'}</div>
             </div>
             <div className="text-center">
               <div className="text-xs font-bold text-slate-500 uppercase mb-1">Capac.</div>
-              <div className="text-xl font-black text-vitality-lime">{codeParts[2]}</div>
+              <div className="text-xl font-black text-vitality-lime">{codeParts[2] || '0'}</div>
             </div>
             <div className="text-center">
               <div className="text-xs font-bold text-slate-500 uppercase mb-1">Vasc.</div>
-              <div className="text-xl font-black text-blue-400">{codeParts[3]}</div>
+              <div className="text-xl font-black text-blue-400">{codeParts[3] || '0'}</div>
             </div>
             <div className="text-center">
               <div className="text-xs font-bold text-slate-500 uppercase mb-1">Meds.</div>
-              <div className="text-xl font-black text-rose-400">{codeParts[5]}</div>
+              <div className="text-xl font-black text-rose-400">{codeParts[5] || '0'}</div>
             </div>
           </div>
         </div>
       </section>
 
       <div className="grid grid-cols-1 gap-8 print:gap-6">
-        {/* Identificação do Paciente */}
+        {/* Perfil do Paciente */}
         <section className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6 break-inside-avoid">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="p-3 bg-slate-800 text-white rounded-2xl"><User className="w-6 h-6" /></div>
@@ -143,8 +149,8 @@ export const FinalReport: React.FC = () => {
               <div className="text-lg font-bold text-slate-800">{patientInfo.age || '--'} anos</div>
             </div>
             <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Sexo</div>
-              <div className="text-lg font-bold text-slate-800">{patientInfo.sex === 'male' ? 'Masculino' : 'Feminino'}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">FEVE (SBC)</div>
+              <div className="text-lg font-bold text-slate-800">{patientInfo.ejectionFraction || '--'} %</div>
             </div>
             <div>
               <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Peso / Altura</div>
@@ -152,96 +158,80 @@ export const FinalReport: React.FC = () => {
             </div>
             <div>
               <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">IMC</div>
-              <div className="text-lg font-bold text-slate-800">{patientInfo.imc?.toFixed(1)} kg/m²</div>
+              <div className="text-lg font-bold text-slate-800">
+                {typeof patientInfo.imc === 'number' ? patientInfo.imc.toFixed(1) : '--'} kg/m²
+              </div>
             </div>
           </div>
         </section>
 
-        {/* 2. Capacidade Funcional */}
+        {/* Capacidade Funcional */}
         <section className="bg-white rounded-3xl p-8 shadow-md border-2 border-vitality-lime/20 space-y-6 break-inside-avoid">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="p-3 bg-vitality-lime text-slate-900 rounded-2xl"><Wind className="w-6 h-6" /></div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Capacidade Funcional (CBDF-1)</h2>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide text-vitality-lime-dark">Análise de Desempenho Físico</p>
+              <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Capacidade Funcional</h2>
+              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Análise de Desempenho Físico</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <TestCard title="TC6M" testData={testResults.tc6m} badgeColor="bg-blue-600" />
+            <TestCard title="TC6M" testData={testResults.sixMinuteWalkTest} badgeColor="bg-blue-600" />
             <TestCard title="VSAQ" testData={testResults.vsaq} badgeColor="bg-emerald-600" />
-            <TestCard title="TD2M" testData={testResults.td2m} badgeColor="bg-indigo-600" />
+            <TestCard title="DASI" testData={testResults.dasi} badgeColor="bg-teal-600" />
             <TestCard title="TUG" testData={testResults.tug} badgeColor="bg-orange-600" />
             <TestCard title="TSL 1 MIN" testData={testResults.tsl1m} badgeColor="bg-purple-600" />
             <TestCard title="TSL 30 SEG" testData={testResults.tsl30s} badgeColor="bg-pink-600" />
           </div>
         </section>
 
-        {/* 3. Exame Físico Vascular */}
-        {testResults.vascularPhysicalExam && (
+        {/* Status Vascular (Corrigido para vascularAssessment) */}
+        {testResults.vascularAssessment && (
           <section className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6 break-inside-avoid">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl"><ShieldCheck className="w-6 h-6" /></div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Status Vascular</h2>
-                <p className="text-xs text-slate-400 font-medium uppercase">Exame Físico e Classificação de Gravidade</p>
-              </div>
+              <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Status Vascular</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Arterial */}
-              <div className="p-5 bg-rose-50/50 rounded-3xl border border-rose-100 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Arterial</div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-slate-600 flex justify-between">Pulsos: <span className="font-bold text-slate-900">{testResults.vascularPhysicalExam.arterial.pulse}</span></p>
-                    <p className="text-xs text-slate-600 flex justify-between">Temperatura: <span className="font-bold text-slate-900">{testResults.vascularPhysicalExam.arterial.temp}</span></p>
-                    <p className="text-xs text-slate-600 flex justify-between">T.E.C: <span className="font-bold text-slate-900">{testResults.vascularPhysicalExam.arterial.capillaryRefill}</span></p>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-rose-200">
-                  <div className="text-[9px] font-bold text-rose-400 uppercase">Classificação CIF</div>
-                  <div className="text-xs font-black text-rose-700 uppercase">{testResults.vascularPhysicalExam.arterial.cif}</div>
+              <div className="p-5 bg-rose-50/50 rounded-3xl border border-rose-100">
+                <div className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-3">Arterial</div>
+                <div className="space-y-1 text-xs">
+                  <p className="flex justify-between">Pulsos: <span className="font-bold">{testResults.vascularAssessment.arterial.pulse}</span></p>
+                  <p className="flex justify-between">Temp: <span className="font-bold">{testResults.vascularAssessment.arterial.temp}</span></p>
+                  <p className="flex justify-between">TEC: <span className="font-bold">{testResults.vascularAssessment.arterial.capillaryRefill}</span></p>
+                  <p className="mt-2 pt-2 border-t border-rose-200 font-black text-rose-700">{testResults.vascularAssessment.arterial.cif}</p>
                 </div>
               </div>
 
               {/* Venoso */}
-              <div className="p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Venoso</div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-slate-600 flex justify-between">Godet: <span className="font-bold text-slate-900">{testResults.vascularPhysicalExam.venous.godet}</span></p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {testResults.vascularPhysicalExam.venous.ceap.map((c: string) => (
-                        <span key={c} className="px-2 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded-md">{c}</span>
-                      ))}
-                    </div>
+              <div className="p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100">
+                <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-3">Venoso</div>
+                <div className="space-y-1 text-xs">
+                  <p className="flex justify-between">Godet: <span className="font-bold">{testResults.vascularAssessment.venous.godet}</span></p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {testResults.vascularAssessment.venous.ceap.map(c => (
+                      <span key={c} className="px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] font-bold rounded">{c}</span>
+                    ))}
                   </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-indigo-200">
-                  <div className="text-[9px] font-bold text-indigo-400 uppercase">Classificação CIF</div>
-                  <div className="text-xs font-black text-indigo-700 uppercase">{testResults.vascularPhysicalExam.venous.cif}</div>
+                  <p className="mt-2 pt-2 border-t border-indigo-200 font-black text-indigo-700">{testResults.vascularAssessment.venous.cif}</p>
                 </div>
               </div>
 
               {/* Linfático */}
-              <div className="p-5 bg-amber-50/50 rounded-3xl border border-amber-100 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Linfático</div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-slate-600 flex justify-between">Stemmer: <span className="font-bold text-slate-900">{testResults.vascularPhysicalExam.lymphatic.stemmer}</span></p>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-amber-200">
-                  <div className="text-[9px] font-bold text-amber-400 uppercase">Classificação CIF</div>
-                  <div className="text-xs font-black text-amber-700 uppercase">{testResults.vascularPhysicalExam.lymphatic.cif}</div>
+              <div className="p-5 bg-amber-50/50 rounded-3xl border border-amber-100">
+                <div className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3">Linfático</div>
+                <div className="space-y-1 text-xs">
+                  <p className="flex justify-between">Stemmer: <span className="font-bold">{testResults.vascularAssessment.lymphatic.stemmer}</span></p>
+                  <p className="mt-2 pt-2 border-t border-amber-200 font-black text-amber-700">{testResults.vascularAssessment.lymphatic.cif}</p>
                 </div>
               </div>
             </div>
           </section>
         )}
 
-        {/* 4. Fadigabilidade e Sintomas */}
+        {/* Fadigabilidade */}
         <section className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6 break-inside-avoid">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl"><Activity className="w-6 h-6" /></div>
@@ -251,46 +241,46 @@ export const FinalReport: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest"><Clock className="w-4 h-4" /> Pré-Esforço</div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="text-[8px] font-bold text-slate-400 uppercase mb-1">Dispneia</div>
-                  <div className="text-xl font-black text-slate-900">{testResults.fatigabilityScales?.rest?.dyspnea ?? 0}<span className="text-xs text-slate-400 ml-1">/10</span></div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                  <div className="text-[8px] font-bold text-slate-400 uppercase">Dispneia</div>
+                  <div className="text-xl font-black">{testResults.fatigabilityScales?.rest?.dyspnea ?? 0}</div>
                 </div>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="text-[8px] font-bold text-slate-400 uppercase mb-1">Fadiga</div>
-                  <div className="text-xl font-black text-slate-900">{testResults.fatigabilityScales?.rest?.fatigue ?? 0}<span className="text-xs text-slate-400 ml-1">/10</span></div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                  <div className="text-[8px] font-bold text-slate-400 uppercase">Fadiga</div>
+                  <div className="text-xl font-black">{testResults.fatigabilityScales?.rest?.fatigue ?? 0}</div>
                 </div>
               </div>
             </div>
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-vitality-lime-dark uppercase tracking-widest"><Zap className="w-4 h-4" /> Pico do Esforço</div>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 uppercase tracking-widest"><Zap className="w-4 h-4" /> Pico do Esforço</div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-vitality-lime/5 rounded-2xl border border-vitality-lime/20">
-                  <div className="text-[8px] font-bold text-vitality-lime-dark uppercase mb-1">Dispneia</div>
-                  <div className="text-xl font-black text-slate-900">{testResults.fatigabilityScales?.exercise?.dyspnea ?? 0}<span className="text-xs text-slate-400 ml-1">/10</span></div>
+                <div className="p-4 bg-vitality-lime/10 rounded-2xl border border-vitality-lime/20 text-center">
+                  <div className="text-[8px] font-bold text-emerald-700 uppercase">Dispneia</div>
+                  <div className="text-xl font-black">{testResults.fatigabilityScales?.exercise?.dyspnea ?? 0}</div>
                 </div>
-                <div className="p-4 bg-vitality-lime/5 rounded-2xl border border-vitality-lime/20">
-                  <div className="text-[8px] font-bold text-vitality-lime-dark uppercase mb-1">Fadiga</div>
-                  <div className="text-xl font-black text-slate-900">{testResults.fatigabilityScales?.exercise?.fatigue ?? 0}<span className="text-xs text-slate-400 ml-1">/10</span></div>
+                <div className="p-4 bg-vitality-lime/10 rounded-2xl border border-vitality-lime/20 text-center">
+                  <div className="text-[8px] font-bold text-emerald-700 uppercase">Fadiga</div>
+                  <div className="text-xl font-black">{testResults.fatigabilityScales?.exercise?.fatigue ?? 0}</div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 5. Resposta Cronotrópica */}
+        {/* Resposta Cronotrópica */}
         <section className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6 break-inside-avoid">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="p-3 bg-red-100 text-red-600 rounded-2xl"><Heart className="w-6 h-6" /></div>
             <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Resposta Cronotrópica</h2>
           </div>
-          <div className="p-6 bg-slate-900 rounded-3xl text-white space-y-4">
-            <div className="flex items-center gap-2 text-vitality-lime font-bold text-xs uppercase tracking-widest">
+          <div className="p-6 bg-slate-900 rounded-3xl text-white">
+            <div className="flex items-center gap-2 text-vitality-lime font-bold text-xs uppercase tracking-widest mb-3">
               <Info className="w-4 h-4" /> Contexto Farmacológico
             </div>
             <p className="text-xs text-slate-300 leading-relaxed italic">
               {medications.betablockers ? 
-                "Uso de betabloqueador confirmado. Resposta da Frequência Cardíaca atenuada é esperada. Recomenda-se que o controle de intensidade do exercício priorize a Percepção Subjetiva de Esforço (Escala de Borg)." :
-                "Nenhuma medicação com efeito cronotrópico negativo foi relatada. A resposta da Frequência Cardíaca deve apresentar linearidade metabólica durante o esforço."
+                "Uso de betabloqueador confirmado. Resposta da Frequência Cardíaca atenuada é esperada. O controle de intensidade deve priorizar a Escala de Borg." :
+                "Nenhuma medicação com efeito cronotrópico negativo relatada. Resposta cardíaca deve apresentar linearidade metabólica."
               }
             </p>
           </div>

@@ -5,10 +5,9 @@ import {
   ChevronLeft, 
   Home, 
   Settings, 
-  HelpCircle, 
-  Wind,
-  Zap,
-  Info,
+  Heart,
+  Search,
+  FolderHeart,
   UserPlus,
   FileBarChart,
   LogOut
@@ -30,13 +29,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectCategory 
 }) => {
   const { logout } = useAuth();
+
+  // 1. MENU ATUALIZADO PARA REFLETIR OS MÓDULOS CLÍNICOS
   const menuItems = [
     { id: 'Home', label: 'Dashboard', icon: Home },
     { id: 'Cadastro', label: 'Cadastro / Anamnese', icon: UserPlus },
-    { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Activity },
-    { id: 'Integridade Vascular', label: 'Integridade Vascular', icon: Zap },
-    { id: 'Capacidade Aeróbica', label: 'Capacidade Aeróbica', icon: Wind },
-    { id: 'Sintomas', label: 'Sintomas', icon: Info },
+    { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart }, // Ícone Heart para Perfil/Sinais
+    { id: 'Vascular', label: 'Integridade Vascular', icon: FolderHeart },     // Ícone FolderHeart para Vascular
+    { id: 'Capacidade Aeróbica', label: 'Capacidade Aeróbica', icon: Activity },
+    { id: 'Avaliação de Sintomas', label: 'Sintomas', icon: Search },          // Sincronizado com o novo App.tsx
     { id: 'Relatório Final', label: 'Relatório Final', icon: FileBarChart },
   ];
 
@@ -88,8 +89,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => {
+                    // 2. LOGICA DE NAVEGAÇÃO
+                    // Se clicar em Home, o App.tsx reseta o selectedModule e volta para as pastas
                     onSelectCategory(item.id as any);
-                    onToggle(); // Close on select
+                    onToggle(); 
                   }}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group relative ${
                     selectedCategory === item.id 

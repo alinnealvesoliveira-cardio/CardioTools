@@ -3,9 +3,9 @@ import { PatientInfo, TestResults, Medications } from '../types';
 
 interface PatientContextType {
   patientInfo: PatientInfo;
-  setPatientInfo: (info: PatientInfo) => void;
+  setPatientInfo: React.Dispatch<React.SetStateAction<PatientInfo>>;
   medications: Medications;
-  setMedications: (meds: Medications) => void;
+  setMedications: React.Dispatch<React.SetStateAction<Medications>>;
   testResults: TestResults;
   setTestResults: (results: TestResults) => void;
   updateTestResult: (testId: keyof TestResults, data: any) => void;
@@ -14,16 +14,24 @@ interface PatientContextType {
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
+// Informações básicas atualizadas com referências clínicas da SBC
 const initialPatientInfo: PatientInfo = {
   name: '',
   age: '',
-  sex: '',
+  sex: '', 
   weight: '',
   height: '',
   imc: null,
+  restingPA: '',      
+  restingFC: '',      
+  restingSaO2: '',    
   goals: '',
   structureAlteration: false,
-  ejectionFraction: undefined,
+  /** * Fração de Ejeção do Ventrículo Esquerdo (FEVE)
+   * Referência: Diretriz Brasileira de Reabilitação Cardiovascular – SBC, 2020.
+   * Corte Crítico: < 40% (Alto Risco)
+   */
+  ejectionFraction: '', // Alterado para string vazia para facilitar o controle do input
   obstructionSeverity: 'none'
 };
 
@@ -44,7 +52,16 @@ const initialTestResults: TestResults = {
   fatigabilityScales: {
     rest: { dyspnea: 0, fatigue: 0 },
     exercise: { dyspnea: 0, fatigue: 0 }
-  }
+  },
+  // Adicionei os novos testes que criamos para que o contexto os reconheça
+  sixMinuteWalkTest: null,
+  tsl1m: null,          // Teste de Sentar e Levantar 1 min
+  tsl30s: null,         // Teste de Sentar e Levantar 30 seg
+  tsl5x: null,          // Teste de Sentar e Levantar 5 vezes
+  tug: null,            // Timed Up and Go
+  stepTest: null,
+  vfc: null,
+  vascularAssessment: null 
 };
 
 export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,7 +69,6 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [medications, setMedications] = useState<Medications>(initialMedications);
   const [testResults, setTestResults] = useState<TestResults>(initialTestResults);
 
-  // Lógica para atualizar apenas um teste específico mantendo os outros
   const updateTestResult = (testId: keyof TestResults, data: any) => {
     setTestResults(prev => ({
       ...prev,

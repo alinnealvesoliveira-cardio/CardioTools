@@ -1,6 +1,6 @@
 import React from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Info } from 'lucide-react';
+import { Info, ShieldAlert, Award } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 
 export const TSL30S: React.FC = () => {
@@ -9,15 +9,15 @@ export const TSL30S: React.FC = () => {
   const age = parseInt(patientInfo.age as string) || 65;
   const sex = patientInfo.sex === 'female' ? 'F' : 'M';
 
-  // Alvo de Excelência (Rikli & Jones) - Referência para cálculo de eficiência
+  // Alvo de Excelência (Rikli & Jones, 2013)
   const predictedValue = 18; 
 
   const interpretation = (_time: number, count: number): InterpretationResult[] => {
     if (count === 0) return [{ 
-      title: "Capacidade Funcional", 
+      title: "Força de Resistência", 
       label: "Aguardando", 
       color: "slate", 
-      description: "Inicie o teste e registre as repetições." 
+      description: "Inicie o teste. Conte as repetições completas em 30 segundos." 
     }];
     
     // Pontos de corte críticos brasileiros (Furlanetto et al., 2022)
@@ -30,14 +30,14 @@ export const TSL30S: React.FC = () => {
         label: count < cutoff ? "Risco Aumentado" : "Baixo Risco",
         color: count < cutoff ? "red" : "green",
         description: count < cutoff 
-          ? `Abaixo do corte crítico nacional (${cutoff} rep). Indica risco de perda de autonomia.` 
-          : `Desempenho satisfatório (≥ ${cutoff} rep). Baixo risco de incapacidade funcional.`
+          ? `Desempenho abaixo do corte para brasileiros (< ${cutoff} rep). Indica fragilidade física.` 
+          : `Resultado satisfatório. O paciente demonstra força funcional preservada.`
       },
       {
-        title: "Eficiência Funcional",
+        title: "Nível de Excelência",
         label: `${efficiency.toFixed(0)}% do Alvo`,
-        color: "slate",
-        description: "Comparação com o alvo de excelência de 18 repetições."
+        color: efficiency >= 100 ? "green" : "slate",
+        description: "Comparação com o benchmark de 18 repetições para funcionalidade plena."
       }
     ];
   };
@@ -60,7 +60,7 @@ export const TSL30S: React.FC = () => {
   return (
     <TimedTestTemplate
       title="Teste de Sentar e Levantar (30 Segundos)"
-      description="Avaliação da força de membros inferiores e risco de incapacidade funcional."
+      description="Rastreio de força funcional, sarcopenia e risco de incapacidade física."
       timerDuration={30}
       hasCounter={true}
       counterLabel="Repetições Completas"
@@ -68,61 +68,65 @@ export const TSL30S: React.FC = () => {
       predictedValue={predictedValue}
       onSave={handleSave}
       pearls={[
-        "Protocolo Rikli & Jones (2013) para rastreio de sarcopenia e fragilidade.",
-        "Corte Crítico Nacional: < 12 (Homens) e < 11 (Mulheres).",
-        "Resultados abaixo do corte exigem intervenção de força muscular."
+        "Furlanetto (2022) estabeleceu cortes para brasileiros: 12 (M) e 11 (F).",
+        "Essencial para diagnóstico de Sarcopenia conforme o consenso europeu.",
+        "Diferente do teste de 1 min, este foca menos na exaustão e mais na força muscular rápida."
       ]}
-      pitfalls={[
-        "Não permitir que o paciente impulsione o corpo com os braços.",
-        "A contagem só é válida se o paciente completar a extensão de quadril/joelho."
-      ]}
-      reference="Rikli RE, Jones CJ. 2013; Furlanetto et al., 2022."
+      reference="Rikli RE, Jones CJ. 2013; Furlanetto KC, et al. 2022."
     >
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-indigo-600 mb-4">
-          <Info className="w-5 h-5" />
-          <h3 className="font-bold">Perfil Biométrico</h3>
+        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3 items-start">
+          <ShieldAlert className="text-amber-600 shrink-0 mt-1" size={18} />
+          <p className="text-[11px] text-amber-900 leading-tight">
+            <strong>Uso Clínico:</strong> Utilize este teste para rastrear <strong>Fragilidade</strong> em idosos ou cardiopatas que não toleram o teste de 1 minuto.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Idade (anos)</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Idade</label>
             <input
               type="number"
               value={patientInfo.age || ''}
               onChange={(e) => setPatientInfo({ ...patientInfo, age: e.target.value })}
-              className="w-full p-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all"
+              className="w-full p-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all font-bold"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Sexo</label>
-            <div className="flex gap-4">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sexo</label>
+            <div className="flex gap-2">
               {['male', 'female'].map((s) => (
                 <button
                   key={s}
                   onClick={() => setPatientInfo({ ...patientInfo, sex: s as 'male' | 'female' })}
-                  className={`flex-1 py-2 rounded-xl font-bold transition-all border-2 ${
+                  className={`flex-1 py-3 rounded-xl font-bold border-2 transition-all text-xs ${
                     patientInfo.sex === s 
                       ? 'bg-indigo-600 text-white border-indigo-600' 
-                      : 'bg-white text-slate-600 border-slate-200'
+                      : 'bg-white text-slate-400 border-slate-200'
                   }`}
                 >
-                  {s === 'male' ? 'Masc' : 'Fem'}
+                  {s === 'male' ? 'MASC' : 'FEM'}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-          <div className="p-3 bg-slate-50 rounded-xl">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Corte Crítico</p>
-            <p className="text-lg font-black text-slate-700">{sex === 'M' ? '12' : '11'} <span className="text-xs">rep</span></p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <div className="flex items-center gap-2 mb-1">
+              <Award size={14} className="text-emerald-500" />
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Corte Crítico</p>
+            </div>
+            <p className="text-2xl font-black text-slate-700">{sex === 'M' ? '12' : '11'} <span className="text-xs font-normal">rep</span></p>
           </div>
-          <div className="p-3 bg-slate-50 rounded-xl">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alvo Excelência</p>
-            <p className="text-lg font-black text-slate-700">18 <span className="text-xs">rep</span></p>
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+             <div className="flex items-center gap-2 mb-1">
+              <Info size={14} className="text-indigo-500" />
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Alvo Ideal</p>
+            </div>
+            <p className="text-2xl font-black text-slate-700">18 <span className="text-xs font-normal">rep</span></p>
           </div>
         </div>
       </div>

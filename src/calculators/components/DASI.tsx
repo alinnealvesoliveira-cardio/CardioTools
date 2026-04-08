@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ClipboardList, Info, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
+import { ClipboardList, Info, AlertTriangle, CheckCircle2, Save, BookOpen } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
@@ -37,7 +37,7 @@ export const DASI: React.FC = () => {
 
   const { score, vo2, mets } = calculateResults();
   
-  // Predito simplificado baseado na idade para cálculo de %
+  // Predito Tanaka/Gulati modificado para METs
   const predictedMETs = age > 0 ? 14.7 - (0.11 * age) : null;
   const percentage = predictedMETs ? (mets / predictedMETs) * 100 : null;
 
@@ -78,7 +78,7 @@ export const DASI: React.FC = () => {
             <h2 className="text-2xl font-black text-white flex items-center gap-2">
               <ClipboardList className="w-8 h-8" /> DASI Index + CBDF-1
             </h2>
-            <p className="text-emerald-50 text-xs mt-1 font-medium">Capacidade Funcional e Função Cardíaca (FEVE: {feve}%)</p>
+            <p className="text-emerald-50 text-xs mt-1 font-medium italic">Hlatky et al., 1989 | AHA/ACC Guidelines</p>
           </div>
           {mets > 0 && (
             <button 
@@ -125,18 +125,21 @@ export const DASI: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-2xl space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center relative">
+                  <span className="absolute top-2 right-2 text-[8px] text-slate-500 font-serif italic">[1]</span>
                   <p className="text-[10px] uppercase font-bold text-slate-400">METs</p>
                   <p className="text-4xl font-black text-emerald-400">{mets.toFixed(1)}</p>
                 </div>
-                <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center relative">
+                  <span className="absolute top-2 right-2 text-[8px] text-slate-500 font-serif italic">[2]</span>
                   <p className="text-[10px] uppercase font-bold text-slate-400">% do Predito</p>
                   <p className="text-4xl font-black text-emerald-400">{percentage?.toFixed(0)}%</p>
                 </div>
               </div>
 
               {cbdf && (
-                <div className="bg-emerald-500/10 border-l-4 border-emerald-500 p-4 rounded-r-2xl">
+                <div className="bg-emerald-500/10 border-l-4 border-emerald-500 p-4 rounded-r-2xl relative">
+                   <span className="absolute top-2 right-2 text-[8px] text-emerald-500/50 font-serif italic">[3]</span>
                   <p className="text-[10px] uppercase font-bold text-emerald-400">Qualificador CBDF-1</p>
                   <p className="text-xl font-black text-white">.{cbdf.qualifier} — {cbdf.severity}</p>
                   <p className="text-[10px] text-emerald-200/60 mt-1 italic">Comprometimento: {cbdf.range}</p>
@@ -147,15 +150,32 @@ export const DASI: React.FC = () => {
                 {score <= 34 && (
                   <div className="flex items-start gap-2 text-[10px] text-orange-200 bg-orange-950/40 p-3 rounded-xl border border-orange-500/20">
                     <AlertTriangle className="w-4 h-4 shrink-0 text-orange-400" /> 
-                    <span>DASI ≤ 34: Necessidade de teste cardiopulmonar (Pré-Op).</span>
+                    <span>DASI ≤ 34: Necessidade de teste cardiopulmonar ou risco aumentado em cirurgias (METs &lt; 4).</span>
                   </div>
                 )}
                 {score <= 23 && (
                   <div className="flex items-start gap-2 text-[10px] text-red-200 bg-red-950/40 p-3 rounded-xl border border-red-500/20">
                     <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" /> 
-                    <span>DASI ≤ 23: Preditivo de mortalidade em 36 meses na IC.</span>
+                    <span>DASI ≤ 23: Preditivo de mortalidade em 36 meses na IC e DPOC.</span>
                   </div>
                 )}
+              </div>
+
+              {/* Seção de Referências Bibliográficas */}
+              <div className="pt-4 border-t border-white/5 space-y-1">
+                <div className="flex items-center gap-1 text-slate-500 mb-1">
+                  <BookOpen size={10} />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Referências Científicas</span>
+                </div>
+                <p className="text-[8px] text-slate-500 leading-tight">
+                  [1] <strong>Hlatky MA, et al.</strong> (1989). J Am Coll Cardiol. Fórm.: (0.43 x Score) + 9.6.
+                </p>
+                <p className="text-[8px] text-slate-500 leading-tight">
+                  [2] <strong>AHA/ACC Guideline</strong> (2014). Perioperative Cardiovascular Evaluation.
+                </p>
+                <p className="text-[8px] text-slate-500 leading-tight">
+                  [3] <strong>CBDF-1/OMS.</strong> Classificação Brasileira de Deficiências em Cardiologia.
+                </p>
               </div>
             </div>
           </div>

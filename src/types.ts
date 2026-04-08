@@ -29,9 +29,9 @@ export interface FunctionalTestResult {
   distance?: number;
   count?: number;
   time?: number;
-  predicted: number;
-  efficiency: number;
-  interpretation: string;
+  predicted?: number;
+  efficiency?: number;
+  interpretation?: string;
   estimatedMETs?: number;
   hr?: {
     pre: number;
@@ -39,25 +39,39 @@ export interface FunctionalTestResult {
   };
 }
 
+export interface QuestionnaireResult {
+  score: number;
+  estimatedMETs: number;
+  predictedMETs: number;
+  percentage: number;
+  interpretation: string;
+  cif?: {
+    qualifier: number;
+    severity: string;
+  };
+}
+
 export interface TestResults {
-  // Testes Funcionais e de Capacidade
-  vsaq?: FunctionalTestResult;
-  dasi?: FunctionalTestResult;
-  tc6m?: FunctionalTestResult;
-  tug?: FunctionalTestResult;
-  td2m?: FunctionalTestResult;
-  tsl1m?: FunctionalTestResult;
-  tsl30s?: FunctionalTestResult;
-  tsl5x?: FunctionalTestResult;
+  vsaq?: QuestionnaireResult | null;
+  dasi?: QuestionnaireResult | null;
+
+  // Testes Físicos integrados
+  sixMinuteWalkTest?: FunctionalTestResult | null;
+  stepTest?: FunctionalTestResult | null;
+  tug?: FunctionalTestResult | null;    // Adicionado null para consistência
+  td2m?: FunctionalTestResult | null;
+  tsl1m?: FunctionalTestResult | null;  // Suporta o componente que criamos
+  tsl30s?: FunctionalTestResult | null; // Suporta o componente que criamos
+  tsl5x?: FunctionalTestResult | null;  // Suporta o componente que criamos
   
-  // Escalas de Borg / Fadiga
+  vfc?: any;
+
   fatigabilityScales?: {
     rest: { dyspnea: number; fatigue: number };
     exercise: { dyspnea: number; fatigue: number };
   };
 
-  // Avaliação Vascular (Exame Físico)
-  vascularPhysicalExam?: {
+  vascularAssessment?: {
     arterial: {
       pulse: string;
       temp: string;
@@ -73,7 +87,12 @@ export interface TestResults {
       stemmer: string;
       cif: string;
     };
-  };
+    centralRisk?: {
+      cateFindings: string;
+      aorticAneurysm: boolean;
+      overallSeverity: 'Normal' | 'Leve' | 'Moderada' | 'Grave';
+    };
+  } | null;
 }
 
 // ==========================================
@@ -82,15 +101,26 @@ export interface TestResults {
 
 export interface PatientInfo {
   name: string;
-  age: string;
+  age: string | number;
   sex: 'male' | 'female' | '';
-  weight: string;
-  height: string;
-  imc: number | null;
+  weight: string | number;
+  height: string | number;
+  imc: number | string | null; // Adicionado string para não bugar no cálculo
   goals?: string;
+  
+  restingPA?: string;
+  restingFC?: string | number;
+  restingSaO2?: string | number;
+
   structureAlteration?: boolean;
-  ejectionFraction?: number;
+  // Alterado para suportar o input de texto na anamnese com referência SBC
+  ejectionFraction?: string | number; 
+  
   obstructionSeverity?: 'none' | 'mild' | 'moderate' | 'severe';
+  coronaryArteriesAffected?: '0' | '1' | '2' | '3' | 'TRONCO'; 
+  
+  aorticAneurysm?: boolean;
+  aortaDiameter?: string; 
 }
 
 export interface Medications {

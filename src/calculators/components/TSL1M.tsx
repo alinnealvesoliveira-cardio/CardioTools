@@ -1,34 +1,38 @@
 import React from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Info } from 'lucide-react';
+import { Info, BookOpen, AlertCircle } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 
 export const TSL1M: React.FC = () => {
   const { patientInfo, setPatientInfo, testResults, setTestResults } = usePatient();
 
-  // Tratamento de dados com fallbacks
+  // Tratamento de dados com fallbacks seguros
   const age = parseInt(patientInfo.age as string) || 60;
   const sex = patientInfo.sex === 'female' ? 'F' : 'M';
   const height = parseFloat(patientInfo.height as string) || 170;
   const weight = parseFloat(patientInfo.weight as string) || 70;
   const bmi = weight / ((height / 100) ** 2);
 
+  /**
+   * CÁLCULO DO PREDITO - EQUAÇÃO BRASILEIRA
+   * Referência: Furlanetto KC, et al. (2022) 
+   * Fórmula: 60,6 - (0,36 x Idade) - (2,8 x sexo) - (0,31 x IMC)
+   * Sexo: Masculino = 0 | Feminino = 1
+   */
   const calculatePredictedFurlanetto = () => {
-    // TSL1pred = 60,6 - (0,36 x Idade) - (2,8 x sexo) - (0,31 x IMC)
-    // Sexo: 0 Homem e 1 Mulher
-    const sexVal = sex === 'M' ? 0 : 1;
-    return 60.6 - (0.36 * age) - (2.8 * sexVal) - (0.31 * bmi);
+    const sexVal = sex === 'F' ? 1 : 0;
+    const predicted = 60.6 - (0.36 * age) - (2.8 * sexVal) - (0.31 * bmi);
+    return predicted > 0 ? predicted : 0;
   };
 
   const predictedFurlanetto = calculatePredictedFurlanetto();
-  const mdc = 1.1; // Mudança mínima detectável (Nguyen et al., 2025)
 
   const interpretation = (_time: number, count: number): InterpretationResult[] => {
     if (count === 0) return [{ 
-      title: "Capacidade Aeróbica", 
-      label: "Aguardando contagem", 
+      title: "Resistência de MMII", 
+      label: "Aguardando teste", 
       color: "slate", 
-      description: "Inicie o teste e conte as repetições completas." 
+      description: "Inicie o teste e registre as repetições completas com braços cruzados." 
     }];
     
     const efficiency = (count / predictedFurlanetto) * 100;
@@ -39,14 +43,14 @@ export const TSL1M: React.FC = () => {
         label: efficiency < 80 ? "Reduzida" : "Preservada",
         color: efficiency < 80 ? "red" : "green",
         description: efficiency < 80
-          ? `Desempenho de ${efficiency.toFixed(0)}% do predito (abaixo do esperado).` 
-          : `Desempenho de ${efficiency.toFixed(0)}% do predito (compatível com o esperado).`
+          ? `Desempenho de ${efficiency.toFixed(0)}% do predito. Indica redução da capacidade funcional de membros inferiores.` 
+          : `Desempenho de ${efficiency.toFixed(0)}% do predito. Resultado dentro da normalidade para brasileiros.`
       },
       {
-        title: "Nota Clínica (VO2)",
-        label: "Limitação Biomecânica",
+        title: "Diferença Clínica (MDC)",
+        label: "Referência: 1.1 rep",
         color: "slate",
-        description: "A estimativa de VO2 via TSL é imprecisa em obesos. Use METs do DASI para maior acurácia."
+        description: "Ganhos reais na reabilitação cardíaca devem ser > 1.1 repetições (Nguyen, 2025)."
       }
     ];
   };
@@ -69,7 +73,7 @@ export const TSL1M: React.FC = () => {
   return (
     <TimedTestTemplate
       title="Teste de Sentar e Levantar (1 Minuto)"
-      description="Avalia a resistência de membros inferiores e a capacidade funcional aeróbica."
+      description="Avaliação da resistência muscular periférica e endurance funcional."
       timerDuration={60}
       hasCounter={true}
       counterLabel="Repetições Completas"
@@ -77,81 +81,75 @@ export const TSL1M: React.FC = () => {
       predictedValue={predictedFurlanetto}
       onSave={handleSave}
       pearls={[
-        "Fórmula: 60,6 - (0,36 x Idade) - (2,8 x sexo) - (0,31 x IMC).",
-        "MDC: Em pacientes com IC, ganhos reais são acima de 1,1 repetição.",
-        "O teste avalia tanto potência muscular quanto endurance cardiovascular."
+        "A equação de Furlanetto (2022) é validada especificamente para a população brasileira.",
+        "Equação: 60,6 - (0,36 x Idade) - (2,8 x sexo) - (0,31 x IMC).",
+        "MDC: 1.1 repetições é o corte para melhora clínica real em cardiopatas."
       ]}
       pitfalls={[
-        "Não utilizar os braços para auxílio na subida.",
-        "A fadiga de quadríceps costuma aparecer antes da dispneia.",
-        "Ajustar a altura da cadeira (padrão 43-47cm)."
+        "O paciente deve desencostar o glúteo da cadeira e estender o quadril totalmente.",
+        "Uso dos braços invalida o teste.",
+        "Ajustar altura da cadeira para aproximadamente 45cm."
       ]}
-      reference="Furlanetto KC, et al. 2022; Nguyen et al. 2025."
+      reference="Furlanetto KC, et al. Braz J Phys Ther. 2022; Nguyen et al. 2025."
     >
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-indigo-600 mb-4">
-          <Info className="w-5 h-5" />
-          <h3 className="font-bold">Ajuste de Variáveis Biométricas</h3>
+        {/* Card Informativo da Referência */}
+        <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex gap-3 items-start">
+          <BookOpen className="text-indigo-600 shrink-0 mt-1" size={18} />
+          <div>
+            <h3 className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Referência Técnica</h3>
+            <p className="text-[11px] text-indigo-800/80 italic leading-relaxed">
+              Equação de Predição Brasileira: Furlanetto KC, et al. "Reference values for the 1-minute sit-to-stand test in healthy subjects and its validity in patients with chronic diseases", 2022.
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Idade</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase">Idade do Paciente</label>
             <input
               type="number"
               value={patientInfo.age || ''}
               onChange={(e) => setPatientInfo({ ...patientInfo, age: e.target.value })}
-              className="w-full p-3 rounded-xl border-2 border-slate-100 outline-none focus:border-indigo-500"
+              className="w-full p-3 rounded-xl border-2 border-slate-100 outline-none focus:border-indigo-500 font-bold"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Sexo</label>
-            <div className="flex gap-4">
+            <label className="text-[10px] font-black text-slate-400 uppercase">Sexo</label>
+            <div className="flex gap-2">
               {['male', 'female'].map((s) => (
                 <button
                   key={s}
                   onClick={() => setPatientInfo({ ...patientInfo, sex: s as 'male' | 'female' })}
-                  className={`flex-1 py-2 rounded-xl font-bold border-2 transition-all ${
-                    patientInfo.sex === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'
+                  className={`flex-1 py-3 rounded-xl font-bold border-2 transition-all text-xs ${
+                    patientInfo.sex === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-100'
                   }`}
                 >
-                  {s === 'male' ? 'Masc' : 'Fem'}
+                  {s === 'male' ? 'MASCULINO' : 'FEMININO'}
                 </button>
               ))}
             </div>
           </div>
+        </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Altura (cm)</label>
-            <input
-              type="number"
-              value={patientInfo.height || ''}
-              onChange={(e) => setPatientInfo({ ...patientInfo, height: e.target.value })}
-              className="w-full p-3 rounded-xl border-2 border-slate-100 outline-none focus:border-indigo-500"
-            />
+        {/* Resultados de Predição */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 bg-slate-900 rounded-2xl shadow-xl">
+            <p className="text-[9px] font-bold text-indigo-400 uppercase mb-1">Predito (Furlanetto)</p>
+            <p className="text-3xl font-black text-white">{predictedFurlanetto.toFixed(1)} <span className="text-xs font-normal opacity-50">REP</span></p>
           </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Peso (kg)</label>
-            <input
-              type="number"
-              value={patientInfo.weight || ''}
-              onChange={(e) => setPatientInfo({ ...patientInfo, weight: e.target.value })}
-              className="w-full p-3 rounded-xl border-2 border-slate-100 outline-none focus:border-indigo-500"
-            />
+          <div className="p-4 bg-white rounded-2xl border-2 border-slate-50 flex flex-col justify-center">
+            <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">IMC Atual</p>
+            <p className="text-xl font-black text-slate-700">{bmi.toFixed(1)} <span className="text-[10px] font-normal text-slate-400 italic">kg/m²</span></p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-          <div className="p-3 bg-slate-50 rounded-xl">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">Predito (Furlanetto)</p>
-            <p className="text-lg font-black text-slate-700">{predictedFurlanetto.toFixed(1)} <span className="text-xs">rep</span></p>
-          </div>
-          <div className="p-3 bg-slate-50 rounded-xl">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">IMC do Paciente</p>
-            <p className="text-lg font-black text-slate-700">{bmi.toFixed(1)} <span className="text-xs">kg/m²</span></p>
-          </div>
+        <div className="flex gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+          <AlertCircle className="text-amber-600 shrink-0" size={16} />
+          <p className="text-[10px] text-amber-800 leading-tight">
+            <strong>Nota Biomecânica:</strong> Em indivíduos com obesidade grau II ou III, a fadiga de quadríceps pode subestimar a capacidade cardiovascular real.
+          </p>
         </div>
       </div>
     </TimedTestTemplate>

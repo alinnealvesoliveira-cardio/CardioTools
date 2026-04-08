@@ -1,19 +1,18 @@
 import React from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Info } from 'lucide-react';
+import { Info, BookOpen } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 
 export const TD2M: React.FC = () => {
   const { patientInfo, setPatientInfo, testResults, setTestResults } = usePatient();
 
-  // Tratamento de dados biométricos com fallbacks seguros
   const age = parseInt(patientInfo.age as string) || 65;
   const sex = patientInfo.sex === 'female' ? 'F' : 'M';
   const height = parseFloat(patientInfo.height as string) || 170;
   const weight = parseFloat(patientInfo.weight as string) || 70;
   const bmi = weight / ((height / 100) ** 2);
 
-  // Fórmulas de predição baseadas em Rikli & Jones (2013)
+  // Fórmulas de predição Rikli & Jones (Senior Fitness Test)
   const calculatePredictedRikli = () => {
     if (sex === 'M') {
       return 143.297 - (1.157 * age) - (0.334 * bmi);
@@ -22,10 +21,9 @@ export const TD2M: React.FC = () => {
   };
 
   const predictedRikli = calculatePredictedRikli();
-  const epe = 6; // Erro Padrão de Estimativa (passos)
-  const lin = predictedRikli - (epe * 1.645); // Limite Inferior de Normalidade (p < 0.05)
+  const epe = 6; 
+  const lin = predictedRikli - (epe * 1.645); 
 
-  // Tabelas Normativas (Percentil 50)
   const getNormativeRange = (age: number, sex: 'M' | 'F'): [number, number] | null => {
     if (age < 60) return null;
     if (age <= 64) return sex === 'M' ? [87, 115] : [75, 107];
@@ -41,14 +39,12 @@ export const TD2M: React.FC = () => {
   const normativeRange = getNormativeRange(age, sex);
 
   const interpretation = (_time: number, count: number): InterpretationResult[] => {
-    if (count === 0) {
-      return [{ 
+    if (count === 0) return [{ 
         title: "Capacidade Aeróbica", 
         label: "Aguardando contagem", 
         color: "slate", 
         description: "Inicie o cronômetro e registre as elevações do joelho direito." 
-      }];
-    }
+    }];
     
     const normative = normativeRange 
       ? (count >= normativeRange[0] ? (count > normativeRange[1] ? "Acima do Normal" : "Normal") : "Abaixo do Normal")
@@ -56,7 +52,7 @@ export const TD2M: React.FC = () => {
 
     return [
       {
-        title: "Capacidade Aeróbica (TD2M)",
+        title: "Capacidade Aeróbica (2MST)",
         label: count < lin ? "Abaixo do LIN" : normative,
         color: count < lin ? "red" : (normative === "Normal" || normative === "Acima do Normal" ? "green" : "yellow"),
         description: count < lin 
@@ -65,15 +61,14 @@ export const TD2M: React.FC = () => {
       },
       {
         title: "Análise de Melhora (MCID)",
-        label: "Referência: 14 passos",
+        label: "± 14 passos",
         color: "slate",
-        description: "Um ganho ≥ 14 passos é necessário para caracterizar melhora clínica real."
+        description: "Variação mínima clinicamente importante para caracterizar mudança real."
       }
     ];
   };
 
   const handleSave = (data: any) => {
-    // Cálculo da eficiência funcional para integração com a CBDF-1
     const efficiency = (data.count / predictedRikli) * 100;
 
     setTestResults({
@@ -81,7 +76,7 @@ export const TD2M: React.FC = () => {
       td2m: {
         count: data.count,
         predicted: predictedRikli,
-        efficiency: efficiency, // Campo obrigatório para evitar erro de tipagem (cobrinha)
+        efficiency: efficiency,
         interpretation: data.results[0].label,
         hr: data.hr
       }
@@ -90,8 +85,8 @@ export const TD2M: React.FC = () => {
 
   return (
     <TimedTestTemplate
-      title="Teste de Marcha Estacionária (TD2M)"
-      description="Avaliação da resistência aeróbica funcional através da marcha estacionária por 2 minutos."
+      title="Teste de Marcha Estacionária (2MST)"
+      description="Avaliação da resistência aeróbica funcional (Senior Fitness Test)."
       timerDuration={120}
       hasCounter={true}
       counterLabel="Elevações do Joelho Direito"
@@ -99,80 +94,64 @@ export const TD2M: React.FC = () => {
       predictedValue={predictedRikli}
       onSave={handleSave}
       pearls={[
-        "Altura correta: ponto médio entre a patela e a crista ilíaca.",
-        "Apenas a elevação do joelho direito é contabilizada.",
-        "O LIN (Limite Inferior) define o corte estatístico de normalidade."
+        "Marque a altura: ponto médio entre a patela e a crista ilíaca.",
+        "Conte apenas as vezes que o joelho direito atinge a marca.",
+        "Indicado para pacientes com restrição de espaço ou risco de queda em marcha.",
+        "Em cardiopatas, possui boa correlação com o Teste de Caminhada de 6 min."
       ]}
-      reference="Rikli RE, Jones CJ. Senior Fitness Test Manual. 2013."
+      reference="Rikli RE, Jones CJ. Senior Fitness Test Manual. 2nd ed, 2013."
     >
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-indigo-600 mb-4">
-          <Info className="w-5 h-5" />
-          <h3 className="font-bold">Dados Biométricos do Paciente</h3>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center gap-2 text-indigo-600">
+            <BookOpen className="w-5 h-5" />
+            <h3 className="font-bold text-sm uppercase tracking-wider">Validação em Cardiopatas</h3>
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed italic">
+            "The 2-minute step test as a substitute for the 6-minute walk test in patients with heart failure." 
+            (Wegrzynowska-Teodorczyk et al., 2016)
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Idade (anos)</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase">Idade (anos)</label>
             <input
               type="number"
               value={patientInfo.age || ''}
               onChange={(e) => setPatientInfo({ ...patientInfo, age: e.target.value })}
-              className="w-full p-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all"
+              className="w-full p-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all font-bold"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Sexo</label>
-            <div className="flex gap-4">
-              {[
-                { val: 'male', label: 'Masc' },
-                { val: 'female', label: 'Fem' }
-              ].map((s) => (
+            <label className="text-[10px] font-black text-slate-400 uppercase">Sexo</label>
+            <div className="flex gap-2">
+              {['male', 'female'].map((s) => (
                 <button
-                  key={s.val}
-                  onClick={() => setPatientInfo({ ...patientInfo, sex: s.val as 'male' | 'female' })}
-                  className={`flex-1 py-2 rounded-xl font-bold border-2 transition-all ${
-                    patientInfo.sex === s.val 
+                  key={s}
+                  onClick={() => setPatientInfo({ ...patientInfo, sex: s as 'male' | 'female' })}
+                  className={`flex-1 py-3 rounded-xl font-bold border-2 transition-all text-xs ${
+                    patientInfo.sex === s 
                       ? 'bg-indigo-600 text-white border-indigo-600' 
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                      : 'bg-slate-50 text-slate-400 border-transparent hover:border-slate-200'
                   }`}
                 >
-                  {s.label}
+                  {s === 'male' ? 'MASCULINO' : 'FEMININO'}
                 </button>
               ))}
             </div>
           </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Altura (cm)</label>
-            <input
-              type="number"
-              value={patientInfo.height || ''}
-              onChange={(e) => setPatientInfo({ ...patientInfo, height: e.target.value })}
-              className="w-full p-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Peso (kg)</label>
-            <input
-              type="number"
-              value={patientInfo.weight || ''}
-              onChange={(e) => setPatientInfo({ ...patientInfo, weight: e.target.value })}
-              className="w-full p-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all"
-            />
-          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Predito (Rikli & Jones)</p>
-            <p className="text-xl font-black text-slate-700">{predictedRikli.toFixed(1)} <span className="text-xs font-normal">passos</span></p>
+        <div className="grid grid-cols-2 gap-4 pt-4">
+          <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+            <p className="text-[9px] font-black text-emerald-600 uppercase">Predito (Rikli & Jones)</p>
+            <p className="text-2xl font-black text-emerald-900">{predictedRikli.toFixed(1)}</p>
           </div>
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">LIN (Corte Mínimo)</p>
-            <p className="text-xl font-black text-slate-700">{lin.toFixed(0)} <span className="text-xs font-normal">passos</span></p>
+          <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
+            <p className="text-[9px] font-black text-rose-600 uppercase">Corte Mínimo (LIN)</p>
+            <p className="text-2xl font-black text-rose-900">{lin.toFixed(0)}</p>
           </div>
         </div>
       </div>
