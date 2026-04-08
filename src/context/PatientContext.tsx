@@ -7,31 +7,30 @@ interface PatientContextType {
   medications: Medications;
   setMedications: React.Dispatch<React.SetStateAction<Medications>>;
   testResults: TestResults;
-  setTestResults: (results: TestResults) => void;
-  updateTestResult: (testId: keyof TestResults, data: any) => void;
+  setTestResults: React.Dispatch<React.SetStateAction<TestResults>>;
+  /** * Função para atualizar um teste específico. 
+   * O nome deve ser 'updateTestResults' (plural) para sumir as cobrinhas nos componentes.
+   */
+  updateTestResults: (testId: keyof TestResults, data: any) => void;
   resetData: () => void;
 }
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
-// Informações básicas atualizadas com referências clínicas da SBC
+// Valores iniciais conforme diretrizes SBC
 const initialPatientInfo: PatientInfo = {
   name: '',
   age: '',
-  sex: 'male', 
+  sex: 'male',
   weight: '',
   height: '',
   imc: null,
-  restingPA: '',      
-  restingFC: '',      
-  restingSaO2: '',    
+  restingPA: '',
+  restingFC: '',
+  restingSaO2: '',
   goals: '',
   structureAlteration: false,
-  /** * Fração de Ejeção do Ventrículo Esquerdo (FEVE)
-   * Referência: Diretriz Brasileira de Reabilitação Cardiovascular – SBC, 2020.
-   * Usamos 'undefined' inicialmente para permitir validação numérica posterior e evitar erros de cálculo.
-   */
-  ejectionFraction: undefined, 
+  ejectionFraction: undefined,
   obstructionSeverity: 'none'
 };
 
@@ -54,12 +53,13 @@ const initialTestResults: TestResults = {
     exercise: { dyspnea: 0, fatigue: 0 }
   },
   sixMinuteWalkTest: null,
-  tsl1m: null,          // Teste de Sentar e Levantar 1 min
-  tsl30s: null,         // Teste de Sentar e Levantar 30 seg
-  tsl5x: null,          // Teste de Sentar e Levantar 5 vezes
-  tug: null,            // Timed Up and Go
+  tsl1m: null,
+  tsl30s: null,
+  tsl5x: null,
+  tug: null,
   stepTest: null,
   vfc: null,
+  hrr: null, // Certifique-se que você adicionou hrr no seu arquivo types.ts
   vascularAssessment: null 
 };
 
@@ -68,8 +68,11 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [medications, setMedications] = useState<Medications>(initialMedications);
   const [testResults, setTestResults] = useState<TestResults>(initialTestResults);
 
-  // Atualiza um teste específico mantendo os outros
-  const updateTestResult = (testId: keyof TestResults, data: any) => {
+  /**
+   * Implementação da função de atualização.
+   * Ela usa o spread operator (...) para manter os resultados anteriores e atualizar apenas o novo.
+   */
+  const updateTestResults = (testId: keyof TestResults, data: any) => {
     setTestResults(prev => ({
       ...prev,
       [testId]: data
@@ -87,7 +90,7 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
       patientInfo, setPatientInfo, 
       medications, setMedications, 
       testResults, setTestResults,
-      updateTestResult,
+      updateTestResults, // Nome sincronizado com a Interface
       resetData 
     }}>
       {children}

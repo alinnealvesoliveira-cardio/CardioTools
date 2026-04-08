@@ -19,13 +19,14 @@ export interface Calculator {
   description: string;
   category: string;
   component: React.ComponentType<any>;
-  reference?: string; // <--- ADICIONE ESTA LINHA COM A INTERROGAÇÃO
+  reference?: string; 
 }
 
 // ==========================================
 // 2. INTERFACES DE RESULTADOS DOS TESTES
 // ==========================================
 
+/** Interface genérica para testes de esforço/funcionais */
 export interface FunctionalTestResult {
   distance?: number;
   count?: number;
@@ -40,6 +41,7 @@ export interface FunctionalTestResult {
   };
 }
 
+/** Interface para questionários (VSAQ, DASI) */
 export interface QuestionnaireResult {
   score: number;
   estimatedMETs: number;
@@ -52,11 +54,13 @@ export interface QuestionnaireResult {
   };
 }
 
+/** Agregador de todos os resultados da avaliação */
 export interface TestResults {
+  // Questionários
   vsaq?: QuestionnaireResult | null;
   dasi?: QuestionnaireResult | null;
 
-  // Testes Físicos integrados
+  // Testes Físicos e Funcionais
   sixMinuteWalkTest?: FunctionalTestResult | null;
   stepTest?: FunctionalTestResult | null;
   tug?: FunctionalTestResult | null;
@@ -65,13 +69,27 @@ export interface TestResults {
   tsl30s?: FunctionalTestResult | null;
   tsl5x?: FunctionalTestResult | null;
   
-  vfc?: any;
+  // Avaliação Autonômica (HRR adicionado para remover a cobrinha)
+  hrr?: {
+    peakHR: number;
+    recoveryHR: number;
+    delta: number;
+    interpretation: string;
+  } | null;
+  
+  vfc?: {
+    sdnn?: number;
+    rmssd?: number;
+    interpretation?: string;
+  } | null;
 
+  // Escalas e Sintomas
   fatigabilityScales?: {
     rest: { dyspnea: number; fatigue: number };
     exercise: { dyspnea: number; fatigue: number };
   };
 
+  // Avaliação Vascular (Consistente com seu componente de Exame Vascular)
   vascularAssessment?: {
     arterial: {
       pulse: string;
@@ -80,7 +98,7 @@ export interface TestResults {
       cif: string;
     };
     venous: {
-      ceap: string | string[]; // Ajustado para aceitar string formatada ou array
+      ceap?: string | string[];
       godet: string;
       cif: string;
     };
@@ -89,9 +107,9 @@ export interface TestResults {
       cif: string;
     };
     centralRisk?: {
-      cateFindings: string;
-      aorticAneurysm: boolean;
-      overallSeverity: 'Normal' | 'Leve' | 'Moderada' | 'Grave';
+      cateFindings?: string;
+      aorticAneurysm?: boolean;
+      overallSeverity?: 'Normal' | 'Leve' | 'Moderada' | 'Grave';
     };
   } | null;
 }
@@ -116,10 +134,8 @@ export interface PatientInfo {
 
   structureAlteration?: boolean;
   
-  /** * Fração de Ejeção do Ventrículo Esquerdo (FEVE) - SBC 2020
-   * A tipagem 'undefined' é crucial para evitar erros de comparação no componente Vascular.
-   */
-  ejectionFraction?: number | string | undefined; 
+  /** Fração de Ejeção do Ventrículo Esquerdo (FEVE) - SBC 2020 */
+  ejectionFraction?: number | string; 
   
   obstructionSeverity?: 'none' | 'mild' | 'moderate' | 'severe';
   coronaryArteriesAffected?: '0' | '1' | '2' | '3' | 'TRONCO'; 
