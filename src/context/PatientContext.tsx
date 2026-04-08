@@ -18,7 +18,7 @@ const PatientContext = createContext<PatientContextType | undefined>(undefined);
 const initialPatientInfo: PatientInfo = {
   name: '',
   age: '',
-  sex: '', 
+  sex: 'male', 
   weight: '',
   height: '',
   imc: null,
@@ -29,9 +29,9 @@ const initialPatientInfo: PatientInfo = {
   structureAlteration: false,
   /** * Fração de Ejeção do Ventrículo Esquerdo (FEVE)
    * Referência: Diretriz Brasileira de Reabilitação Cardiovascular – SBC, 2020.
-   * Corte Crítico: < 40% (Alto Risco)
+   * Usamos 'undefined' inicialmente para permitir validação numérica posterior e evitar erros de cálculo.
    */
-  ejectionFraction: '', // Alterado para string vazia para facilitar o controle do input
+  ejectionFraction: undefined, 
   obstructionSeverity: 'none'
 };
 
@@ -53,7 +53,6 @@ const initialTestResults: TestResults = {
     rest: { dyspnea: 0, fatigue: 0 },
     exercise: { dyspnea: 0, fatigue: 0 }
   },
-  // Adicionei os novos testes que criamos para que o contexto os reconheça
   sixMinuteWalkTest: null,
   tsl1m: null,          // Teste de Sentar e Levantar 1 min
   tsl30s: null,         // Teste de Sentar e Levantar 30 seg
@@ -69,6 +68,7 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [medications, setMedications] = useState<Medications>(initialMedications);
   const [testResults, setTestResults] = useState<TestResults>(initialTestResults);
 
+  // Atualiza um teste específico mantendo os outros
   const updateTestResult = (testId: keyof TestResults, data: any) => {
     setTestResults(prev => ({
       ...prev,

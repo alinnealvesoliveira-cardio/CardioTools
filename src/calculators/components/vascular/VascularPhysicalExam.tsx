@@ -2,29 +2,23 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Activity, HelpCircle, CheckCircle2, Thermometer, 
-  Droplets, Fingerprint, Layers, Save, Clock, AlertTriangle 
+  Droplets, Fingerprint, Layers, Save, AlertTriangle 
 } from 'lucide-react';
 import { usePatient } from '../../../context/PatientContext';
-import { MedicationAlert } from '../../../components/shared/MedicationAlert';
-import { VascularDiagnosticHelp } from '../../../components/shared/VascularDiagnosticHelp';
 
 type System = 'Arterial' | 'Venoso' | 'Linfático';
 
 export const VascularPhysicalExam: React.FC = () => {
-  const { patientInfo, medications, updateTestResult } = usePatient();
+  const { patientInfo, updateTestResult } = usePatient();
   const [activeSystem, setActiveSystem] = useState<System>('Arterial');
-  const [showHelp, setShowHelp] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
-  // Estados do Exame Físico
+  // Estados locais para o formulário
   const [pulse, setPulse] = useState<number | null>(null);
   const [temp, setTemp] = useState<string>('Normal');
   const [capillaryRefill, setCapillaryRefill] = useState<string>('');
-  const [ceap, setCeap] = useState<string[]>(['C0']);
   const [godet, setGodet] = useState<number | null>(null);
   const [stemmer, setStemmer] = useState<boolean | null>(null);
-
-  React.useEffect(() => { setIsSaved(false); }, [pulse, temp, capillaryRefill, ceap, godet, stemmer]);
 
   const PULSE_SCALE = [
     { val: 0, label: "0", desc: "Ausente" },
@@ -33,38 +27,26 @@ export const VascularPhysicalExam: React.FC = () => {
     { val: 3, label: "3+", desc: "Aumentado" },
   ];
 
-  // --- LÓGICA DE RISCO CENTRAL (CATE / AORTA) ---
+  // LÓGICA DE RISCO CENTRAL (Integrada com a FEVE da Anamnese)
   const getCentralRisk = () => {
-    const hasHighObstr = patientInfo.coronaryArteriesAffected === '3' || patientInfo.coronaryArteriesAffected === 'TRONCO';
-    const hasAneurysm = patientInfo.aorticAneurysm;
-    
-    if (hasHighObstr || hasAneurysm) {
-      return { 
-        level: 'Grave', 
-        label: hasHighObstr ? 'Obstrução Coronariana Grave' : 'Aneurisma de Aorta',
-        color: 'text-red-500' 
-      };
+    // Conversão segura para número para evitar erro de tipagem string vs number
+    const feve = patientInfo.ejectionFraction !== undefined ? Number(patientInfo.ejectionFraction) : undefined;
+
+    if (feve !== undefined && feve < 40) {
+      return { level: 'Grave', label: 'FEVE Reduzida', color: 'text-red-500' };
     }
-    return { level: 'Normal', label: 'Sem intercorrências centrais', color: 'text-slate-400' };
+    if (feve !== undefined && feve < 50) {
+      return { level: 'Moderado', label: 'FEVE Borderline', color: 'text-orange-500' };
+    }
+    return { level: 'Normal', label: 'FEVE Preservada', color: 'text-emerald-500' };
   };
 
   const getArterialCIF = () => {
     const central = getCentralRisk();
-    if (central.level === 'Grave') return { severity: "Grave (Central)" };
-    
-    if (pulse === null) return null;
-    const refill = parseFloat(capillaryRefill);
-    if (pulse >= 2 && temp === 'Normal' && (refill <= 3 || isNaN(refill))) return { severity: "Normal" };
-    if (pulse === 1) return { severity: "Leve" };
-    return { severity: "Grave" };
-  };
-
-  const getVenousCIF = () => {
-    const maxCeapLevel = Math.max(...ceap.map(c => parseInt(c.replace('C', '')) || 0));
-    if (maxCeapLevel === 0 && !godet) return { severity: "Normal" };
-    if (maxCeapLevel <= 2 && (godet || 0) <= 1) return { severity: "Leve" };
-    if (maxCeapLevel <= 4) return { severity: "Moderada" };
-    return { severity: "Grave" };
+    if (central.level === 'Grave') return "Grave (Impacto por FEVE)";
+    if (pulse === null) return "Não avaliado";
+    if (pulse >= 2 && temp === 'Normal') return "Normal";
+    return "Alterada";
   };
 
   const handleSave = () => {
@@ -73,100 +55,155 @@ export const VascularPhysicalExam: React.FC = () => {
         pulse: PULSE_SCALE.find(p => p.val === pulse)?.label || 'Não avaliado', 
         temp, 
         capillaryRefill: capillaryRefill ? `${capillaryRefill}s` : 'Não avaliado', 
-        cif: getArterialCIF()?.severity || 'Não avaliado' 
+        cif: getArterialCIF() 
       },
-      venous: { ceap, godet: godet ? `${godet}+` : 'Ausente', cif: getVenousCIF()?.severity || 'Não avaliado' },
-      lymphatic: { stemmer: stemmer === null ? 'Não avaliado' : (stemmer ? 'Positivo' : 'Negativo'), cif: 'Normal' },
-      centralRisk: {
-        cateFindings: patientInfo.coronaryArteriesAffected || 'Não informado',
-        aorticAneurysm: !!patientInfo.aorticAneurysm,
-        overallSeverity: getCentralRisk().level as any
+      venous: { 
+        ceap: 'C0', 
+        godet: godet !== null ? `${godet}+` : 'Ausente', 
+        cif: (godet && godet > 1) ? 'Alterada' : 'Normal' 
+      },
+      lymphatic: { 
+        stemmer: stemmer === null ? 'Não avaliado' : (stemmer ? 'Positivo' : 'Negativo'), 
+        cif: stemmer ? 'Alterada' : 'Normal' 
       }
     });
     setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
   };
 
+  // Verificação para o alerta visual
+  const currentFeve = patientInfo.ejectionFraction !== undefined ? Number(patientInfo.ejectionFraction) : undefined;
+
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24">
-      {/* Alerta de Risco Central - SEMPRE VISÍVEL SE HOUVER GRAVIDADE */}
-      {getCentralRisk().level === 'Grave' && (
-        <motion.div 
-          initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-          className="bg-red-50 border-2 border-red-200 p-4 rounded-2xl flex items-center gap-4"
-        >
-          <div className="bg-red-500 p-2 rounded-lg text-white">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <h4 className="font-bold text-red-700">Alerta de Risco Cardiovascular Central</h4>
-            <p className="text-red-600 text-xs font-medium">
-              Paciente com {getCentralRisk().label}. Classificação CIF Arterial elevada para Grave.
-            </p>
-          </div>
-        </motion.div>
+    <div className="max-w-4xl mx-auto p-4 space-y-6 pb-24">
+      {/* Alerta de Risco Baseado na FEVE */}
+      {currentFeve !== undefined && currentFeve < 40 && (
+        <div className="bg-red-50 border-2 border-red-100 p-4 rounded-3xl flex gap-4 items-center animate-pulse">
+          <AlertTriangle className="text-red-500 w-6 h-6 flex-shrink-0" />
+          <p className="text-red-800 text-xs font-bold uppercase tracking-tight">
+            Atenção: Risco Arterial Central Elevado (FEVE {currentFeve}%)
+          </p>
+        </div>
       )}
 
-      <header className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-slate-900">Exame Físico Vascular</h1>
-          <p className="text-slate-500 text-sm">Sincronizado com achados de CATE e Aorta.</p>
-        </div>
-        <button onClick={() => setShowHelp(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm">
-          <HelpCircle className="w-4 h-4" /> Ajuda Diagnóstica
-        </button>
+      <header>
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Exame Vascular</h1>
+        <p className="text-slate-500 text-sm font-medium italic">Sincronizado com Diretrizes SBC 2020</p>
       </header>
 
-      <MedicationAlert type="bcc" active={medications.bcc} />
-      <VascularDiagnosticHelp isOpen={showHelp} onClose={() => setShowHelp(false)} />
-
-      <div className="flex p-1 bg-slate-100 rounded-2xl gap-1">
+      {/* Seletor de Sistema */}
+      <div className="flex p-1.5 bg-slate-100 rounded-2xl gap-1">
         {(['Arterial', 'Venoso', 'Linfático'] as System[]).map((sys) => (
-          <button key={sys} onClick={() => setActiveSystem(sys)} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${activeSystem === sys ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{sys}</button>
+          <button
+            key={sys}
+            onClick={() => setActiveSystem(sys)}
+            className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${
+              activeSystem === sys ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'
+            }`}
+          >
+            {sys.toUpperCase()}
+          </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <AnimatePresence mode="wait">
             {activeSystem === 'Arterial' && (
-              <motion.div key="art" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+              <motion.div key="art" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-6">
                 <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <h2 className="flex items-center gap-2 text-slate-800 font-bold"><Activity className="w-5 h-5 text-rose-500" /> Pulsos Periféricos</h2>
-                  <div className="grid grid-cols-2 gap-2">
+                  <h3 className="font-bold flex items-center gap-2 text-slate-800"><Activity className="w-4 h-4 text-rose-500" /> Pulsos Periféricos</h3>
+                  <div className="grid grid-cols-2 gap-3">
                     {PULSE_SCALE.map((p) => (
-                      <button key={p.val} onClick={() => setPulse(p.val)} className={`p-4 rounded-2xl text-left border-2 transition-all ${pulse === p.val ? 'border-rose-500 bg-rose-50' : 'border-transparent bg-slate-50'}`}>
-                        <span className="block font-black text-lg">{p.label}</span>
-                        <span className="text-xs text-slate-500">{p.desc}</span>
+                      <button
+                        key={p.val}
+                        onClick={() => setPulse(p.val)}
+                        className={`p-4 rounded-2xl text-left border-2 transition-all ${
+                          pulse === p.val ? 'border-rose-500 bg-rose-50' : 'border-slate-50 bg-slate-50'
+                        }`}
+                      >
+                        <span className="block font-black text-xl text-slate-900">{p.label}</span>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">{p.desc}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-                {/* Outros campos Arteriais aqui (Temperatura, Enchimento) - omitidos para brevidade */}
+
+                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                  <h3 className="font-bold flex items-center gap-2 text-slate-800"><Thermometer className="w-4 h-4 text-orange-500" /> Temperatura e Perfusão</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase">Aspecto Térmico</label>
+                      <select value={temp} onChange={(e) => setTemp(e.target.value)} className="w-full p-3 bg-slate-50 rounded-xl font-bold text-sm outline-none border-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="Normal">Normal</option>
+                        <option value="Fria">Fria / Cianótica</option>
+                        <option value="Quente">Quente / Hiperemiada</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase">TEC (seg)</label>
+                      <input type="number" placeholder="2" value={capillaryRefill} onChange={(e) => setCapillaryRefill(e.target.value)} className="w-full p-3 bg-slate-50 rounded-xl font-bold text-sm outline-none border-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             )}
-            {/* ... Sessões de Venoso e Linfático permanecem iguais ... */}
+
+            {activeSystem === 'Venoso' && (
+              <motion.div key="ven" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                <h3 className="font-bold flex items-center gap-2 text-slate-800"><Droplets className="w-4 h-4 text-indigo-500" /> Pesquisa de Edema (Godet)</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {[0, 1, 2, 3, 4].map((v) => (
+                    <button key={v} onClick={() => setGodet(v)} className={`p-4 rounded-xl font-black transition-all ${godet === v ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>
+                      {v === 0 ? '0' : `${v}+`}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {activeSystem === 'Linfático' && (
+              <motion.div key="lin" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                <h3 className="font-bold flex items-center gap-2 text-slate-800"><Fingerprint className="w-4 h-4 text-emerald-500" /> Sinal de Stemmer</h3>
+                <div className="flex gap-4">
+                  <button onClick={() => setStemmer(true)} className={`flex-1 py-4 rounded-2xl font-black border-2 transition-all ${stemmer === true ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 text-slate-400 hover:bg-slate-50'}`}>POSITIVO</button>
+                  <button onClick={() => setStemmer(false)} className={`flex-1 py-4 rounded-2xl font-black border-2 transition-all ${stemmer === false ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-100 text-slate-400 hover:bg-slate-50'}`}>NEGATIVO</button>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl space-y-6 sticky top-8">
-            <h3 className="font-bold text-indigo-400 flex items-center gap-2 italic">CIF / OMS</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center text-sm border-b border-white/10 pb-2">
-                <span className="opacity-60">Status Central:</span>
-                <span className={`font-bold ${getCentralRisk().color}`}>{getCentralRisk().level}</span>
+        {/* Card Lateral de CIF */}
+        <div className="space-y-4">
+          <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-2xl space-y-6 sticky top-4">
+            <h3 className="text-indigo-400 font-black italic tracking-tighter text-lg flex items-center gap-2">
+              <Layers className="w-5 h-5" /> CIF VASCULAR
+            </h3>
+            
+            <div className="space-y-4 border-t border-white/10 pt-4">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Arterial:</span>
+                <span className="text-xs font-bold text-rose-400">{getArterialCIF()}</span>
               </div>
-              <div className="flex justify-between items-center text-sm border-b border-white/10 pb-2">
-                <span className="opacity-60">Arterial (Global):</span>
-                <span className="font-bold text-rose-400">{getArterialCIF()?.severity || '---'}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Venoso:</span>
+                <span className="text-xs font-bold text-indigo-400">{(godet !== null && godet > 1) ? 'Alterado' : 'Normal'}</span>
               </div>
-              <div className="flex justify-between items-center text-sm border-b border-white/10 pb-2">
-                <span className="opacity-60">Venoso:</span>
-                <span className="font-bold text-indigo-400">{getVenousCIF()?.severity || '---'}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Status FEVE:</span>
+                <span className={`text-xs font-bold ${getCentralRisk().color}`}>{getCentralRisk().level}</span>
               </div>
             </div>
-            <button onClick={handleSave} className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 ${isSaved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-500'}`}>
-              {isSaved ? <><CheckCircle2 className="w-5 h-5" /> Salvo</> : <><Save className="w-5 h-5" /> Salvar Exame</>}
+
+            <button
+              onClick={handleSave}
+              className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 ${
+                isSaved ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-indigo-600 text-white hover:scale-[1.02] shadow-lg shadow-indigo-600/20'
+              }`}
+            >
+              {isSaved ? <CheckCircle2 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+              {isSaved ? 'DADOS SALVOS' : 'GRAVAR EXAME'}
             </button>
           </div>
         </div>

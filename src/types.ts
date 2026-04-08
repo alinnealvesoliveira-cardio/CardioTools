@@ -58,11 +58,11 @@ export interface TestResults {
   // Testes Físicos integrados
   sixMinuteWalkTest?: FunctionalTestResult | null;
   stepTest?: FunctionalTestResult | null;
-  tug?: FunctionalTestResult | null;    // Adicionado null para consistência
+  tug?: FunctionalTestResult | null;
   td2m?: FunctionalTestResult | null;
-  tsl1m?: FunctionalTestResult | null;  // Suporta o componente que criamos
-  tsl30s?: FunctionalTestResult | null; // Suporta o componente que criamos
-  tsl5x?: FunctionalTestResult | null;  // Suporta o componente que criamos
+  tsl1m?: FunctionalTestResult | null;
+  tsl30s?: FunctionalTestResult | null;
+  tsl5x?: FunctionalTestResult | null;
   
   vfc?: any;
 
@@ -79,7 +79,7 @@ export interface TestResults {
       cif: string;
     };
     venous: {
-      ceap: string[];
+      ceap: string | string[]; // Ajustado para aceitar string formatada ou array
       godet: string;
       cif: string;
     };
@@ -105,7 +105,8 @@ export interface PatientInfo {
   sex: 'male' | 'female' | '';
   weight: string | number;
   height: string | number;
-  imc: number | string | null; // Adicionado string para não bugar no cálculo
+  imc: number | string | null;
+  
   goals?: string;
   
   restingPA?: string;
@@ -113,8 +114,11 @@ export interface PatientInfo {
   restingSaO2?: string | number;
 
   structureAlteration?: boolean;
-  // Alterado para suportar o input de texto na anamnese com referência SBC
-  ejectionFraction?: string | number; 
+  
+  /** * Fração de Ejeção do Ventrículo Esquerdo (FEVE) - SBC 2020
+   * A tipagem 'undefined' é crucial para evitar erros de comparação no componente Vascular.
+   */
+  ejectionFraction?: number | string | undefined; 
   
   obstructionSeverity?: 'none' | 'mild' | 'moderate' | 'severe';
   coronaryArteriesAffected?: '0' | '1' | '2' | '3' | 'TRONCO'; 
