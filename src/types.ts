@@ -16,9 +16,10 @@ export type Category =
 export interface Calculator {
   id: string;
   name: string;
-  category: Category;
   description: string;
-  component: React.ComponentType;
+  category: string;
+  component: React.ComponentType<any>;
+  reference?: string; // <--- ADICIONE ESTA LINHA COM A INTERROGAÇÃO
 }
 
 // ==========================================

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Square, RotateCcw, Plus, Minus, Info, AlertCircle, BookOpen, Save, CheckCircle2 } from 'lucide-react';
+import { Play, Square, RotateCcw, Info, AlertCircle, BookOpen, Save, CheckCircle2, Heart } from 'lucide-react';
 import { getCIFClassification } from '../../utils/cif';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
@@ -17,7 +17,7 @@ export interface InterpretationResult {
 interface TimedTestTemplateProps {
   title: string;
   description: string;
-  timerDuration?: number; // in seconds, if null it's a stopwatch
+  timerDuration?: number; // em segundos. Se null, vira cronômetro
   hasCounter?: boolean;
   counterLabel?: string;
   interpretation: (time: number, count: number) => InterpretationResult | InterpretationResult[];
@@ -27,7 +27,7 @@ interface TimedTestTemplateProps {
   children?: React.ReactNode;
   predictedValue?: number | null;
   observedValueOverride?: number | null;
-  invertCIFRatio?: boolean; // For tests where lower is better (like time)
+  invertCIFRatio?: boolean; // Para testes onde "menos tempo é melhor"
   onSave?: (data: { time: number; count: number; results: InterpretationResult[]; cif: any; hr?: { pre: number; post: number } }) => void;
 }
 
@@ -50,10 +50,12 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
   const [time, setTime] = useState((timerDuration || 0) * 1000);
   const [isActive, setIsActive] = useState(false);
   const [count, setCount] = useState(0);
-  const [preHR, setPreHR] = useState<string>('');
-  const [postHR, setPostHR] = useState<string>('');
+  const [preHR, setPreHR] = useState('');
+  const [postHR, setPostHR] = useState('');
   const [isSaved, setIsSaved] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // CORREÇÃO: Usando ReturnType para evitar conflitos de ambiente (Node vs Browser)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isActive) {
@@ -100,8 +102,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
 
   const observedValue = observedValueOverride !== undefined ? observedValueOverride : (hasCounter ? count : time / 1000);
   
-  // For time-based tests (lower is better), we use (predicted / observed)
-  // For rep-based tests (higher is better), we use (observed / predicted)
   const cifObserved = (invertCIFRatio && observedValue && observedValue > 0) 
     ? (predictedValue || 0) * ((predictedValue || 0) / observedValue)
     : observedValue;
@@ -133,7 +133,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
       if (user) {
         await logActivity(user.id, `Finalizou Teste ${title}`);
       }
-      
       setIsSaved(true);
     }
   };
@@ -143,9 +142,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
     yellow: 'bg-amber-50 text-amber-700 border-amber-200',
     red: 'bg-vitality-risk/10 text-vitality-risk border-vitality-risk/20',
     slate: 'bg-slate-50 text-slate-700 border-slate-200',
-    blue: 'bg-blue-50 text-blue-700 border-blue-200',
-    orange: 'bg-orange-50 text-orange-700 border-orange-200',
-    emerald: 'bg-vitality-lime/10 text-vitality-lime border-vitality-lime/20'
   };
 
   return (
@@ -166,15 +162,9 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
             }`}
           >
             {isSaved ? (
-              <>
-                <CheckCircle2 className="w-5 h-5" />
-                Gravado
-              </>
+              <><CheckCircle2 className="w-5 h-5" /> Gravado</>
             ) : (
-              <>
-                <Save className="w-5 h-5" />
-                Gravar no Relatório
-              </>
+              <><Save className="w-5 h-5" /> Gravar no Relatório</>
             )}
           </button>
         )}
@@ -189,6 +179,7 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
               {children}
             </div>
           )}
+
           {/* Timer Card */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center space-y-8">
             <div className="text-7xl font-mono font-bold text-slate-800 tabular-nums">
@@ -200,8 +191,8 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
                 onClick={toggleTimer}
                 className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all shadow-lg ${
                   isActive 
-                    ? 'bg-vitality-risk text-white hover:bg-vitality-risk/90' 
-                    : 'bg-vitality-lime text-slate-900 hover:bg-vitality-lime/90'
+                    ? 'bg-vitality-risk text-white' 
+                    : 'bg-vitality-lime text-slate-900'
                 }`}
               >
                 {isActive ? <Square className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
@@ -211,6 +202,7 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
               <button
                 onClick={reset}
                 className="p-4 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all border border-slate-200"
+                title="Resetar"
               >
                 <RotateCcw className="w-6 h-6" />
               </button>
@@ -221,7 +213,7 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-vitality-risk/10 rounded-xl text-vitality-risk">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                <Heart className="w-6 h-6" />
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Frequência Cardíaca (bpm)</p>
@@ -259,7 +251,7 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
               <div className="flex items-center justify-center w-full">
                 <input
                   type="number"
-                  value={Number.isNaN(count) ? '' : count}
+                  value={count || ''}
                   placeholder="0"
                   onChange={(e) => setCount(Math.max(0, parseInt(e.target.value) || 0))}
                   className="text-7xl font-black text-slate-800 tabular-nums w-full max-w-[200px] text-center bg-slate-50 rounded-2xl py-4 border-2 border-transparent focus:border-vitality-lime focus:bg-white outline-none transition-all"
@@ -270,14 +262,14 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
           )}
         </div>
 
+        {/* Sidebar: Results & Info */}
         <div className="space-y-6">
           <div className="sticky top-24 space-y-6">
-            {/* Result Cards */}
             {results.map((res, idx) => (
               <motion.div
                 key={idx}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 className={`rounded-2xl p-6 border-2 shadow-lg ${colorClasses[res.color as keyof typeof colorClasses] || colorClasses.slate}`}
               >
                 <div className="text-sm font-bold uppercase tracking-wider opacity-70 mb-2">
@@ -288,7 +280,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
               </motion.div>
             ))}
 
-            {/* CIF Classification */}
             {cif && (
               <div className="space-y-4">
                 <motion.div
@@ -307,26 +298,20 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
 
                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2">
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <Info className="w-3 h-3" />
-                    Cálculo do Percentual
+                    <Info className="w-3 h-3" /> Cálculo do Percentual
                   </div>
                   <div className="text-xs text-slate-600 font-mono bg-white p-2 rounded-lg border border-slate-100 text-center">
                     {invertCIFRatio ? '% Predito = (Esp / Obs) × 100' : '% Predito = (Obs / Esp) × 100'}
                   </div>
-                  <p className="text-[10px] text-slate-500 italic leading-tight">
-                    O percentual do predito é calculado pela razão entre o valor observado e o valor esperado por equações de referência.
-                  </p>
                 </div>
               </div>
             )}
 
-            {/* Clinical Info */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
               {pearls && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-vitality-lime font-bold text-sm">
-                    <Info className="w-4 h-4" />
-                    Pérolas Clínicas
+                    <Info className="w-4 h-4" /> Pérolas Clínicas
                   </div>
                   <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
                     {pearls.map((p, i) => <li key={i}>{p}</li>)}
@@ -336,8 +321,7 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
               {pitfalls && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-vitality-risk font-bold text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    Armadilhas
+                    <AlertCircle className="w-4 h-4" /> Armadilhas
                   </div>
                   <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
                     {pitfalls.map((p, i) => <li key={i}>{p}</li>)}

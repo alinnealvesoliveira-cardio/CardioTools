@@ -1,4 +1,4 @@
-import { Category, Calculator } from '../types';
+import { Calculator } from '../types';
 import { TSL5X } from '../calculators/components/TSL5X';
 import { TSL30S } from '../calculators/components/TSL30S';
 import { TD2M } from '../calculators/components/TD2M';
@@ -24,7 +24,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Cadastro / Anamnese Rápida',
     description: 'Dados antropométricos e perfil farmacológico para base de cálculo.',
     category: 'Cadastro',
-    component: PatientRegistration,
+    component: PatientRegistration as React.ComponentType<any>,
     reference: 'CardioTools - Diretrizes de Reabilitação Cardiovascular.'
   },
   {
@@ -32,7 +32,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Relatório Final',
     description: 'Consolidação de todos os dados coletados e interpretação clínica.',
     category: 'Relatório Final',
-    component: FinalReport,
+    component: FinalReport as React.ComponentType<any>,
     reference: 'CardioTools - Consolidação de Dados.'
   },
   {
@@ -40,7 +40,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Variabilidade da FC (VFC)',
     description: 'Avaliação do tônus autonômico através do RMSSD.',
     category: 'Avaliação Autonômica',
-    component: HRV,
+    component: HRV as React.ComponentType<any>,
     reference: 'Shaffer F, Ginsberg JP. Front Public Health. 2017.'
   },
   {
@@ -48,7 +48,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Algoritmo de Angina',
     description: 'Triagem clínica para Doença Arterial Coronariana (DAC).',
     category: 'Sintomas',
-    component: AnginaAlgorithm,
+    component: AnginaAlgorithm as React.ComponentType<any>,
     reference: 'Diamond GA. Circulation. 1983.'
   },
   {
@@ -56,31 +56,31 @@ export const CALCULATORS: Calculator[] = [
     name: 'Algoritmo de Claudicação',
     description: 'Triagem clínica para Doença Arterial Periférica (DAP).',
     category: 'Sintomas',
-    component: ClaudicationAlgorithm,
+    component: ClaudicationAlgorithm as React.ComponentType<any>,
     reference: 'Edinburgh Claudication Questionnaire.'
   },
   {
     id: 'fatigability-scales',
     name: 'Escalas de Fadigabilidade',
     description: 'Avaliação subjetiva do esforço e sintomas limitantes (Borg Modificada).',
-    category: 'Sintomas',
-    component: FatigabilityScales,
+    category: 'Avaliação de Sintomas',
+    component: FatigabilityScales as React.ComponentType<any>,
     reference: 'Borg GA. Psychophysical bases of perceived exertion. Med Sci Sports Exerc. 1982.'
   },
   {
     id: 'vascular-exam',
     name: 'Exame Físico Vascular',
     description: 'Avaliação de pulsos, temperatura, CEAP, Godet e sinal de Stemmer.',
-    category: 'Integridade Vascular',
-    component: VascularPhysicalExam,
+    category: 'Vascular',
+    component: VascularPhysicalExam as React.ComponentType<any>,
     reference: 'Bates - Propedêutica Médica.'
   },
   {
     id: 'abi',
     name: 'Índice Tornozelo-Braquial (ITB)',
     description: 'Ferramenta diagnóstica para Doença Arterial Periférica (DAP).',
-    category: 'Integridade Vascular',
-    component: ABI,
+    category: 'Vascular',
+    component: ABI as React.ComponentType<any>,
     reference: 'Aboyans V, et al. Eur Heart J. 2018.'
   },
   {
@@ -88,7 +88,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Recuperação da FC (HRR)',
     description: 'Avaliação da reativação vagal após o esforço (1º minuto).',
     category: 'Avaliação Autonômica',
-    component: HRR,
+    component: HRR as React.ComponentType<any>,
     reference: 'Cole CR, et al. N Engl J Med. 1999.'
   },
   {
@@ -96,7 +96,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Hipotensão Ortostática',
     description: 'Avaliação da resposta pressórica à mudança de decúbito.',
     category: 'Avaliação Autonômica',
-    component: OrthostaticDrop,
+    component: OrthostaticDrop as React.ComponentType<any>,
     reference: 'Freeman R, et al. Clin Auton Res. 2011.'
   },
   {
@@ -104,7 +104,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Sentar e Levantar 30s',
     description: 'Avaliação de força e resistência em idosos (Rikli & Jones).',
     category: 'Capacidade Aeróbica',
-    component: TSL30S,
+    component: TSL30S as React.ComponentType<any>,
     reference: 'Rikli RE, Jones CJ. Senior Fitness Test Manual. 2013.'
   },
   {
@@ -112,7 +112,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Teste de Sentar e Levantar 5x',
     description: 'Avaliação de força de membros inferiores e risco de queda.',
     category: 'Capacidade Aeróbica',
-    component: TSL5X,
+    component: TSL5X as React.ComponentType<any>,
     reference: 'Bohannon RW. Arch Phys Med Rehabil. 2006.'
   },
   {
@@ -120,7 +120,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Marcha Estacionária 2 min',
     description: 'Teste de resistência aeróbica funcional.',
     category: 'Capacidade Aeróbica',
-    component: TD2M,
+    component: TD2M as React.ComponentType<any>,
     reference: 'Rikli RE, Jones CJ. Senior Fitness Test Manual. 2001.'
   },
   {
@@ -128,7 +128,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Sentar e Levantar 1 min',
     description: 'Resistência de membros inferiores e capacidade funcional.',
     category: 'Capacidade Aeróbica',
-    component: TSL1M,
+    component: TSL1M as React.ComponentType<any>,
     reference: 'Strassmann A, et al. PLoS One. 2013.'
   },
   {
@@ -136,7 +136,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Caminhada de 6 Minutos',
     description: 'Padrão-ouro para avaliação da capacidade funcional submáxima.',
     category: 'Capacidade Aeróbica',
-    component: TC6M,
+    component: TC6M as React.ComponentType<any>,
     reference: 'ATS Statement. Am J Respir Crit Care Med. 2002.'
   },
   {
@@ -144,7 +144,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'VSAQ',
     description: 'Questionário de atividades específicas para estimativa de METs.',
     category: 'Capacidade Aeróbica',
-    component: VSAQ,
+    component: VSAQ as React.ComponentType<any>,
     reference: 'Myers J, et al. J Cardiopulm Rehabil. 1994.'
   },
   {
@@ -152,15 +152,15 @@ export const CALCULATORS: Calculator[] = [
     name: 'DASI Index',
     description: 'Questionário Duke para estimativa robusta de METs (Recomendado AHA).',
     category: 'Capacidade Aeróbica',
-    component: DASI,
+    component: DASI as React.ComponentType<any>,
     reference: 'Hlatky MA, et al. Am J Cardiol. 1989.'
   },
-{
+  {
     id: 'tug',
     name: 'Timed Up and Go (TUG)',
     description: 'Avaliação de mobilidade funcional, equilíbrio dinâmico e risco de queda.',
     category: 'Capacidade Aeróbica',
-    component: TUG,
+    component: TUG as React.ComponentType<any>,
     reference: 'Podsiadlo D, Richardson S. J Am Geriatr Soc. 1991; Furlanetto KC, et al. Arch Phys Med Rehabil. 2022; Kamiya K, et al. J Card Fail. 2016 (https://doi.org/10.1016/j.cardfail.2015.09.018).'
   }
 ];
