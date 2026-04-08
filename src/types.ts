@@ -1,3 +1,30 @@
+import React from 'react';
+
+// ==========================================
+// 1. TIPOS DE NAVEGAÇÃO E INTERFACE DO APP
+// ==========================================
+
+export type Category = 
+  | 'Cadastro' 
+  | 'Avaliação Autonômica' 
+  | 'Capacidade Aeróbica' 
+  | 'Funcional' 
+  | 'Vascular' 
+  | 'Relatório Final' 
+  | 'Avaliação de Sintomas';
+
+export interface Calculator {
+  id: string;
+  name: string;
+  category: Category;
+  description: string;
+  component: React.ComponentType;
+}
+
+// ==========================================
+// 2. INTERFACES DE RESULTADOS DOS TESTES
+// ==========================================
+
 export interface FunctionalTestResult {
   distance?: number;
   count?: number;
@@ -13,7 +40,7 @@ export interface FunctionalTestResult {
 }
 
 export interface TestResults {
-  // Todos os testes agora seguem o padrão FunctionalTestResult
+  // Testes Funcionais e de Capacidade
   vsaq?: FunctionalTestResult;
   dasi?: FunctionalTestResult;
   tc6m?: FunctionalTestResult;
@@ -23,11 +50,13 @@ export interface TestResults {
   tsl30s?: FunctionalTestResult;
   tsl5x?: FunctionalTestResult;
   
+  // Escalas de Borg / Fadiga
   fatigabilityScales?: {
     rest: { dyspnea: number; fatigue: number };
     exercise: { dyspnea: number; fatigue: number };
   };
 
+  // Avaliação Vascular (Exame Físico)
   vascularPhysicalExam?: {
     arterial: {
       pulse: string;
@@ -46,6 +75,10 @@ export interface TestResults {
     };
   };
 }
+
+// ==========================================
+// 3. PERFIL DO PACIENTE E MEDICAMENTOS
+// ==========================================
 
 export interface PatientInfo {
   name: string;
