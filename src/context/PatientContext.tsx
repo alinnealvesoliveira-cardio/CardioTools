@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PatientInfo, TestResults, Medications } from '../types';
 
 interface PatientContextType {
@@ -8,16 +8,15 @@ interface PatientContextType {
   setMedications: React.Dispatch<React.SetStateAction<Medications>>;
   testResults: TestResults;
   setTestResults: React.Dispatch<React.SetStateAction<TestResults>>;
-  /** * Função para atualizar um teste específico. 
-   * O nome deve ser 'updateTestResults' (plural) para sumir as cobrinhas nos componentes.
-   */
   updateTestResults: (testId: keyof TestResults, data: any) => void;
   resetData: () => void;
 }
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
-// Valores iniciais conforme diretrizes SBC
+// Chave para o armazenamento local
+const STORAGE_KEY = 'cardiotools_patient_data';
+
 const initialPatientInfo: PatientInfo = {
   name: '',
   age: '',
@@ -25,7 +24,9 @@ const initialPatientInfo: PatientInfo = {
   weight: '',
   height: '',
   imc: null,
-  restingPA: '',
+  restingPA: '', 
+  restingPAS: '', 
+  restingPAD: '', 
   restingFC: '',
   restingSaO2: '',
   goals: '',
@@ -59,19 +60,34 @@ const initialTestResults: TestResults = {
   tug: null,
   stepTest: null,
   vfc: null,
-  hrr: null, // Certifique-se que você adicionou hrr no seu arquivo types.ts
+  hrr: null, 
   vascularAssessment: null 
 };
 
 export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [patientInfo, setPatientInfo] = useState<PatientInfo>(initialPatientInfo);
-  const [medications, setMedications] = useState<Medications>(initialMedications);
-  const [testResults, setTestResults] = useState<TestResults>(initialTestResults);
+  // Inicialização com busca no LocalStorage
+  const [patientInfo, setPatientInfo] = useState<PatientInfo>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_info`);
+    return saved ? JSON.parse(saved) : initialPatientInfo;
+  });
 
-  /**
-   * Implementação da função de atualização.
-   * Ela usa o spread operator (...) para manter os resultados anteriores e atualizar apenas o novo.
-   */
+  const [medications, setMedications] = useState<Medications>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_meds`);
+    return saved ? JSON.parse(saved) : initialMedications;
+  });
+
+  const [testResults, setTestResults] = useState<TestResults>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_tests`);
+    return saved ? JSON.parse(saved) : initialTestResults;
+  });
+
+  // Efeito para persistir dados sempre que houver mudança
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_info`, JSON.stringify(patientInfo));
+    localStorage.setItem(`${STORAGE_KEY}_meds`, JSON.stringify(medications));
+    localStorage.setItem(`${STORAGE_KEY}_tests`, JSON.stringify(testResults));
+  }, [patientInfo, medications, testResults]);
+
   const updateTestResults = (testId: keyof TestResults, data: any) => {
     setTestResults(prev => ({
       ...prev,
@@ -80,6 +96,9 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const resetData = () => {
+    localStorage.removeItem(`${STORAGE_KEY}_info`);
+    localStorage.removeItem(`${STORAGE_KEY}_meds`);
+    localStorage.removeItem(`${STORAGE_KEY}_tests`);
     setPatientInfo(initialPatientInfo);
     setMedications(initialMedications);
     setTestResults(initialTestResults);
@@ -90,7 +109,7 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
       patientInfo, setPatientInfo, 
       medications, setMedications, 
       testResults, setTestResults,
-      updateTestResults, // Nome sincronizado com a Interface
+      updateTestResults,
       resetData 
     }}>
       {children}

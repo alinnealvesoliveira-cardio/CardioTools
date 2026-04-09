@@ -26,7 +26,6 @@ export interface Calculator {
 // 2. INTERFACES DE RESULTADOS DOS TESTES
 // ==========================================
 
-/** Interface genérica para testes de esforço/funcionais */
 export interface FunctionalTestResult {
   distance?: number;
   count?: number;
@@ -41,7 +40,6 @@ export interface FunctionalTestResult {
   };
 }
 
-/** Interface para questionários (VSAQ, DASI) */
 export interface QuestionnaireResult {
   score: number;
   estimatedMETs: number;
@@ -54,13 +52,10 @@ export interface QuestionnaireResult {
   };
 }
 
-/** Agregador de todos os resultados da avaliação */
 export interface TestResults {
-  // Questionários
   vsaq?: QuestionnaireResult | null;
   dasi?: QuestionnaireResult | null;
 
-  // Testes Físicos e Funcionais
   sixMinuteWalkTest?: FunctionalTestResult | null;
   stepTest?: FunctionalTestResult | null;
   tug?: FunctionalTestResult | null;
@@ -69,7 +64,6 @@ export interface TestResults {
   tsl30s?: FunctionalTestResult | null;
   tsl5x?: FunctionalTestResult | null;
   
-  // Avaliação Autonômica (HRR adicionado para remover a cobrinha)
   hrr?: {
     peakHR: number;
     recoveryHR: number;
@@ -83,13 +77,11 @@ export interface TestResults {
     interpretation?: string;
   } | null;
 
-  // Escalas e Sintomas
   fatigabilityScales?: {
     rest: { dyspnea: number; fatigue: number };
     exercise: { dyspnea: number; fatigue: number };
   };
 
-  // Avaliação Vascular (Consistente com seu componente de Exame Vascular)
   vascularAssessment?: {
     arterial: {
       pulse: string;
@@ -98,7 +90,7 @@ export interface TestResults {
       cif: string;
     };
     venous: {
-      ceap?: string | string[];
+      ceap: string[]; // Tipado como Array para o .map funcionar sempre
       godet: string;
       cif: string;
     };
@@ -128,13 +120,15 @@ export interface PatientInfo {
   
   goals?: string;
   
-  restingPA?: string;
+  // CAMPOS DE PRESSÃO ARTERIAL ATUALIZADOS (OPÇÃO 1)
+  restingPA?: string;   // Mantido para compatibilidade
+  restingPAS?: string | number; // Sistólica separada
+  restingPAD?: string | number; // Diastólica separada
+
   restingFC?: string | number;
   restingSaO2?: string | number;
 
   structureAlteration?: boolean;
-  
-  /** Fração de Ejeção do Ventrículo Esquerdo (FEVE) - SBC 2020 */
   ejectionFraction?: number | string; 
   
   obstructionSeverity?: 'none' | 'mild' | 'moderate' | 'severe';
