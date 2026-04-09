@@ -4,35 +4,32 @@ import { PatientInfo, TestResults, Medications } from '../types';
 interface PatientContextType {
   patientInfo: PatientInfo;
   setPatientInfo: React.Dispatch<React.SetStateAction<PatientInfo>>;
+  updatePatientInfo: (updates: Partial<PatientInfo>) => void; // Adicionado para limpar erros no registro
   medications: Medications;
   setMedications: React.Dispatch<React.SetStateAction<Medications>>;
   testResults: TestResults;
   setTestResults: React.Dispatch<React.SetStateAction<TestResults>>;
-  updateTestResults: (testId: keyof TestResults, data: any) => void;
+  updateTestResults: (updates: Partial<TestResults>) => void; // Melhorado para aceitar atualizações parciais
   resetData: () => void;
 }
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
-// Chave para o armazenamento local
 const STORAGE_KEY = 'cardiotools_patient_data';
 
+// Sincronizado com os campos que você usa no formulário
 const initialPatientInfo: PatientInfo = {
   name: '',
   age: '',
   sex: 'male',
   weight: '',
   height: '',
-  imc: null,
-  restingPA: '', 
   restingPAS: '', 
   restingPAD: '', 
   restingFC: '',
   restingSaO2: '',
-  goals: '',
   structureAlteration: false,
-  ejectionFraction: undefined,
-  obstructionSeverity: 'none'
+  ejectionFraction: '',
 };
 
 const initialMedications: Medications = {
@@ -48,6 +45,7 @@ const initialMedications: Medications = {
   others: ''
 };
 
+// Sincronizado com os nomes oficiais: sixMinuteWalkTest, td2m, etc.
 const initialTestResults: TestResults = {
   fatigabilityScales: {
     rest: { dyspnea: 0, fatigue: 0 },
@@ -58,14 +56,20 @@ const initialTestResults: TestResults = {
   tsl30s: null,
   tsl5x: null,
   tug: null,
+  td2m: null,
   stepTest: null,
-  vfc: null,
-  hrr: null, 
-  vascularAssessment: null 
+  vascularAssessment: null,
+  hrr: null,
+  symptoms: {
+    claudication: false,
+    angina: {
+      type: 'none',
+      description: ''
+    }
+  }
 };
 
 export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Inicialização com busca no LocalStorage
   const [patientInfo, setPatientInfo] = useState<PatientInfo>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_info`);
     return saved ? JSON.parse(saved) : initialPatientInfo;
@@ -81,24 +85,27 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return saved ? JSON.parse(saved) : initialTestResults;
   });
 
-  // Efeito para persistir dados sempre que houver mudança
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_info`, JSON.stringify(patientInfo));
     localStorage.setItem(`${STORAGE_KEY}_meds`, JSON.stringify(medications));
     localStorage.setItem(`${STORAGE_KEY}_tests`, JSON.stringify(testResults));
   }, [patientInfo, medications, testResults]);
 
-  const updateTestResults = (testId: keyof TestResults, data: any) => {
+  // Função utilitária para facilitar atualizações
+  const updatePatientInfo = (updates: Partial<PatientInfo>) => {
+    setPatientInfo(prev => ({ ...prev, ...updates }));
+  };
+
+  // Melhorado para lidar com objetos complexos como 'symptoms'
+  const updateTestResults = (updates: Partial<TestResults>) => {
     setTestResults(prev => ({
       ...prev,
-      [testId]: data
+      ...updates
     }));
   };
 
   const resetData = () => {
-    localStorage.removeItem(`${STORAGE_KEY}_info`);
-    localStorage.removeItem(`${STORAGE_KEY}_meds`);
-    localStorage.removeItem(`${STORAGE_KEY}_tests`);
+    localStorage.clear();
     setPatientInfo(initialPatientInfo);
     setMedications(initialMedications);
     setTestResults(initialTestResults);
@@ -106,10 +113,9 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <PatientContext.Provider value={{ 
-      patientInfo, setPatientInfo, 
+      patientInfo, setPatientInfo, updatePatientInfo,
       medications, setMedications, 
-      testResults, setTestResults,
-      updateTestResults,
+      testResults, setTestResults, updateTestResults,
       resetData 
     }}>
       {children}

@@ -6,29 +6,35 @@ import { usePatient } from '../../../context/PatientContext';
 type Severity = 'Leve' | 'Moderada' | 'Grave' | 'Completa';
 
 export const FunctionalDiagnosis: React.FC = () => {
-  const { testResults, medications, patientInfo, updatePatientInfo, updateTestResults } = usePatient();
+  const { testResults, medications, patientInfo, updatePatientInfo } = usePatient();
   const [aerobicCapacity, setAerobicCapacity] = useState<string>('0-4');
   const [vesselType, setVesselType] = useState<'Arterial' | 'Venosa' | 'Linfática' | 'Nenhuma'>('Arterial');
   const [vesselSeverity, setVesselSeverity] = useState<Severity>('Leve');
   const [fatigueState, setFatigueState] = useState<'Repouso' | 'Esforço'>('Repouso');
-  const [hrMedication, setHrMedication] = useState<boolean>(medications.betablockers || medications.bcc || medications.digitalis);
+  const [hrMedication, setHrMedication] = useState<boolean>(
+    !!(medications.betablockers || medications.antihypertensives)
+  );
   const [cateDone, setCateDone] = useState<boolean>(false);
   const [cateFindings, setCateFindings] = useState<string>('');
   const [copied, setCopied] = useState(false);
 
-  const maxFatigue = Math.max(testResults.fatigabilityScales?.dyspnea || 0, testResults.fatigabilityScales?.fatigue || 0);
+  // 1. Cálculo de Fadiga baseado na escala de esforço
+  const maxFatigue = Math.max(
+    testResults.fatigabilityScales?.exercise.fatigue || 0,
+    testResults.fatigabilityScales?.exercise.dyspnea || 0
+  );
+  
   let fatigue = 'Nenhuma';
   if (maxFatigue >= 10) fatigue = 'Exaustiva';
   else if (maxFatigue >= 7) fatigue = 'Grave';
   else if (maxFatigue >= 4) fatigue = 'Moderada';
   else if (maxFatigue >= 1) fatigue = 'Leve';
 
-  // Auto-populate based on saved tests
+  // 2. Auto-população baseada nos resultados salvos
   useEffect(() => {
-    // 1. Aerobic Capacity
-    // Check TC6M first as it's the gold standard
-    if (testResults.tc6m) {
-      const efficiency = testResults.tc6m.efficiency;
+    // Capacidade Aeróbica (Prioridade para o TC6M)
+    if (testResults.sixMinuteWalkTest) {
+      const efficiency = testResults.sixMinuteWalkTest.efficiency || 0;
       if (efficiency < 5) setAerobicCapacity('0-4');
       else if (efficiency < 25) setAerobicCapacity('5-24');
       else if (efficiency < 50) setAerobicCapacity('25-49');
@@ -41,28 +47,29 @@ export const FunctionalDiagnosis: React.FC = () => {
       else if (q === 1) setAerobicCapacity('50-95');
     }
 
-    // 2. Vascular
-    if (testResults.vascularImpairment) {
-      if (testResults.vascularImpairment.arterial) {
+    // Avaliação Vascular
+    if (testResults.vascularAssessment) {
+      const { arterial, venous, lymphatic } = testResults.vascularAssessment;
+      if (arterial && arterial.cif !== '0') {
         setVesselType('Arterial');
-        setVesselSeverity(testResults.vascularImpairment.arterial.severity as Severity);
-      } else if (testResults.vascularImpairment.venous) {
+        setVesselSeverity(arterial.cif as any);
+      } else if (venous && venous.cif !== '0') {
         setVesselType('Venosa');
-        setVesselSeverity(testResults.vascularImpairment.venous.severity as Severity);
-      } else if (testResults.vascularImpairment.lymphatic) {
+        setVesselSeverity(venous.cif as any);
+      } else if (lymphatic && lymphatic.cif !== '0') {
         setVesselType('Linfática');
-        setVesselSeverity(testResults.vascularImpairment.lymphatic.severity as Severity);
+        setVesselSeverity(lymphatic.cif as any);
       }
     }
 
-    // 3. Fatigue
-    if (testResults.tc6m?.fatigability) {
+    // Estado de Fadiga
+    if (testResults.sixMinuteWalkTest || testResults.stepTest) {
       setFatigueState('Esforço');
     }
   }, [testResults]);
 
   useEffect(() => {
-    setHrMedication(medications.betablockers || medications.bcc || medications.digitalis);
+    setHrMedication(!!(medications.betablockers || medications.antihypertensives));
   }, [medications]);
 
   const generateDiagnosis = () => {
@@ -79,10 +86,9 @@ export const FunctionalDiagnosis: React.FC = () => {
     const hr = ` | Com alteração da frequência cardíaca - ${hrMedication ? 'Com medicação' : 'Sem medicação'}`;
     const cate = cateDone ? ` | CATE: ${cateFindings || 'Realizado'}` : '';
 
-    // Summary of tests
     let testsSummary = '';
     const tests = [];
-    if (testResults.tc6m) tests.push(`TC6M: ${testResults.tc6m.distance}m (${testResults.tc6m.efficiency.toFixed(1)}%)`);
+    if (testResults.sixMinuteWalkTest) tests.push(`TC6M: ${testResults.sixMinuteWalkTest.distance}m (${testResults.sixMinuteWalkTest.efficiency?.toFixed(1)}%)`);
     if (testResults.td2m) tests.push(`TD2M: ${testResults.td2m.count} passos`);
     if (testResults.tsl1m) tests.push(`TSL1M: ${testResults.tsl1m.count} rep`);
     if (testResults.tsl5x) tests.push(`TSL5X: ${testResults.tsl5x.time}s`);
@@ -112,7 +118,6 @@ export const FunctionalDiagnosis: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          {/* Estrutura e Capacidade */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
               <Heart className="w-5 h-5 text-red-500" />
@@ -159,7 +164,6 @@ export const FunctionalDiagnosis: React.FC = () => {
             </div>
           </div>
 
-          {/* Função dos Vasos */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
               <Droplets className="w-5 h-5 text-blue-500" />
@@ -185,7 +189,7 @@ export const FunctionalDiagnosis: React.FC = () => {
 
             {vesselType !== 'Nenhuma' && (
               <div className="space-y-4">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gravidade da Alteração Vascular</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gravidade Vascular</label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['Leve', 'Moderada', 'Grave', 'Completa'] as Severity[]).map((s) => (
                     <button
@@ -203,7 +207,6 @@ export const FunctionalDiagnosis: React.FC = () => {
             )}
           </div>
 
-          {/* Fadiga e FC */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
               <Activity className="w-5 h-5 text-amber-500" />
@@ -212,11 +215,10 @@ export const FunctionalDiagnosis: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Intensidade Fadiga (Calculada)</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Intensidade Fadiga</label>
                 <div className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-600">
                   {fatigue}
                 </div>
-                <p className="text-[10px] text-slate-400">Baseado nas Escalas de Fadigabilidade</p>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Estado</label>
@@ -254,43 +256,8 @@ export const FunctionalDiagnosis: React.FC = () => {
               </button>
             </div>
           </div>
-
-          {/* CATE */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-slate-800 font-bold">
-                <Wind className="w-5 h-5 text-slate-400" />
-                CATE (Cateterismo)
-              </div>
-              <button
-                onClick={() => setCateDone(!cateDone)}
-                className={`px-4 py-1 rounded-full text-[10px] font-bold transition-all ${
-                  cateDone ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
-                }`}
-              >
-                {cateDone ? 'Realizado' : 'Não Realizado'}
-              </button>
-            </div>
-
-            {cateDone && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-2"
-              >
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Achados do CATE</label>
-                <textarea
-                  value={cateFindings}
-                  onChange={(e) => setCateFindings(e.target.value)}
-                  placeholder="Ex: Obstrução 70% DA, 50% Cx..."
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 focus:border-emerald-500 outline-none transition-all min-h-[100px]"
-                />
-              </motion.div>
-            )}
-          </div>
         </div>
 
-        {/* Result Sidebar */}
         <div className="space-y-6">
           <div className="sticky top-24 space-y-6">
             <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-2xl space-y-6">
@@ -302,7 +269,6 @@ export const FunctionalDiagnosis: React.FC = () => {
                 <button
                   onClick={handleCopy}
                   className="p-2 hover:bg-white/10 rounded-lg transition-all"
-                  title="Copiar Diagnóstico"
                 >
                   {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                 </button>
@@ -312,42 +278,6 @@ export const FunctionalDiagnosis: React.FC = () => {
                 <p className="text-sm leading-relaxed font-mono break-words">
                   {diagnosis}
                 </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-[10px] text-emerald-400/60 uppercase font-bold tracking-widest">
-                  <Info className="w-3 h-3" />
-                  Dica de Uso
-                </div>
-                <p className="text-[10px] text-white/40 leading-relaxed">
-                  Este diagnóstico segue o modelo cinético-funcional cardiovascular. 
-                  Copie e cole diretamente no prontuário do paciente.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 space-y-4">
-              <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
-                <AlertCircle className="w-4 h-4" />
-                Interpretação da Capacidade
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-emerald-800 font-bold">0-4%</span>
-                  <span className="text-emerald-600">Completa</span>
-                </div>
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-emerald-800 font-bold">5-24%</span>
-                  <span className="text-emerald-600">Grave</span>
-                </div>
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-emerald-800 font-bold">25-49%</span>
-                  <span className="text-emerald-600">Moderada</span>
-                </div>
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-emerald-800 font-bold">50-95%</span>
-                  <span className="text-emerald-600">Leve</span>
-                </div>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Layout } from './components/layout/Layout';
-import { Category, Calculator } from './types';
+import { Calculator } from './types';
 import { CALCULATORS } from './data/registry';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronRight, Folder, Activity, Heart, FileBarChart, Search } from 'lucide-react';
@@ -9,8 +9,16 @@ import { PatientProvider } from './context/PatientContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
 
-// Módulos Clínicos Reorganizados para Melhor Fluxo de Trabalho
-const CLINICAL_MODULES = [
+// 1. Definição estrita da interface do módulo para evitar erros de propriedade
+interface ClinicalModule {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  categories: string[];
+}
+
+const CLINICAL_MODULES: ClinicalModule[] = [
   {
     id: 'perfil',
     name: 'Perfil Clínico & Cadastro',
@@ -55,19 +63,26 @@ function AppContent() {
 
   if (!isAuthenticated) return <Login />;
 
-  const getFilteredCalculators = () => {
+  // 2. Lógica de filtro com tipagem forçada (resolve cobrinha na linha 71)
+  const getFilteredCalculators = (): Calculator[] => {
     if (!selectedModule) return [];
-    const module = CLINICAL_MODULES.find(m => m.id === selectedModule);
-    return CALCULATORS.filter(calc => module?.categories.includes(calc.category));
+    const currentModule = CLINICAL_MODULES.find(m => m.id === selectedModule);
+    if (!currentModule) return [];
+    
+    return (CALCULATORS as Calculator[]).filter(calc => 
+      currentModule.categories.includes(calc.category)
+    );
   };
 
   const filteredCalculators = getFilteredCalculators();
 
-  // Função para resetar navegação
   const handleGoHome = () => {
     setSelectedModule(null);
     setActiveCalculator(null);
   };
+
+  // Extração do componente para garantir renderização correta
+  const ActiveCalculatorComponent = activeCalculator?.component;
 
   return (
     <Layout 
@@ -76,9 +91,14 @@ function AppContent() {
     >
       <AnimatePresence mode="wait">
         
-        {/* 1. INTERFACE DA CALCULADORA ATIVA */}
-        {activeCalculator ? (
-          <motion.div key="calc" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="py-8">
+        {activeCalculator && ActiveCalculatorComponent ? (
+          <motion.div 
+            key="calc" 
+            initial={{ opacity: 0, x: 20 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            exit={{ opacity: 0, x: -20 }} 
+            className="py-8"
+          >
             <div className="max-w-4xl mx-auto px-4 mb-6">
               <button 
                 onClick={() => setActiveCalculator(null)} 
@@ -87,11 +107,10 @@ function AppContent() {
                 <ChevronRight className="w-4 h-4 rotate-180" /> Voltar para o módulo
               </button>
             </div>
-            <activeCalculator.component />
+            <ActiveCalculatorComponent />
           </motion.div>
         ) : selectedModule ? (
           
-          /* 2. VISÃO INTERNA DO MÓDULO (LISTA DE FERRAMENTAS) */
           <motion.div key="module-items" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-6 lg:p-10 space-y-8">
             <button 
               onClick={() => setSelectedModule(null)} 
@@ -108,37 +127,31 @@ function AppContent() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCalculators.length > 0 ? (
-                filteredCalculators.map((calc) => (
-                  <button 
-                    key={calc.id} 
-                    onClick={() => setActiveCalculator(calc)} 
-                    className="p-6 bg-white border border-slate-200 rounded-2xl hover:shadow-xl hover:border-emerald-500 transition-all text-left group flex flex-col h-full"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
-                        {calc.category}
-                      </span>
-                      <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-transform group-hover:translate-x-1" />
-                    </div>
-                    <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 text-lg mb-2 transition-colors">
-                      {calc.name}
-                    </h3>
-                    <p className="text-sm text-slate-500 leading-relaxed flex-1">
-                      {calc.description}
-                    </p>
-                  </button>
-                ))
-              ) : (
-                <div className="col-span-full py-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-slate-400">Nenhuma ferramenta encontrada para este módulo ainda.</p>
-                </div>
-              )}
+              {/* 3. Tipagem explícita no map (resolve cobrinha na linha 128) */}
+              {filteredCalculators.map((calc: Calculator) => (
+                <button 
+                  key={calc.id} 
+                  onClick={() => setActiveCalculator(calc)} 
+                  className="p-6 bg-white border border-slate-200 rounded-2xl hover:shadow-xl hover:border-emerald-500 transition-all text-left group flex flex-col h-full"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                      {calc.category}
+                    </span>
+                    <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-transform group-hover:translate-x-1" />
+                  </div>
+                  <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 text-lg mb-2 transition-colors">
+                    {calc.name}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed flex-1">
+                    {calc.description}
+                  </p>
+                </button>
+              ))}
             </div>
           </motion.div>
         ) : (
           
-          /* 3. DASHBOARD INICIAL (PASTAS PRINCIPAIS) */
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-6 lg:p-10 space-y-12">
             <header className="space-y-4">
               <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">

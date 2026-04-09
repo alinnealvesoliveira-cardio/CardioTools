@@ -1,31 +1,25 @@
 import React from 'react';
 
 // ==========================================
-// 1. TIPOS DE NAVEGAÇÃO E INTERFACE DO APP
+// 1. INTERFACES DE NAVEGAÇÃO (Limpa erros no App.tsx)
 // ==========================================
-
-export type Category = 
-  | 'Cadastro' 
-  | 'Avaliação Autonômica' 
-  | 'Capacidade Aeróbica' 
-  | 'Funcional' 
-  | 'Vascular' 
-  | 'Relatório Final' 
-  | 'Avaliação de Sintomas';
-
 export interface Calculator {
   id: string;
   name: string;
-  description: string;
+  description: string; // ADICIONADO: Para resolver as cobrinhas no registry.ts
   category: string;
   component: React.ComponentType<any>;
-  reference?: string; 
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: React.ElementType;
 }
 
 // ==========================================
-// 2. INTERFACES DE RESULTADOS DOS TESTES
+// 2. INTERFACES DE APOIO AOS TESTES
 // ==========================================
-
 export interface FunctionalTestResult {
   distance?: number;
   count?: number;
@@ -34,10 +28,9 @@ export interface FunctionalTestResult {
   efficiency?: number;
   interpretation?: string;
   estimatedMETs?: number;
-  hr?: {
-    pre: number;
-    post: number;
-  };
+  hr?: { pre: number; post: number; };
+  // Essencial para o cálculo de capacidade aeróbica no Diagnóstico Funcional
+  cif?: { qualifier: number; severity: string; };
 }
 
 export interface QuestionnaireResult {
@@ -46,16 +39,17 @@ export interface QuestionnaireResult {
   predictedMETs: number;
   percentage: number;
   interpretation: string;
-  cif?: {
-    qualifier: number;
-    severity: string;
-  };
+  cif?: { qualifier: number; severity: string; };
 }
 
+// ==========================================
+// 3. INTERFACE PRINCIPAL (TESTES)
+// ==========================================
 export interface TestResults {
   vsaq?: QuestionnaireResult | null;
   dasi?: QuestionnaireResult | null;
 
+  // Sincronizado com os componentes de teste (TC6M, TD2M, etc)
   sixMinuteWalkTest?: FunctionalTestResult | null;
   stepTest?: FunctionalTestResult | null;
   tug?: FunctionalTestResult | null;
@@ -77,76 +71,59 @@ export interface TestResults {
     interpretation?: string;
   } | null;
 
+  // Estrutura que resolve as cobrinhas no AnginaAlgorithm
+  symptoms?: {
+    claudication?: boolean;
+    angina?: {
+      type: string;
+      description: string;
+      ccsGrade?: number;
+    };
+  } | null;
+
   fatigabilityScales?: {
     rest: { dyspnea: number; fatigue: number };
     exercise: { dyspnea: number; fatigue: number };
   };
 
   vascularAssessment?: {
-    arterial: {
-      pulse: string;
-      temp: string;
-      capillaryRefill: string;
-      cif: string;
-    };
-    venous: {
-      ceap: string[]; // Tipado como Array para o .map funcionar sempre
-      godet: string;
-      cif: string;
-    };
-    lymphatic: {
-      stemmer: string;
-      cif: string;
-    };
-    centralRisk?: {
-      cateFindings?: string;
-      aorticAneurysm?: boolean;
-      overallSeverity?: 'Normal' | 'Leve' | 'Moderada' | 'Grave';
-    };
+    arterial: { pulse: string; temp: string; capillaryRefill: string; cif: string; };
+    venous: { ceap: string[]; godet: string; cif: string; };
+    lymphatic: { stemmer: string; cif: string; };
   } | null;
 }
 
 // ==========================================
-// 3. PERFIL DO PACIENTE E MEDICAMENTOS
+// 4. PERFIL DO PACIENTE (Limpa erros no PatientRegistration.tsx)
 // ==========================================
-
 export interface PatientInfo {
   name: string;
   age: string | number;
   sex: 'male' | 'female' | '';
   weight: string | number;
   height: string | number;
-  imc: number | string | null;
-  
-  goals?: string;
-  
-  // CAMPOS DE PRESSÃO ARTERIAL ATUALIZADOS (OPÇÃO 1)
-  restingPA?: string;   // Mantido para compatibilidade
-  restingPAS?: string | number; // Sistólica separada
-  restingPAD?: string | number; // Diastólica separada
-
+  imc?: number | string | null;
+  // Campos vitais essenciais
+  restingPAS?: string | number; 
+  restingPAD?: string | number; 
   restingFC?: string | number;
   restingSaO2?: string | number;
-
   structureAlteration?: boolean;
-  ejectionFraction?: number | string; 
-  
-  obstructionSeverity?: 'none' | 'mild' | 'moderate' | 'severe';
-  coronaryArteriesAffected?: '0' | '1' | '2' | '3' | 'TRONCO'; 
-  
-  aorticAneurysm?: boolean;
-  aortaDiameter?: string; 
+  ejectionFraction?: string | number;
 }
 
+// ==========================================
+// 5. MEDICAMENTOS (Limpa erros no FunctionalDiagnosis.tsx)
+// ==========================================
 export interface Medications {
   betablockers: boolean;
-  bcc: boolean;
-  digitalis: boolean;
+  bcc: boolean; // Bloqueadores de Canal de Cálcio
+  digitalis: boolean; // Digitálicos
+  nitrates: boolean;
+  antihypertensives: boolean;
   diuretics: boolean;
   ieca: boolean;
   statins: boolean;
-  nitrates: boolean;
   antiarrhythmics: boolean;
-  antihypertensives: boolean;
   others: string;
 }
