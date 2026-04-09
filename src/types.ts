@@ -1,12 +1,12 @@
 import React from 'react';
 
 // ==========================================
-// 1. INTERFACES DE NAVEGAÇÃO (Limpa erros no App.tsx)
+// 1. INTERFACES DE NAVEGAÇÃO
 // ==========================================
 export interface Calculator {
   id: string;
   name: string;
-  description: string; // ADICIONADO: Para resolver as cobrinhas no registry.ts
+  description: string; 
   category: string;
   component: React.ComponentType<any>;
 }
@@ -18,8 +18,13 @@ export interface Category {
 }
 
 // ==========================================
-// 2. INTERFACES DE APOIO AOS TESTES
+// 2. INTERFACES DE APOIO (CIF E RESULTADOS)
 // ==========================================
+export interface CIFData {
+  qualifier: number;
+  interpretation: string;
+}
+
 export interface FunctionalTestResult {
   distance?: number;
   count?: number;
@@ -29,8 +34,7 @@ export interface FunctionalTestResult {
   interpretation?: string;
   estimatedMETs?: number;
   hr?: { pre: number; post: number; };
-  // Essencial para o cálculo de capacidade aeróbica no Diagnóstico Funcional
-  cif?: { qualifier: number; severity: string; };
+  cif?: CIFData;
 }
 
 export interface QuestionnaireResult {
@@ -39,7 +43,7 @@ export interface QuestionnaireResult {
   predictedMETs: number;
   percentage: number;
   interpretation: string;
-  cif?: { qualifier: number; severity: string; };
+  cif?: CIFData;
 }
 
 // ==========================================
@@ -49,7 +53,7 @@ export interface TestResults {
   vsaq?: QuestionnaireResult | null;
   dasi?: QuestionnaireResult | null;
 
-  // Sincronizado com os componentes de teste (TC6M, TD2M, etc)
+  // Testes Funcionais
   sixMinuteWalkTest?: FunctionalTestResult | null;
   stepTest?: FunctionalTestResult | null;
   tug?: FunctionalTestResult | null;
@@ -58,6 +62,7 @@ export interface TestResults {
   tsl30s?: FunctionalTestResult | null;
   tsl5x?: FunctionalTestResult | null;
   
+  // Frequência Cardíaca e VFC
   hrr?: {
     peakHR: number;
     recoveryHR: number;
@@ -71,7 +76,7 @@ export interface TestResults {
     interpretation?: string;
   } | null;
 
-  // Estrutura que resolve as cobrinhas no AnginaAlgorithm
+  // Sintomas e Angina
   symptoms?: {
     claudication?: boolean;
     angina?: {
@@ -81,20 +86,34 @@ export interface TestResults {
     };
   } | null;
 
+  // Escalas de Borg
   fatigabilityScales?: {
     rest: { dyspnea: number; fatigue: number };
     exercise: { dyspnea: number; fatigue: number };
   };
 
+  // Avaliação Vascular (ESTRUTURA CORRIGIDA)
   vascularAssessment?: {
-    arterial: { pulse: string; temp: string; capillaryRefill: string; cif: string; };
-    venous: { ceap: string[]; godet: string; cif: string; };
-    lymphatic: { stemmer: string; cif: string; };
+    arterial: { 
+      pulse: string; 
+      temp: string; 
+      capillaryRefill: string; 
+      cif: CIFData; 
+    };
+    venous: { 
+      ceap?: string[]; 
+      godet: string; 
+      cif: CIFData; 
+    };
+    lymphatic: { 
+      stemmer: string; 
+      cif: CIFData; 
+    };
   } | null;
 }
 
 // ==========================================
-// 4. PERFIL DO PACIENTE (Limpa erros no PatientRegistration.tsx)
+// 4. PERFIL DO PACIENTE
 // ==========================================
 export interface PatientInfo {
   name: string;
@@ -103,7 +122,6 @@ export interface PatientInfo {
   weight: string | number;
   height: string | number;
   imc?: number | string | null;
-  // Campos vitais essenciais
   restingPAS?: string | number; 
   restingPAD?: string | number; 
   restingFC?: string | number;
@@ -113,12 +131,12 @@ export interface PatientInfo {
 }
 
 // ==========================================
-// 5. MEDICAMENTOS (Limpa erros no FunctionalDiagnosis.tsx)
+// 5. MEDICAMENTOS
 // ==========================================
 export interface Medications {
   betablockers: boolean;
-  bcc: boolean; // Bloqueadores de Canal de Cálcio
-  digitalis: boolean; // Digitálicos
+  bcc: boolean; 
+  digitalis: boolean; 
   nitrates: boolean;
   antihypertensives: boolean;
   diuretics: boolean;

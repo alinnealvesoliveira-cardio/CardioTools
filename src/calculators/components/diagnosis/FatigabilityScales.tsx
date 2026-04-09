@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Activity, Wind, Info, AlertCircle, CheckCircle2, Clock, Zap, Save } from 'lucide-react';
+import { Activity, Wind, Info, CheckCircle2, Clock, Zap, Save, ChevronLeft } from 'lucide-react'; // Adicionado ChevronLeft
 import { usePatient } from '../../../context/PatientContext';
 import { toast } from 'react-hot-toast';
 
 export const FatigabilityScales: React.FC = () => {
-  const { testResults, updateTestResult } = usePatient();
+  // 1. Verifique se no seu Context o nome é 'updateTestResults' ou 'updateTestResult'
+  const { testResults, updateTestResults } = usePatient(); 
   const [mode, setMode] = useState<'rest' | 'exercise'>('rest');
   const [isSaved, setIsSaved] = useState(false);
 
@@ -52,16 +52,19 @@ export const FatigabilityScales: React.FC = () => {
   ];
 
   const handleUpdateScale = (id: 'dyspnea' | 'fatigue', value: number) => {
+    // PROTEÇÃO: Garante que o objeto existe antes de fazer o spread
     const currentScales = testResults.fatigabilityScales || {
       rest: { dyspnea: 0, fatigue: 0 },
       exercise: { dyspnea: 0, fatigue: 0 }
     };
 
-    updateTestResult('fatigabilityScales', {
-      ...currentScales,
-      [mode]: {
-        ...currentScales[mode],
-        [id]: value
+    updateTestResults({
+      fatigabilityScales: {
+        ...currentScales,
+        [mode]: {
+          ...currentScales[mode],
+          [id]: value
+        }
       }
     });
     setIsSaved(false);
@@ -70,22 +73,21 @@ export const FatigabilityScales: React.FC = () => {
   const handleSaveAll = () => {
     setIsSaved(true);
     toast.success(`Dados de ${mode === 'rest' ? 'Repouso' : 'Exercício'} gravados!`);
-    setTimeout(() => setIsSaved(false), 3000);
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24">
+    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-40"> {/* pb-40 para não cobrir botões */}
       <header className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Escalas de Fadigabilidade</h1>
-            <p className="text-slate-500 text-sm">Avaliação subjetiva do esforço e sintomas limitantes.</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Fadigabilidade</h1>
+            <p className="text-slate-500 text-sm font-medium">Avaliação subjetiva (Borg Modificada).</p>
           </div>
 
-          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 w-fit">
+          <div className="flex bg-slate-100 p-1.5 rounded-[20px] border border-slate-200 w-fit">
             <button
               onClick={() => { setMode('rest'); setIsSaved(false); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-black uppercase transition-all ${
                 mode === 'rest' 
                   ? 'bg-white text-slate-900 shadow-sm' 
                   : 'text-slate-500 hover:text-slate-700'
@@ -96,9 +98,9 @@ export const FatigabilityScales: React.FC = () => {
             </button>
             <button
               onClick={() => { setMode('exercise'); setIsSaved(false); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-xs font-black uppercase transition-all ${
                 mode === 'exercise' 
-                  ? 'bg-indigo-600 text-white shadow-sm' 
+                  ? 'bg-slate-900 text-white shadow-sm' 
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -109,42 +111,36 @@ export const FatigabilityScales: React.FC = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-8">
+      <div className="grid grid-cols-1 gap-6">
         {scales.map((scale) => (
-          <section key={scale.id} className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6">
+          <section key={scale.id} className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-slate-50 rounded-2xl">
+              <div className="p-3 bg-slate-50 rounded-2xl text-slate-800">
                 {scale.icon}
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-800">{scale.name}</h2>
-                <p className="text-xs text-slate-500">{scale.description}</p>
+                <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight">{scale.name}</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">{scale.description}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
               {scale.levels.map((level) => {
-                const isSelected = (testResults.fatigabilityScales?.[mode]?.[scale.id as 'dyspnea' | 'fatigue'] ?? -1) === level.value;
+                const isSelected = (testResults.fatigabilityScales?.[mode]?.[scale.id as 'dyspnea' | 'fatigue']) === level.value;
                 return (
                   <button
                     key={level.value}
                     onClick={() => handleUpdateScale(scale.id as any, level.value)}
-                    className={`relative p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 group ${
+                    className={`relative py-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-1 ${
                       isSelected 
-                        ? 'border-slate-900 bg-slate-900 text-white shadow-lg scale-105 z-10' 
+                        ? 'border-slate-900 bg-slate-900 text-white scale-105 z-10' 
                         : 'border-slate-50 bg-slate-50 text-slate-600 hover:border-slate-200'
                     }`}
                   >
-                    <div className="text-lg font-black">{level.value}</div>
-                    <div className={`text-[8px] font-bold uppercase text-center leading-tight ${isSelected ? 'text-white/70' : 'text-slate-400'}`}>
+                    <span className="text-base font-black">{level.value}</span>
+                    <span className={`text-[7px] font-black uppercase text-center px-1 leading-none ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>
                       {level.label}
-                    </div>
-                    {!isSelected && (
-                      <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${level.color}`} />
-                    )}
-                    {isSelected && (
-                      <CheckCircle2 className="absolute top-2 right-2 w-3 h-3 text-emerald-400" />
-                    )}
+                    </span>
                   </button>
                 );
               })}
@@ -152,60 +148,36 @@ export const FatigabilityScales: React.FC = () => {
           </section>
         ))}
 
-        <div className="flex justify-center pt-4">
-          <button
-            onClick={handleSaveAll}
-            className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all shadow-lg ${
-              isSaved 
-                ? 'bg-emerald-500 text-white' 
-                : 'bg-slate-900 text-white hover:opacity-90'
-            }`}
-          >
-            {isSaved ? (
-              <>
-                <CheckCircle2 className="w-5 h-5" />
-                Gravado com Sucesso
-              </>
-            ) : (
-              <>
-                <Save className="w-5 h-5" />
-                Gravar no Relatório Final
-              </>
-            )}
-          </button>
+        {/* INTERPRETAÇÃO (REDUZIDA) */}
+        <div className="bg-slate-50 rounded-[32px] p-6 border border-slate-100">
+           <div className="flex items-center gap-2 mb-4">
+             <Info className="w-4 h-4 text-slate-400" />
+             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dica de Interpretação</h3>
+           </div>
+           <p className="text-xs text-slate-500 leading-relaxed font-medium">
+             Dispneia alta ({'>'}4) com fadiga baixa indica limitação **central**. Fadiga alta com dispneia baixa indica limitação **periférica**.
+           </p>
         </div>
+      </div>
 
-        <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-500 text-white rounded-xl">
-              <Info className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold">Interpretação Clínica</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-widest">
-                <Wind className="w-4 h-4" />
-                Limitação Central
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Valores elevados de dispneia (Borg &gt; 4) com fadiga muscular baixa sugerem 
-                limitação de origem cardiopulmonar ou ineficiência ventilatória.
-              </p>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-widest">
-                <Activity className="w-4 h-4" />
-                Limitação Periférica
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Valores elevados de fadiga muscular com dispneia controlada sugerem 
-                descondicionamento periférico ou limitação por Doença Arterial Periférica (DAP).
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* BOTÕES DE AÇÃO FIXOS (PADRÃO VASCULAR) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-50 flex gap-3">
+        <button
+          onClick={() => window.history.back()}
+          className="flex-1 bg-white text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
+        >
+          <ChevronLeft size={16} /> Voltar
+        </button>
+        
+        <button
+          onClick={handleSaveAll}
+          className={`flex-[2] py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest transition-all ${
+            isSaved ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'
+          }`}
+        >
+          <Save className={`w-5 h-5 ${isSaved ? 'text-white' : 'text-emerald-400'}`} />
+          {isSaved ? 'Gravado!' : 'Salvar Borg'}
+        </button>
       </div>
     </div>
   );

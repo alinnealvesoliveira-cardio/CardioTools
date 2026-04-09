@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calculator } from '../types';
 
-// 1. Importações da pasta raiz de componentes (src/calculators/components/)
+// 1. Importações da pasta raiz de componentes
 import { TSL5X } from '../calculators/components/TSL5X';
 import { TSL30S } from '../calculators/components/TSL30S';
 import { TD2M } from '../calculators/components/TD2M';
@@ -13,22 +13,18 @@ import { DASI } from '../calculators/components/DASI';
 import { PatientRegistration } from '../calculators/components/PatientRegistration';
 import { FinalReport } from '../calculators/components/FinalReport';
 
-// 2. Subpasta: Autonomic
+// 2. Subpastas específicas
 import { HRV } from '../calculators/components/autonomic/HRV';
-
-// 3. Subpasta: Diagnosis
 import { AnginaAlgorithm } from '../calculators/components/diagnosis/AnginaAlgorithm';
 import { ClaudicationAlgorithm } from '../calculators/components/diagnosis/ClaudicationAlgorithm';
 import { FatigabilityScales } from '../calculators/components/diagnosis/FatigabilityScales';
-
-// 4. Subpasta: Hemodynamics
+import { FunctionalDiagnosis } from '../calculators/components/diagnosis/FunctionalDiagnosis';
 import { ABI } from '../calculators/components/hemodynamics/ABI';
 import { HRR } from '../calculators/components/hemodynamics/HRR';
 import { OrthostaticDrop } from '../calculators/components/hemodynamics/OrthostaticDrop';
 
-// 5. Subpasta: Vascular (Verifique se o arquivo interno se chama VascularAssessment ou VascularPhysicalExam)
-// Pela imagem, a pasta existe, mas o componente principal costuma ser o Assessment
-import { FunctionalDiagnosis } from '../calculators/components/diagnosis/FunctionalDiagnosis';
+// AQUI ESTÁ O QUE TINHA SUMIDO:
+import { VascularPhysicalExam } from '../calculators/components/vascular/VascularPhysicalExam';
 
 export const CALCULATORS: Calculator[] = [
   {
@@ -37,13 +33,6 @@ export const CALCULATORS: Calculator[] = [
     description: 'Dados antropométricos e perfil farmacológico para base de cálculo.',
     category: 'Cadastro',
     component: PatientRegistration
-  },
-  {
-    id: 'final-report',
-    name: 'Relatório Final',
-    description: 'Consolidação de todos os dados coletados e interpretação clínica.',
-    category: 'Relatório Final',
-    component: FinalReport
   },
   {
     id: 'hrv',
@@ -69,7 +58,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: 'fatigability-scales',
     name: 'Escalas de Fadigabilidade',
-    description: 'Avaliação subjetiva do esforço e sintomas limitantes (Borg Modificada).',
+    description: 'Avaliação subjetiva do esforço (Borg Modificada).',
     category: 'Avaliação de Sintomas',
     component: FatigabilityScales
   },
@@ -81,6 +70,13 @@ export const CALCULATORS: Calculator[] = [
     component: FunctionalDiagnosis
   },
   {
+    id: 'vascular-exam', // REATIVADO
+    name: 'Avaliação Vascular Completa',
+    description: 'Exame físico, Pulsos, CEAP e Edema.',
+    category: 'Vascular',
+    component: VascularPhysicalExam
+  },
+  {
     id: 'abi',
     name: 'Índice Tornozelo-Braquial (ITB)',
     description: 'Ferramenta diagnóstica para Doença Arterial Periférica (DAP).',
@@ -90,7 +86,7 @@ export const CALCULATORS: Calculator[] = [
   {
     id: 'hrr',
     name: 'Recuperação da FC (HRR)',
-    description: 'Avaliação da reativação vagal após o esforço (1º minuto).',
+    description: 'Avaliação da reativação vagal após o esforço.',
     category: 'Avaliação Autonômica',
     component: HRR
   },
@@ -104,57 +100,64 @@ export const CALCULATORS: Calculator[] = [
   {
     id: 'tsl30s',
     name: 'Sentar e Levantar 30s',
-    description: 'Avaliação de força e resistência em idosos (Rikli & Jones).',
     category: 'Capacidade Aeróbica',
-    component: TSL30S
+    component: TSL30S,
+    description: 'Resistência de membros inferiores.'
   },
   {
     id: 'tsl5x',
     name: 'Teste de Sentar e Levantar 5x',
-    description: 'Avaliação de força de membros inferiores e risco de queda.',
     category: 'Capacidade Aeróbica',
-    component: TSL5X
+    component: TSL5X,
+    description: 'Força de membros inferiores.'
   },
   {
     id: 'td2m',
     name: 'Marcha Estacionária 2 min',
-    description: 'Teste de resistência aeróbica funcional.',
     category: 'Capacidade Aeróbica',
-    component: TD2M
+    component: TD2M,
+    description: 'Teste de resistência funcional.'
   },
   {
     id: 'tsl1m',
     name: 'Sentar e Levantar 1 min',
-    description: 'Resistência de membros inferiores e capacidade funcional.',
     category: 'Capacidade Aeróbica',
-    component: TSL1M
+    component: TSL1M,
+    description: 'Capacidade funcional.'
   },
   {
     id: 'tc6m',
     name: 'Caminhada de 6 Minutos',
-    description: 'Padrão-ouro para avaliação da capacidade funcional submáxima.',
     category: 'Capacidade Aeróbica',
-    component: TC6M
+    component: TC6M,
+    description: 'Padrão-ouro submáximo.'
   },
   {
     id: 'vsaq',
     name: 'VSAQ',
-    description: 'Questionário de atividades específicas para estimativa de METs.',
     category: 'Capacidade Aeróbica',
-    component: VSAQ
+    component: VSAQ,
+    description: 'Estimativa de METs por atividades.'
   },
   {
     id: 'dasi',
     name: 'DASI Index',
-    description: 'Questionário Duke para estimativa robusta de METs (Recomendado AHA).',
     category: 'Capacidade Aeróbica',
-    component: DASI
+    component: DASI,
+    description: 'Estimativa de METs (AHA).'
   },
   {
     id: 'tug',
     name: 'Timed Up and Go (TUG)',
-    description: 'Avaliação de mobilidade funcional, equilíbrio dinâmico e risco de queda.',
     category: 'Capacidade Aeróbica',
-    component: TUG
+    component: TUG,
+    description: 'Mobilidade e risco de queda.'
+  },
+  {
+    id: 'final-report',
+    name: 'Relatório Final',
+    description: 'Consolidação de todos os dados e interpretação.',
+    category: 'Relatório Final',
+    component: FinalReport
   }
 ];
