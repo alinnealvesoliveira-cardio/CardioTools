@@ -13,17 +13,22 @@ import { DASI } from '../calculators/components/DASI';
 import { PatientRegistration } from '../calculators/components/PatientRegistration';
 import { FinalReport } from '../calculators/components/FinalReport';
 
-// 2. Importações de Subpastas Específicas
+// 2. Subpasta: Autonomic
 import { HRV } from '../calculators/components/autonomic/HRV';
+
+// 3. Subpasta: Diagnosis
 import { AnginaAlgorithm } from '../calculators/components/diagnosis/AnginaAlgorithm';
 import { ClaudicationAlgorithm } from '../calculators/components/diagnosis/ClaudicationAlgorithm';
 import { FatigabilityScales } from '../calculators/components/diagnosis/FatigabilityScales';
+
+// 4. Subpasta: Hemodynamics
 import { ABI } from '../calculators/components/hemodynamics/ABI';
 import { HRR } from '../calculators/components/hemodynamics/HRR';
 import { OrthostaticDrop } from '../calculators/components/hemodynamics/OrthostaticDrop';
 
-// Nota: Verifique se o VascularPhysicalExam existe nesta subpasta ou se o nome é VascularAssessment
-import { VascularPhysicalExam } from '../calculators/components/vascular/VascularPhysicalExam';
+// 5. Subpasta: Vascular (Verifique se o arquivo interno se chama VascularAssessment ou VascularPhysicalExam)
+// Pela imagem, a pasta existe, mas o componente principal costuma ser o Assessment
+import { FunctionalDiagnosis } from '../calculators/components/diagnosis/FunctionalDiagnosis';
 
 export const CALCULATORS: Calculator[] = [
   {
@@ -69,11 +74,11 @@ export const CALCULATORS: Calculator[] = [
     component: FatigabilityScales
   },
   {
-    id: 'vascular-exam',
-    name: 'Exame Físico Vascular',
-    description: 'Avaliação de pulsos, temperatura, CEAP, Godet e sinal de Stemmer.',
-    category: 'Vascular',
-    component: VascularPhysicalExam
+    id: 'functional-diagnosis',
+    name: 'Diagnóstico Funcional',
+    description: 'Classificação baseada na CBDF e funcionalidade.',
+    category: 'Diagnóstico',
+    component: FunctionalDiagnosis
   },
   {
     id: 'abi',
