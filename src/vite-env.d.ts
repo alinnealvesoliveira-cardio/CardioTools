@@ -10,7 +10,10 @@ interface ImportMeta {
 }
 
 // Sintaxe minimalista: sem nomes de variáveis internas para evitar sublinhados vermelhos
-declare module "*.css";
+declare module "*.css" {
+  const content: { [className: string]: string };
+  export default content;
+}
 declare module "*.png";
 declare module "*.svg";
 declare module "*.jpg";
