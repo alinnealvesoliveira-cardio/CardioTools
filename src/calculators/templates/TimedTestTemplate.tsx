@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Play, Square, RotateCcw, Info, 
+  Play, Square, RotateCcw, 
   BookOpen, Save, CheckCircle2, Heart, Activity 
 } from 'lucide-react';
 
-// AJUSTE DE CAMINHOS BASEADO NA SUA ESTRUTURA (image_15e871)
 import { getCIFClassification } from '../../utils/cif';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
-// O MedicationAlert está dentro de components/shared, e você está em calculators/templates
 import { MedicationAlert } from '../../components/shared/MedicationAlert';
 import { CIFData } from '../../types';
 
@@ -51,7 +49,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
   hasCounter,
   counterLabel = "Repetições",
   interpretation,
-  pearls,
   reference,
   children,
   predictedValue,
@@ -66,27 +63,33 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
   const [postHR, setPostHR] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   
-  const timerRef = useRef<any>(null);
+  // Ref para o intervalo
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isActive) {
+      const startTime = Date.now() - (timerDuration ? ((timerDuration * 1000) - time) : time);
+      
       timerRef.current = setInterval(() => {
-        setTime(prev => {
-          if (timerDuration) {
-            if (prev <= 0) {
-              setIsActive(false);
-              return 0;
-            }
-            return prev - 10;
+        const elapsed = Date.now() - startTime;
+        
+        if (timerDuration) {
+          const remaining = (timerDuration * 1000) - elapsed;
+          if (remaining <= 0) {
+            setTime(0);
+            setIsActive(false);
+          } else {
+            setTime(remaining);
           }
-          return prev + 10;
-        });
+        } else {
+          setTime(elapsed);
+        }
       }, 10);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isActive, timerDuration]);
+  }, [isActive]);
 
   const toggleTimer = () => {
     setIsActive(!isActive);
@@ -108,11 +111,9 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
   };
 
-  // --- SOLUÇÃO PARA OS ERROS DE CÁLCULO (image_157c10) ---
   const rawResults = interpretation(time / 1000, count);
   const results = Array.isArray(rawResults) ? rawResults : [rawResults];
 
-  // Forçamos o tipo number para o TS não reclamar nas operações matemáticas
   const observedValue: number = Number(observedValueOverride ?? (hasCounter ? count : time / 1000));
   const pred: number = predictedValue ?? 0;
 
@@ -124,7 +125,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
     ? getCIFClassification(cifObserved, pred) 
     : null;
 
-  // Cast para 'any' resolve o erro de propriedade description/interpretation (image_0b9228)
   const cif: CIFData | null = cifResult ? {
     qualifier: (cifResult as any).severity || 0,
     interpretation: (cifResult as any).description || (cifResult as any).interpretation || "",
@@ -240,11 +240,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
                 <span className="text-xs font-bold text-slate-400">{percentageDisplay.toFixed(1)}% do Predito</span>
               </div>
               <p className="text-sm font-bold italic">{cif.interpretation}</p>
-            </div>
-          )}
-          {reference && (
-            <div className="p-4 text-[10px] text-slate-400 italic">
-              <BookOpen size={12} className="inline mr-2" /> {reference}
             </div>
           )}
         </aside>

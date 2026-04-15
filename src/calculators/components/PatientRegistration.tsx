@@ -1,14 +1,13 @@
 import React from 'react';
-import { Pill, CheckCircle2, User, Heart, Save, LayoutDashboard, Activity, Search, ChevronLeft } from 'lucide-react';
+import { Pill, CheckCircle2, User, Heart, Save, LayoutDashboard, Activity, Search } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Medications } from '../../types';
 import { toast } from 'react-hot-toast';
 
 export const PatientRegistration: React.FC = () => {
+  // Removido o useNavigate que causava o erro de rota inexistente
   const { medications, setMedications, patientInfo, updatePatientInfo } = usePatient();
-  const navigate = useNavigate();
 
   const toggleMedication = (id: keyof Medications) => {
     setMedications(prev => ({
@@ -19,8 +18,8 @@ export const PatientRegistration: React.FC = () => {
 
   const handleSaveOnly = async () => {
     try {
-      // Sincronização com Supabase (Persistência Externa)
-      await supabase.from('patients').upsert({
+      // Sincronização com Supabase
+      const { error } = await supabase.from('patients').upsert({
         name: patientInfo.name,
         age: patientInfo.age,
         sex: patientInfo.sex,
@@ -28,13 +27,15 @@ export const PatientRegistration: React.FC = () => {
         ejection_fraction: patientInfo.ejectionFraction || null,
         updated_at: new Date()
       });
+
+      if (error) throw error;
+
       toast.success("Perfil atualizado com sucesso!");
-      setTimeout(() => navigate('/dashboard'), 800);
+      // Em vez de navigate, apenas avisamos o usuário. 
+      // O botão "Voltar ao Módulo" no topo do App.tsx cuidará da navegação.
     } catch (error) {
-      // Garantia de funcionamento offline via Contexto
       console.warn("Falha na rede. Dados mantidos localmente.");
       toast.success("Salvo localmente no dispositivo.");
-      setTimeout(() => navigate('/dashboard'), 800);
     }
   };
 
@@ -74,7 +75,6 @@ export const PatientRegistration: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-6">
-          {/* SEÇÃO: IDENTIFICAÇÃO */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-2 text-slate-800 font-black uppercase text-xs tracking-widest">
               <User className="w-4 h-4 text-indigo-500" /> Identificação Básica
@@ -108,7 +108,7 @@ export const PatientRegistration: React.FC = () => {
                   <select
                     value={patientInfo.sex || ''}
                     onChange={(e) => updatePatientInfo({ sex: e.target.value as 'male' | 'female' })}
-                    className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none appearance-none cursor-pointer"
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none cursor-pointer"
                   >
                     <option value="">Selecionar</option>
                     <option value="male">Masculino</option>
@@ -119,7 +119,6 @@ export const PatientRegistration: React.FC = () => {
             </div>
           </div>
 
-          {/* SEÇÃO: IMAGEM E FUNÇÃO (CRÍTICO PARA CBDF) */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-5">
             <div className="flex items-center gap-2 text-slate-800 font-black uppercase text-xs tracking-widest">
               <Search className="w-4 h-4 text-emerald-500" /> Exames Complementares
@@ -149,7 +148,7 @@ export const PatientRegistration: React.FC = () => {
                   placeholder="Ex: 55"
                   value={patientInfo.ejectionFraction || ''}
                   onChange={(e) => updatePatientInfo({ ejectionFraction: e.target.value })}
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-rose-500"
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none"
                 />
               </div>
               <div className="space-y-2 flex flex-col justify-end">
@@ -164,7 +163,6 @@ export const PatientRegistration: React.FC = () => {
             </div>
           </div>
 
-          {/* SEÇÃO: VITAIS REPOUSO */}
           <div className="bg-slate-900 rounded-[32px] p-6 shadow-xl space-y-4">
              <div className="flex items-center gap-2 text-white font-black uppercase text-xs tracking-widest">
               <Activity className="w-4 h-4 text-indigo-400" /> Hemodinâmica de Repouso
@@ -194,7 +192,6 @@ export const PatientRegistration: React.FC = () => {
           </div>
         </div>
 
-        {/* COLUNA: MEDICAMENTOS */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-slate-800 font-black uppercase text-xs tracking-widest px-2">
             <Pill className="w-4 h-4 text-indigo-500" /> Suporte Farmacológico
@@ -217,21 +214,13 @@ export const PatientRegistration: React.FC = () => {
         </div>
       </div>
 
-      {/* BOTÕES DE NAVEGAÇÃO FIXOS */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-50 flex gap-3">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex-1 bg-white text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-2xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
-        >
-          <LayoutDashboard size={16} /> Painel
-        </button>
-        
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-50">
         <button
           onClick={handleSaveOnly}
-          className="flex-[2] bg-slate-900 text-white py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all"
+          className="w-full bg-slate-900 text-white py-6 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 text-[11px] uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all"
         >
           <Save className="w-5 h-5 text-emerald-400" />
-          Gravar e Prosseguir
+          Salvar Dados do Paciente
         </button>
       </div>
     </div>
