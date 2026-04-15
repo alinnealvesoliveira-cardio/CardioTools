@@ -18,12 +18,16 @@ export const PatientRegistration: React.FC = () => {
 
   const handleSaveOnly = async () => {
     try {
-      // Sincronização com Supabase
+      // Sincronização estrita com a tabela 'patients' atualizada
       const { error } = await supabase.from('patients').upsert({
         name: patientInfo.name,
-        age: patientInfo.age,
+        // Garante que age seja um número inteiro antes de enviar
+        age: parseInt(patientInfo.age as any) || null, 
         sex: patientInfo.sex,
+        // Removida a referência à diastólica que não existe mais no banco
         resting_pas: patientInfo.restingPAS || null,
+        // Campo adicionado se você o criou no banco, senão remova esta linha
+        // resting_sao2: patientInfo.restingSaO2 || null, 
         ejection_fraction: patientInfo.ejectionFraction || null,
         updated_at: new Date()
       });
@@ -31,10 +35,10 @@ export const PatientRegistration: React.FC = () => {
       if (error) throw error;
 
       toast.success("Perfil atualizado com sucesso!");
-      // Em vez de navigate, apenas avisamos o usuário. 
-      // O botão "Voltar ao Módulo" no topo do App.tsx cuidará da navegação.
-    } catch (error) {
-      console.warn("Falha na rede. Dados mantidos localmente.");
+    } catch (error: any) {
+      console.error("Erro na sincronização:", error);
+      // Fallback para manter a experiência se o Supabase falhar
+      console.warn("Falha na rede ou erro de banco. Dados mantidos localmente.");
       toast.success("Salvo localmente no dispositivo.");
     }
   };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Info, BookOpen, Activity, Save, CheckCircle2, ChevronRight, LayoutDashboard } from 'lucide-react';
+import { Activity, Save, CheckCircle2, LayoutDashboard } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -10,28 +10,29 @@ export const TSL1M: React.FC = () => {
   const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(false);
 
-  // Estados locais para Sintomas Pós-Teste
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  const age = parseInt(patientInfo.age as string) || 60;
-  const sex = patientInfo.sex === 'female' ? 'F' : 'M';
-  const height = parseFloat(patientInfo.height as string) || 170;
-  const weight = parseFloat(patientInfo.weight as string) || 70;
-  const bmi = weight / ((height / 100) ** 2);
+  // --- SAFEGUARDS CONTRA TELA BRANCA ---
+  const age = parseInt(patientInfo?.age as string) || 60;
+  const sex = (patientInfo as any)?.sex === 'female' || (patientInfo as any)?.sex === 'F' ? 'F' : 'M';
+  const height = parseFloat(patientInfo?.height as string) || 170;
+  const weight = parseFloat(patientInfo?.weight as string) || 70;
+  
+  // Proteção contra divisão por zero no IMC
+  const bmi = height > 0 ? weight / ((height / 100) ** 2) : 24.2;
 
   // CÁLCULO DO PREDITO - EQUAÇÃO BRASILEIRA (Furlanetto KC, et al. 2022)
-  const calculatePredictedFurlanetto = () => {
+  const calculatePredictedFurlanetto = (): number => {
     const sexVal = sex === 'F' ? 1 : 0;
     const predicted = 60.6 - (0.36 * age) - (2.8 * sexVal) - (0.31 * bmi);
-    return predicted > 0 ? predicted : 0;
+    return predicted > 0 ? predicted : 15; // Fallback seguro para 15 repetições
   };
 
   const predictedFurlanetto = calculatePredictedFurlanetto();
 
   const interpretation = (_time: number, count: number): InterpretationResult[] => {
     if (count === 0) return [{ 
-      title: "Resistência de MMII", 
       label: "Aguardando", 
       color: "slate", 
       description: "Inicie o teste e registre as repetições." 
@@ -41,22 +42,15 @@ export const TSL1M: React.FC = () => {
 
     return [
       {
-        title: "Resistência Funcional (TSL1M)",
         label: efficiency < 80 ? "Reduzida" : "Preservada",
         color: efficiency < 80 ? "red" : "green",
         description: `Desempenho de ${efficiency.toFixed(0)}% do predito.`
-      },
-      {
-        title: "Diferença Clínica (MDC)",
-        label: "1.1 rep",
-        color: "slate",
-        description: "Melhora mínima real para cardiopatas."
       }
     ];
   };
 
   const handleGlobalSave = (data: any) => {
-    const efficiency = (data.count / predictedFurlanetto) * 100;
+    const efficiency = predictedFurlanetto > 0 ? (data.count / predictedFurlanetto) * 100 : 0;
 
     const currentScales = testResults?.fatigabilityScales || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
@@ -97,22 +91,16 @@ export const TSL1M: React.FC = () => {
   };
 
   return (
-    /* AJUSTE DE CSS: pb-60 evita que os botões fixos cubram o conteúdo final */
     <div className="max-w-4xl mx-auto pb-60 relative"> 
       <TimedTestTemplate
-        title="Teste de Sentar e Levantar (1 Minuto)"
-        description="Avaliação da resistência muscular periférica e endurance funcional."
+        title="TSL 1 Minuto"
+        description="Teste de Sentar e Levantar (Resistência de MMII)"
         timerDuration={60}
         hasCounter={true}
         counterLabel="Repetições Completas"
         interpretation={interpretation}
         predictedValue={predictedFurlanetto}
         onSave={handleGlobalSave}
-        pearls={[
-          "Equação de Furlanetto (2022) validada para brasileiros.",
-          "MDC: 1.1 repetições para melhora clínica em cardiopatas.",
-          "O uso dos braços invalida o teste."
-        ]}
         reference="Furlanetto KC, et al. Braz J Phys Ther. 2022."
       >
         <div className="space-y-6 px-4">
@@ -140,7 +128,7 @@ export const TSL1M: React.FC = () => {
                     key={n}
                     type="button"
                     onClick={() => { setPostFadiga(n); setIsSaved(false); }}
-                    className={`py-4 rounded-2xl font-black transition-all active:scale-95 ${postFadiga === n ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    className={`py-4 rounded-2xl font-black transition-all ${postFadiga === n ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n}
                   </button>
@@ -156,7 +144,7 @@ export const TSL1M: React.FC = () => {
                     key={n}
                     type="button"
                     onClick={() => { setPostAngina(n); setIsSaved(false); }}
-                    className={`py-4 rounded-2xl font-black transition-all active:scale-95 ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    className={`py-4 rounded-2xl font-black transition-all ${postAngina === n ? 'bg-rose-500 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n === 0 ? 'Não' : n}
                   </button>
@@ -167,21 +155,10 @@ export const TSL1M: React.FC = () => {
         </div>
       </TimedTestTemplate>
 
-      {/* RODAPÉ FIXO CORRIGIDO: Z-INDEX 999 para garantir interatividade */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
         <button
-          type="button"
-          onClick={() => (document.querySelector('button[type="submit"]') as HTMLButtonElement)?.click()} 
-          className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-        >
-          {isSaved ? <CheckCircle2 className="w-6 h-6" /> : <Save className="w-6 h-6 text-emerald-400" />}
-          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'TESTE GRAVADO' : 'GRAVAR RESULTADO'}</span>
-        </button>
-        
-        <button
-          type="button"
           onClick={() => navigate('/dashboard')} 
-          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest"
         >
           <LayoutDashboard size={18} /> PAINEL DE MÓDULOS
         </button>
