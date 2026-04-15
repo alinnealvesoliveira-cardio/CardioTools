@@ -8,46 +8,49 @@ export interface CBDFResult {
 
 /**
  * Converte a eficiência (%) na classificação CBDF-1
- * Baseado na escala de gravidade da CIF/OMS (Diretriz CBDF)
+ * Nota: A CBDF/CIF utiliza o qualificador para mensurar a DEFICIÊNCIA (o que falta).
+ * Se o paciente tem 80% de eficiência, ele tem 20% de deficiência (Leve).
  */
 export const getCBDFClassification = (efficiency: number): CBDFResult => {
-  // Garantir que o valor não ultrapasse 100 ou seja menor que 0
-  const val = Math.max(0, Math.min(efficiency, 100));
+  // val = Nível de Deficiência (100 - Eficiência)
+  const efficiencyClamped = Math.max(0, Math.min(efficiency, 100));
+  const deficit = 100 - efficiencyClamped;
 
-  if (val >= 96) {
+  // Escala de Gravidade COFFITO / CIF
+  if (deficit <= 4) {
     return { 
       qualifier: 0, 
-      severity: 'Preservada', 
-      color: '#10b981', // Emerald 500
+      severity: 'Sem Deficiência', 
+      color: '#059669', // Emerald 600
       bgLight: '#ecfdf5',
-      description: 'Nenhuma deficiência funcional detectada (96-100%).' 
+      description: 'Capacidade funcional preservada. Nenhuma barreira detectada.' 
     };
   }
-  if (val >= 75) {
+  if (deficit <= 24) {
     return { 
       qualifier: 1, 
       severity: 'Deficiência Leve', 
       color: '#84cc16', // Lime 500
       bgLight: '#f7fee7',
-      description: 'Comprometimento funcional leve, com baixo impacto nas atividades (75-95%).' 
+      description: 'Comprometimento funcional leve (5-24% de perda).' 
     };
   }
-  if (val >= 50) {
+  if (deficit <= 49) {
     return { 
       qualifier: 2, 
       severity: 'Deficiência Moderada', 
       color: '#eab308', // Amber 500
       bgLight: '#fffbeb',
-      description: 'Comprometimento funcional moderado, limitação perceptível (50-74%).' 
+      description: 'Comprometimento funcional moderado (25-49% de perda).' 
     };
   }
-  if (val >= 5) {
+  if (deficit <= 95) {
     return { 
       qualifier: 3, 
       severity: 'Deficiência Grave', 
       color: '#f97316', // Orange 500
       bgLight: '#fff7ed',
-      description: 'Comprometimento funcional grave, limitação importante da independência (5-49%).' 
+      description: 'Comprometimento funcional grave (50-95% de perda).' 
     };
   }
   return { 
@@ -55,6 +58,6 @@ export const getCBDFClassification = (efficiency: number): CBDFResult => {
     severity: 'Deficiência Completa', 
     color: '#ef4444', // Red 500
     bgLight: '#fef2f2',
-    description: 'Comprometimento funcional total ou quase total (< 5%).' 
+    description: 'Comprometimento funcional total ou quase total (> 95% de perda).' 
   };
 };

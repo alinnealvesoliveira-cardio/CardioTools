@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { 
-  ClipboardList, 
   Info, 
   AlertTriangle, 
   CheckCircle2, 
   Save, 
-  ChevronRight,
   Activity as ActivityIcon,
   LayoutDashboard
 } from 'lucide-react';
@@ -36,8 +34,9 @@ export const DASI: React.FC = () => {
   const [answers, setAnswers] = useState<Record<number, boolean>>({});
   const [isSaved, setIsSaved] = useState(false);
 
-  const age = parseInt(patientInfo.age?.toString() || '65');
-  const feve = Number(patientInfo.ejectionFraction) || 60;
+  // --- SAFEGUARDS ---
+  const age = parseInt(patientInfo?.age?.toString() || '65');
+  const feve = Number(patientInfo?.ejectionFraction) || 60;
 
   const calculateResults = () => {
     const score = DASI_QUESTIONS.reduce((acc, q) => acc + (answers[q.id] ? q.weight : 0), 0);
@@ -47,8 +46,10 @@ export const DASI: React.FC = () => {
   };
 
   const { score, vo2, mets } = calculateResults();
-  const predictedMETs = 14.7 - (0.11 * age);
-  const percentage = (mets / predictedMETs) * 100;
+  
+  // Predito Gulati para Mulheres ou Tanaka para Homens (Simplificado para 14.7 - 0.11 * idade)
+  const predictedMETs = age > 0 ? (14.7 - (0.11 * age)) : 10;
+  const percentage = predictedMETs > 0 ? (mets / predictedMETs) * 100 : 0;
 
   const getCBDF = () => {
     if (percentage < 25 || feve < 30) return { qualifier: 4, severity: "Deficiência Completa", range: "96-100%", color: "#ef4444" };
@@ -83,14 +84,14 @@ export const DASI: React.FC = () => {
         <div className="bg-slate-900 p-8 flex justify-between items-center">
           <div>
             <h2 className="text-3xl font-black text-white tracking-tighter italic flex items-center gap-3">
-              DASI INDEX
+              DASI
             </h2>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">
-              Duke Activity Status Index • Funcionalidade
+              Duke Activity Status Index
             </p>
           </div>
           <div className="bg-emerald-500/10 px-4 py-2 rounded-2xl border border-emerald-500/20">
-             <span className="text-emerald-400 font-black text-xs uppercase tracking-widest">Capacidade Aeróbica</span>
+             <span className="text-emerald-400 font-black text-xs uppercase tracking-widest">Capacidade Funcional</span>
           </div>
         </div>
 
@@ -99,8 +100,8 @@ export const DASI: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-indigo-50 p-5 rounded-3xl flex gap-3 border border-indigo-100">
               <Info className="w-5 h-5 shrink-0 text-indigo-500" />
-              <p className="text-indigo-900 text-[11px] leading-relaxed font-bold uppercase tracking-tight">
-                Marque apenas as atividades que o paciente realiza sem cansaço limitante ou falta de ar.
+              <p className="text-indigo-900 text-[11px] leading-tight font-bold uppercase">
+                Marque apenas as atividades que o paciente realiza sem sintomas limitantes.
               </p>
             </div>
 
@@ -111,55 +112,55 @@ export const DASI: React.FC = () => {
                   onClick={() => { setAnswers(prev => ({ ...prev, [q.id]: !prev[q.id] })); setIsSaved(false); }}
                   className={`w-full flex items-center justify-between p-5 rounded-[24px] border-2 transition-all active:scale-[0.98] ${
                     answers[q.id] 
-                      ? 'border-indigo-600 bg-indigo-50/50 shadow-sm' 
+                      ? 'border-indigo-600 bg-indigo-50 shadow-sm' 
                       : 'border-slate-50 bg-slate-50/50 hover:border-slate-200'
                   }`}
                 >
                   <span className={`text-left text-xs font-black tracking-tight leading-tight pr-4 ${answers[q.id] ? 'text-indigo-900' : 'text-slate-600'}`}>
                     {q.text}
                   </span>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    answers[q.id] ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 bg-white'
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    answers[q.id] ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-200 bg-white'
                   }`}>
-                    {answers[q.id] && <CheckCircle2 size={14} className="text-white" />}
+                    {answers[q.id] && <CheckCircle2 size={14} />}
                   </div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Dash de Resultados */}
+          {/* Resultados */}
           <div className="space-y-6">
             <div className="sticky top-6 space-y-4">
               <div className="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl space-y-8 relative overflow-hidden">
                 <div className="grid grid-cols-2 gap-6 relative z-10">
                   <div className="text-center">
                     <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">METs Estimados</p>
-                    <p className="text-5xl font-black text-emerald-400 tabular-nums italic">{mets.toFixed(1)}</p>
+                    <p className="text-5xl font-black text-emerald-400 italic">{mets.toFixed(1)}</p>
                   </div>
                   <div className="text-center border-l border-white/10">
                     <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">% do Predito</p>
-                    <p className="text-5xl font-black text-emerald-400 tabular-nums">{percentage.toFixed(0)}<span className="text-xl">%</span></p>
+                    <p className="text-5xl font-black text-emerald-400">{percentage.toFixed(0)}<span className="text-xl">%</span></p>
                   </div>
                 </div>
 
                 <div className="bg-white/5 border-l-4 p-6 rounded-r-2xl space-y-1 relative z-10" style={{ borderColor: cbdf.color }}>
-                  <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Classificação CBDF-1</p>
+                  <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Status Funcional (CBDF)</p>
                   <p className="text-xl font-black text-white leading-tight">.{cbdf.qualifier} — {cbdf.severity}</p>
-                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tighter">Déficit de {cbdf.range}</p>
+                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tighter">Impacto Funcional de {cbdf.range}</p>
                 </div>
 
                 <div className="space-y-3 relative z-10">
                   {mets < 4 && (
-                    <div className="flex items-start gap-3 text-[10px] text-orange-200 bg-orange-500/10 p-4 rounded-2xl border border-orange-500/20">
+                    <div className="flex items-start gap-3 text-[10px] text-orange-200 bg-orange-500/10 p-4 rounded-2xl border border-orange-500/20 font-bold uppercase">
                       <AlertTriangle className="w-4 h-4 shrink-0 text-orange-400" /> 
-                      <p className="font-bold uppercase tracking-tight">Risco Perioperatório Elevado (&lt; 4 METs)</p>
+                      Risco Perioperatório Elevado (&lt; 4 METs)
                     </div>
                   )}
                   {score <= 23 && (
-                    <div className="flex items-start gap-3 text-[10px] text-red-200 bg-red-500/10 p-4 rounded-2xl border border-red-500/20">
+                    <div className="flex items-start gap-3 text-[10px] text-red-200 bg-red-500/10 p-4 rounded-2xl border border-red-500/20 font-bold uppercase">
                       <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" /> 
-                      <p className="font-bold uppercase tracking-tight">ALERTA: Prognóstico Reservado (Score &le; 23)</p>
+                      Prognóstico Reservado (Score &le; 23)
                     </div>
                   )}
                 </div>
@@ -167,30 +168,31 @@ export const DASI: React.FC = () => {
                 <ActivityIcon size={140} className="absolute -bottom-10 -right-10 text-white/[0.03] rotate-12" />
               </div>
 
-              <div className="px-6 py-4 bg-slate-50 rounded-[24px] border border-slate-100 space-y-2">
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Referências e Fórmulas</p>
-                <p className="text-[9px] text-slate-500 leading-tight"><strong>VO2:</strong> (0.43 x score) + 9.6 • <strong>Predito:</strong> Tanaka/Gulati Nomogram</p>
+              <div className="px-6 py-4 bg-slate-50 rounded-[24px] border border-slate-100">
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Fórmulas Clínicas</p>
+                <p className="text-[9px] text-slate-500 leading-tight italic">
+                  VO2 = (0.43 x Score) + 9.6. MET = VO2 / 3.5. Predito ajustado por idade.
+                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* RODAPÉ FIXO CORRIGIDO: Z-INDEX 999 */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] space-y-3">
         <button
           onClick={handleSave}
           className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 ${
-            isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
+            isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white'
           }`}
         >
           {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} className="text-emerald-400" />}
-          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'DASI GRAVADO' : 'GRAVAR CAPACIDADE METABÓLICA'}</span>
+          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'DASI SALVO' : 'GRAVAR CAPACIDADE FUNCIONAL'}</span>
         </button>
         
         <button
           onClick={() => navigate('/dashboard')} 
-          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest"
         >
           <LayoutDashboard size={18} /> PAINEL DE MÓDULOS
         </button>

@@ -5,7 +5,6 @@ import {
   Heart, 
   Info, 
   BookOpen, 
-  ChevronRight,
   Activity as ActivityIcon,
   LayoutDashboard
 } from 'lucide-react';
@@ -44,11 +43,12 @@ export const VSAQ: React.FC = () => {
   const [selectedScore, setSelectedScore] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
 
-  const weight = parseFloat(patientInfo.weight?.toString() || '0');
-  const height = parseFloat(patientInfo.height?.toString() || '0') / 100;
-  const age = parseInt(patientInfo.age?.toString() || '0');
+  // --- SAFEGUARDS ---
+  const weight = parseFloat(patientInfo?.weight?.toString() || '0');
+  const height = parseFloat(patientInfo?.height?.toString() || '0') / 100;
+  const age = parseInt(patientInfo?.age?.toString() || '0');
   const imc = weight > 0 && height > 0 ? weight / (height * height) : 0;
-  const feve = Number(patientInfo.ejectionFraction) || 60;
+  const feve = Number(patientInfo?.ejectionFraction) || 60;
 
   // Cálculo Nomograma do VSAQ (Myers et al.)
   const estimatedMETs = (selectedScore !== null && age > 0) 
@@ -100,7 +100,7 @@ export const VSAQ: React.FC = () => {
           </p>
         </div>
         <div className="bg-indigo-50 px-4 py-2 rounded-2xl flex items-center gap-2">
-            <Heart className="text-indigo-600 animate-pulse" size={18} />
+            <Heart className="text-indigo-600" size={18} />
             <span className="text-sm font-black text-indigo-700 uppercase">{feve}% FEVE</span>
         </div>
       </header>
@@ -109,8 +109,8 @@ export const VSAQ: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-amber-50 p-5 rounded-2xl flex gap-3 border border-amber-100 mb-4">
             <Info className="w-5 h-5 shrink-0 text-amber-600" />
-            <p className="text-amber-900 text-xs leading-relaxed font-bold uppercase tracking-tight">
-              Identifique a atividade que causaria sintomas (fadiga ou dispneia) se realizada hoje.
+            <p className="text-amber-900 text-[11px] leading-tight font-bold uppercase">
+              Qual atividade causaria fadiga ou falta de ar se realizada hoje?
             </p>
           </div>
           
@@ -119,13 +119,13 @@ export const VSAQ: React.FC = () => {
               <button 
                 key={item.score}
                 onClick={() => { setSelectedScore(item.score); setIsSaved(false); }}
-                className={`w-full p-5 rounded-2xl border-2 transition-all flex items-center justify-between text-left group active:scale-[0.98] ${
+                className={`w-full p-5 rounded-2xl border-2 transition-all flex items-center justify-between text-left group ${
                   selectedScore === item.score 
-                    ? 'border-indigo-600 bg-indigo-50/50 shadow-md' 
+                    ? 'border-indigo-600 bg-indigo-50 shadow-md' 
                     : 'border-slate-50 bg-white hover:border-slate-200'
                 }`}
               >
-                <p className={`text-xs font-black leading-tight tracking-tight ${selectedScore === item.score ? 'text-indigo-900' : 'text-slate-600'}`}>
+                <p className={`text-xs font-black tracking-tight ${selectedScore === item.score ? 'text-indigo-900' : 'text-slate-600'}`}>
                   {item.description}
                 </p>
                 <div className={`px-4 py-2 rounded-xl text-[10px] font-black transition-colors shrink-0 ml-4 ${
@@ -144,7 +144,7 @@ export const VSAQ: React.FC = () => {
               <div className="relative z-10 space-y-8">
                 <div className="text-center">
                   <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Capacidade Estimada</p>
-                  <p className="text-7xl font-black text-emerald-400 tabular-nums italic">
+                  <p className="text-7xl font-black text-emerald-400 italic">
                     {selectedScore ? estimatedMETs.toFixed(1) : '--'}
                   </p>
                   <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">Predito: {predictedMETs.toFixed(1)} METs</p>
@@ -152,9 +152,9 @@ export const VSAQ: React.FC = () => {
 
                 {selectedScore && (
                   <div className="bg-white/5 border-l-4 p-5 rounded-r-2xl space-y-1" style={{ borderColor: cbdf.color }}>
-                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Qualificador CBDF</p>
+                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Diagnóstico (CBDF)</p>
                     <p className="text-xl font-black text-white leading-tight">.{cbdf.qualifier} — {cbdf.severity}</p>
-                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tighter">{percentage.toFixed(0)}% do esperado</p>
+                    <p className="text-[11px] text-slate-500 font-bold uppercase">{percentage.toFixed(0)}% do esperado</p>
                   </div>
                 )}
 
@@ -163,8 +163,8 @@ export const VSAQ: React.FC = () => {
                     <BookOpen size={12} />
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Padrão Ouro</span>
                   </div>
-                  <p className="text-[8px] text-slate-500 leading-tight italic">
-                    Cálculo ajustado para IMC {imc.toFixed(1)} kg/m² conforme diretrizes de Myers.
+                  <p className="text-[9px] text-slate-500 leading-tight italic">
+                    Ajuste por IMC ({imc.toFixed(1)} kg/m²) e idade conforme Myers (2017).
                   </p>
                 </div>
               </div>
@@ -174,7 +174,6 @@ export const VSAQ: React.FC = () => {
         </aside>
       </div>
 
-      {/* RODAPÉ FIXO CORRIGIDO: Z-INDEX 999 */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] space-y-3">
         <button
           onClick={handleSave}
@@ -183,7 +182,7 @@ export const VSAQ: React.FC = () => {
           }`}
         >
           {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} className="text-emerald-400" />}
-          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'VSAQ GRAVADO' : 'SALVAR CAPACIDADE METABÓLICA'}</span>
+          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'VSAQ SALVO' : 'GRAVAR CAPACIDADE METABÓLICA'}</span>
         </button>
         
         <button

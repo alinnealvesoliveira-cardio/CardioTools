@@ -1,84 +1,81 @@
 import { PatientInfo, TestResults, Medications } from '../types';
 
+/**
+ * Gera o código da Classificação Brasileira de Diagnóstico Fisioterapêutico (CBDF)
+ * Baseado na Resolução COFFITO 555/2022.
+ * Estrutura: PREFIXO.ESTRUTURA.CAPACIDADE.VASCULAR.FADIGABILIDADE.MEDICAÇÃO
+ */
 export const generateCBDFCode = (
   patient: PatientInfo,
   results: TestResults,
   meds: Medications
 ): string => {
-  const prefix = "D05";
+  const prefix = "D05"; // Domínio Cardiovascular
   const res = results as any; 
 
   // 1. ESTRUTURA (EST)
-  // Verifica FEVE < 50% ou se o usuário marcou alteração estrutural
-  const feveRaw = patient.ejectionFraction ? String(patient.ejectionFraction) : "50";
-  const feveValue = parseInt(feveRaw) || 50; // Agora feveValue é um número real
+  // Define se há dano estrutural cardíaco prévio (FEVE reduzida ou marcador de lesão)
+  const feveValue = parseInt(patient.ejectionFraction?.toString() || "60");
+  const hasStructuralDamage = feveValue < 50 || !!(patient as any).structureAlteration;
+  const structure = hasStructuralDamage ? "01" : "00";
 
-  // CORREÇÃO: Usar feveValue (número) para comparar com 50
-  const structure = (feveValue < 50 || !!(patient as any).structureAlteration) ? "01" : "00";
-
-  // 2. CAPACIDADE AERÓBICA (CAP) - CORREÇÃO GRAVE: MAPEAMENTO DE NOMES
-  let capacityQual = "8"; 
+  // 2. CAPACIDADE AERÓBICA (CAP)
+  // Analisa todos os testes realizados e seleciona o maior nível de deficiência
+  let capacityQual = "8"; // Padrão: Não testado
   
-  // Mapeamos os nomes corretos que vêm do PatientContext/Formulários
   const efficiencies = [
-    res.sixMinuteWalkTest?.efficiency,        // TC6M
-    res.twoMinuteStepTest?.efficiency,        // TD2M
-    res.sitToStandTest?.efficiency,           // TSL (O seu TS5X entra aqui)
+    res.sixMinuteWalkTest?.efficiency,
+    res.twoMinuteStepTest?.efficiency,
+    res.sitToStandTest?.efficiency,
     res.stepTest?.efficiency,
-    res.vsaqScore ? (res.vsaqScore > 5 ? 80 : 40) : null, // Estimativa se houver score
-    res.dasiScore ? (res.dasiScore > 5 ? 80 : 40) : null
-  ].filter(val => val !== undefined && val !== null);
+    res.dasi?.percentage // Adicionado o DASI que finalizamos
+  ].filter(val => val !== undefined && val !== null && !isNaN(val));
 
   if (efficiencies.length > 0) {
-    const finalEfficiency = Math.min(...efficiencies);
+    const minEfficiency = Math.min(...efficiencies);
     
-    if (finalEfficiency < 25) capacityQual = "4";      // Completa
-    else if (finalEfficiency < 50) capacityQual = "3"; // Grave
-    else if (finalEfficiency < 75) capacityQual = "2"; // Moderada
-    else if (finalEfficiency < 95) capacityQual = "1"; // Leve
-    else capacityQual = "0";                           // Normal
+    if (minEfficiency < 25) capacityQual = "4";      // Deficiência Completa
+    else if (minEfficiency < 50) capacityQual = "3"; // Deficiência Grave
+    else if (minEfficiency < 75) capacityQual = "2"; // Deficiência Moderada
+    else if (minEfficiency < 95) capacityQual = "1"; // Deficiência Leve
+    else capacityQual = "0";                         // Sem Deficiência
   }
 
-  // 3. SISTEMA VASCULAR (VAS) - CORREÇÃO: ACESSO AO OBJETO CORRETO
-  let vascQual = "0"; // Padrão normal se avaliado
+  // 3. SISTEMA VASCULAR (VAS)
+  let vascQual = "8"; 
   const vasc = res.vascularAssessment;
 
   if (vasc) {
-    // Se houver edema Godet > 0 ou Stemmer Positivo, já sobe o qualificador
-    const hasEdema = vasc.venous?.godet && parseInt(vasc.venous.godet) > 0;
-    const hasStemmer = vasc.lymphatic?.stemmer === 'Positivo';
-    const diminishedPulses = vasc.arterial?.pulses === 'Diminuídos' || vasc.arterial?.pulses === 'Ausentes';
+    const godet = parseInt(vasc.venous?.godet || "0");
+    const isStemmerPos = vasc.lymphatic?.stemmer === 'Positivo';
+    const isPulseAlt = vasc.arterial?.pulses === 'Diminuídos' || vasc.arterial?.pulses === 'Ausentes';
 
-    if (hasEdema || hasStemmer || diminishedPulses) {
-      // Lógica de gravidade simplificada para o código
-      if (hasStemmer || (vasc.venous?.godet >= 3)) vascQual = "3"; 
-      else vascQual = "2";
-    }
-  } else {
-    vascQual = "8"; // Não avaliado
+    if (isStemmerPos || godet >= 3) vascQual = "3";
+    else if (godet > 0 || isPulseAlt) vascQual = "2";
+    else vascQual = "0";
   }
 
-  // 4. FADIGABILIDADE / FC (FAD) - CORREÇÃO: LÓGICA INVERTIDA
+  // 4. FADIGABILIDADE / CRONOTROPISMO (FAD)
   let fadQual = "8";
-  const hrRest = res.sixMinuteWalkTest?.restingHR || res.sitToStandTest?.restingHR || res.twoMinuteStepTest?.restingHR;
-  const hrPeak = res.sixMinuteWalkTest?.peakHR || res.sitToStandTest?.peakHR || res.twoMinuteStepTest?.peakHR;
+  // Busca dados de FC peak e rest de qualquer teste disponível
+  const hrRest = res.sixMinuteWalkTest?.restingHR || res.sitToStandTest?.restingHR;
+  const hrPeak = res.sixMinuteWalkTest?.peakHR || res.sitToStandTest?.peakHR;
   const borgExercise = res.fatigabilityScales?.exercise?.fatigue || 0;
 
   if (hrRest && hrPeak) {
-    const deltaHR = hrPeak - hrRest;
-    // Se o coração NÃO sobe pelo menos 10-15 bpm no esforço (Incompetência), há alteração.
-    // Se o Borg for > 3 (Moderado), também qualifica como alteração.
-    if (deltaHR < 10 || borgExercise >= 3) {
-      fadQual = borgExercise >= 7 ? "3" : "2"; 
-    } else {
-      fadQual = "0";
-    }
+    const chronotropicIncompetence = (hrPeak - hrRest) < 15;
+    
+    if (chronotropicIncompetence || borgExercise >= 7) fadQual = "3";
+    else if (borgExercise >= 4) fadQual = "2";
+    else if (borgExercise >= 2) fadQual = "1";
+    else fadQual = "0";
   }
 
   // 5. PERFIL FARMACOLÓGICO (MED)
-  // Se usa medicações que mascaram a FC ou tratam ICC, qualificador 4
-  const hasStrongMeds = meds?.betablockers || meds?.antiarrhythmics || meds?.digitalis;
-  const medQual = hasStrongMeds ? "4" : "0";
+  // Medicamentos que alteram a resposta hemodinâmica ou indicam falência de bomba
+  const isMedicated = meds?.betablockers || meds?.antiarrhythmics || meds?.digitalis || meds?.diuretics;
+  const medQual = isMedicated ? "4" : "0";
 
+  // Retorno no formato: D05.EST.CAP.VAS.FAD.MED
   return `${prefix}.${structure}.${capacityQual}.${vascQual}.${fadQual}.${medQual}`;
 };

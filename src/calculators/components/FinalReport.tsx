@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  FileText, Download, User, Activity, ShieldCheck, Stethoscope, Wind, Waves, BookOpen, Timer, BarChart3
+  Download, User, Activity, ShieldCheck, Stethoscope, Waves, Timer, AlertCircle, Info
 } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
@@ -12,121 +12,169 @@ export const FinalReport: React.FC = () => {
   const { patientInfo, medications, testResults } = usePatient();
   const { user } = useAuth(); 
 
-  // Geramos o código e garantimos que os dados de CATE e Medicamentos influenciem o final
+  // Geração de diagnósticos e estratificação
   const cbdfFullCode = generateCBDFCode(patientInfo, testResults, medications);
   const codeParts = cbdfFullCode.split('.');
   const risk = calculateRisk(patientInfo, testResults);
 
-  // Acessores seguros para evitar os erros das imagens (usando cast 'as any' para contornar tipagem incompleta)
+  // Acessores seguros com Fallback
   const vascular = (testResults?.vascularAssessment || {}) as any;
   const sitToStand = (testResults?.sitToStandTest || {}) as any;
   const fatigability = (testResults?.fatigabilityScales?.exercise || {}) as any;
+  const dasi = (testResults?.dasi || {}) as any;
 
   const handlePrint = async () => {
     if (user) await logActivity(user.id, 'Gerou PDF do Relatório Final');
     window.print();
   };
 
-  if (!patientInfo?.name) return <div className="p-10 text-center uppercase font-black">Aguardando dados do paciente...</div>;
+  if (!patientInfo?.name) {
+    return (
+      <div className="p-20 text-center space-y-4">
+        <AlertCircle className="w-12 h-12 text-slate-300 mx-auto" />
+        <p className="uppercase font-black text-slate-400 tracking-widest text-xs">Aguardando dados do paciente para consolidar relatório...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-8 pb-32 print:p-0 text-slate-900">
-      {/* HEADER */}
+      {/* HEADER - IDENTIDADE VISUAL */}
       <header className="flex items-end justify-between border-b-2 border-slate-100 pb-6">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-indigo-600 mb-1">
             <Stethoscope className="w-5 h-5" />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em]">Prontuário de Fisioterapia Cardiovascular</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.3em]">Fisioterapia Cardiovascular Especializada</span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Relatório Final</h1>
-          <p className="text-slate-400 text-[10px] font-black italic uppercase tracking-widest">Resolução COFFITO 555/2022 - CBDF</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Relatório Clínico</h1>
+          <div className="flex items-center gap-4 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+            <span>Paciente: {patientInfo.name}</span>
+            <span className="w-1 h-1 bg-slate-300 rounded-full" />
+            <span>ID: {new Date().getFullYear()}-{Math.floor(Math.random() * 1000)}</span>
+          </div>
         </div>
-        <button onClick={handlePrint} className="print:hidden bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-2">
-          <Download className="w-4 h-4 text-emerald-400" /> Exportar PDF
+        <button onClick={handlePrint} className="print:hidden bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200">
+          <Download className="w-4 h-4 text-emerald-400" /> Exportar Relatório
         </button>
       </header>
 
-      {/* BLOCO DE RISCO E CATE */}
+      {/* RISCO CARDIOVASCULAR E CATE */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 break-inside-avoid">
         <div className={`md:col-span-2 p-8 rounded-[2.5rem] border-2 ${risk.border} ${risk.bg} flex items-center justify-between`}>
           <div>
-            <span className="text-[10px] font-black uppercase text-slate-400">Estratificação (AACVPR)</span>
-            <h3 className={`text-3xl font-black ${risk.color}`}>{risk.level}</h3>
-            <p className="text-[10px] font-bold text-slate-500 uppercase italic">{risk.desc}</p>
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Estratificação (AACVPR)</span>
+            <h3 className={`text-4xl font-black ${risk.color} tracking-tighter`}>{risk.level}</h3>
+            <p className="text-[10px] font-bold text-slate-500 uppercase italic mt-1">{risk.desc}</p>
           </div>
-          <ShieldCheck className={`w-12 h-12 ${risk.color}`} />
+          <ShieldCheck className={`w-14 h-14 ${risk.color} opacity-80`} />
         </div>
-        <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-200">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Obstrução (CATE)</span>
-          <div className="text-xl font-black text-slate-800 uppercase leading-tight">
-            {patientInfo?.cateResult || 'Não Informado'}
-          </div>
-        </div>
-      </section>
-
-      {/* DIAGNÓSTICO CBDF CORRIGIDO */}
-      <section className="bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl border-b-[12px] border-indigo-500 break-inside-avoid">
-        <div className="flex flex-col lg:flex-row justify-between items-center gap-8">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full mb-4">
-              <Activity className="w-3 h-3 text-emerald-400" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Código Diagnóstico Atualizado</span>
-            </div>
-            <h2 className="text-6xl md:text-7xl font-black tracking-tighter font-mono">{cbdfFullCode}</h2>
-            <p className="mt-4 text-slate-400 text-[10px] uppercase font-bold">
-              *Qualificadores: EST: {codeParts[1]} | CAP: {codeParts[2]} | VAS: {codeParts[3]} | FAD: {codeParts[4]} | MED: {codeParts[5]}
-            </p>
+        
+        <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-200 flex flex-col justify-center">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Comprometimento Coronário</span>
+          <div className="text-lg font-black text-slate-800 uppercase leading-tight italic">
+            {patientInfo?.cateResult || 'Não Avaliado'}
           </div>
         </div>
       </section>
 
-      {/* DETALHAMENTO CLÍNICO (AQUI CORRIGIMOS AS PROPRIEDADES) */}
+      {/* CORE: DIAGNÓSTICO CBDF */}
+      <section className="bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl border-b-[12px] border-indigo-600 break-inside-avoid relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full mb-6">
+            <Activity className="w-3 h-3 text-emerald-400" />
+            <span className="text-[9px] font-black uppercase tracking-[0.2em]">Cód. Funcional Fisioterapêutico (CBDF)</span>
+          </div>
+          <h2 className="text-6xl md:text-7xl font-black tracking-tighter font-mono text-indigo-100">{cbdfFullCode}</h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8 pt-8 border-t border-white/10">
+            {[
+              { label: 'Estrutura', val: codeParts[1] },
+              { label: 'Capacidade', val: codeParts[2] },
+              { label: 'Vascular', val: codeParts[3] },
+              { label: 'Fadiga', val: codeParts[4] },
+              { label: 'Fármacos', val: codeParts[5] }
+            ].map((p, i) => (
+              <div key={i}>
+                <p className="text-[8px] uppercase font-black text-slate-500 mb-1">{p.label}</p>
+                <p className="text-xl font-black tracking-tight">.{p.val}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="absolute top-0 right-0 p-10 opacity-10">
+            <Stethoscope size={180} />
+        </div>
+      </section>
+
+      {/* DETALHAMENTO DAS CAPACIDADES */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 break-inside-avoid">
-        {/* Capacidade Aeróbica/Funcional */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 text-slate-400 border-b pb-2">
+        {/* Funcional e Aeróbica */}
+        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-6">
+          <div className="flex items-center gap-2 text-slate-400 border-b border-slate-50 pb-3">
             <Timer size={16} className="text-indigo-500" />
-            <h3 className="text-[10px] font-black uppercase tracking-widest">Capacidade Funcional</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-widest">Capacidade e Performance</h3>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-500 uppercase">Teste (TSL/5X):</span>
-            <span className="text-lg font-black text-indigo-600">{sitToStand?.reps || '0'} Reps</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-500 uppercase">Fadiga (Borg):</span>
-            <span className="text-lg font-black text-rose-500">{fatigability?.fatigue || '0'} (Leve)</span>
+          
+          <div className="space-y-4">
+            <div className="flex justify-between items-end border-b border-dashed border-slate-100 pb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Resistência (TSL 1min):</span>
+              <span className="text-lg font-black text-indigo-600 italic">{sitToStand?.reps || '0'} Reps</span>
+            </div>
+            <div className="flex justify-between items-end border-b border-dashed border-slate-100 pb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">DASI (METs Estimados):</span>
+              <span className="text-lg font-black text-emerald-600">{dasi?.estimatedMETs?.toFixed(1) || '0.0'} METs</span>
+            </div>
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Fadiga de Esforço (Borg):</span>
+              <span className="text-lg font-black text-rose-500">{fatigability?.fatigue || '0'}</span>
+            </div>
           </div>
         </div>
 
-        {/* Vascular - CORREÇÃO DAS CHAVES DAS IMAGENS */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 text-slate-400 border-b pb-2">
+        {/* Sistema Vascular */}
+        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-6">
+          <div className="flex items-center gap-2 text-slate-400 border-b border-slate-50 pb-3">
             <Waves size={16} className="text-blue-500" />
-            <h3 className="text-[10px] font-black uppercase tracking-widest">Avaliação Vascular</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-widest">Hemodinâmica Periférica</h3>
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs font-bold">
-              <span className="text-slate-400 uppercase">Pulsos Periféricos:</span>
-              <span className="text-slate-900 uppercase">{vascular?.arterial?.pulses || 'Presentes'}</span>
+          
+          <div className="space-y-4">
+            <div className="flex justify-between items-end border-b border-dashed border-slate-100 pb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Pulsos Arteriais:</span>
+              <span className="text-[11px] font-black text-slate-700 uppercase">{vascular?.arterial?.pulses || 'Normais'}</span>
             </div>
-            <div className="flex justify-between text-xs font-bold">
-              <span className="text-slate-400 uppercase">Edema (Godet):</span>
-              <span className="text-slate-900">{vascular?.venous?.godet || '0'}+</span>
+            <div className="flex justify-between items-end border-b border-dashed border-slate-100 pb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Edema (Escala Godet):</span>
+              <span className="text-[11px] font-black text-slate-700">{vascular?.venous?.godet || '0'}+ Graus</span>
             </div>
-            <div className="flex justify-between text-xs font-bold">
-              <span className="text-slate-400 uppercase">Stemmer:</span>
-              <span className={vascular?.lymphatic?.stemmer === 'Positivo' ? 'text-rose-500' : 'text-emerald-500'}>
-                {vascular?.lymphatic?.stemmer || 'NEGATIVO'}
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Sinal de Stemmer:</span>
+              <span className={`text-[11px] font-black uppercase ${vascular?.lymphatic?.stemmer === 'Positivo' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                {vascular?.lymphatic?.stemmer || 'Negativo'}
               </span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* REFERÊNCIAS */}
-      <section className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-[8px] text-slate-500 italic">
-        <strong>Referências:</strong> Britto RR (2013) | Bhat AG (2021) | Resolução COFFITO 555/2022 (CBDF).
-      </section>
+      {/* NOTA DE RODAPÉ / RESPONSABILIDADE */}
+      <footer className="space-y-4">
+        <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 flex gap-4 items-start">
+          <Info className="w-5 h-5 text-indigo-400 shrink-0" />
+          <p className="text-[9px] text-slate-500 leading-relaxed">
+            <strong>Nota Clínica:</strong> Este relatório é gerado com base nos critérios da Resolução COFFITO 555/2022 e diretrizes da AACVPR. O código CBDF reflete o estado funcional no momento da avaliação. Condutas terapêuticas devem ser ajustadas conforme a evolução clínica e resposta hemodinâmica.
+          </p>
+        </div>
+        
+        <div className="flex justify-between items-center px-4">
+          <div className="text-[8px] text-slate-400 uppercase font-black tracking-widest">
+            Documento Gerado via App de Reabilitação Cardiovascular • 2026
+          </div>
+          <div className="text-[8px] text-slate-400 italic">
+            Ref: Britto RR (2013) | Bhat AG (2021) | Gulati et al (2010).
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

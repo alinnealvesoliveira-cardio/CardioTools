@@ -38,6 +38,24 @@ export interface ScoreGroup {
   items: ScoreItem[];
 }
 
+
+// Adicione isto ao seu types.ts
+export type CategoryName = 
+  | 'Home'
+  | 'Cadastro' 
+  | 'Avaliação Autonômica' 
+  | 'Vascular' 
+  | 'Capacidade Aeróbica' 
+  | 'Avaliação de Sintomas' 
+  | 'DASI'
+  | 'Relatório Final';
+
+// Atualize sua interface Category existente para usar o nome tipado
+export interface Category {
+  CategoryId: CategoryName; // Agora o ID deve ser um dos nomes acima
+  name: string;
+  icon: React.ElementType;
+}
 // ==========================================
 // 2. INTERFACES DE APOIO (CIF E RESULTADOS)
 // ==========================================

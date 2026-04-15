@@ -1,63 +1,64 @@
 /**
  * Estratificação de Risco para Reabilitação Cardiovascular
- * Baseado nas diretrizes AACVPR e SBC.
+ * Baseado nas diretrizes AACVPR, SBC e AHA.
  */
 export const calculateRisk = (patientInfo: any, testResults: any) => {
-  // 1. Fração de Ejeção (FEVE) - Critério hemodinâmico crítico
+  // 1. Fração de Ejeção (FEVE)
   const feve = patientInfo?.ejectionFraction ? parseInt(patientInfo.ejectionFraction) : 60;
   
-  // 2. Estimativa de METs via TC6M (Fórmula de Troosters et al.)
-  // VO2 (ml/kg/min) = (0.02 * distância) + (baseada em idade/peso/sexo)
-  // Simplificação clínica para METs:
-  const distance = testResults?.sixMinuteWalkTest?.distance || 0;
-  const estimatedMETs = distance > 0 ? (distance * 0.03) / 3.5 : 0; 
-
-  // 3. Critérios de Instabilidade e Sintomas
-  const hasAngina = testResults?.symptoms?.angina?.type !== 'none';
-  const hasIschemia = testResults?.vascularAssessment?.itb < 0.9;
+  // 2. Capacidade Funcional (METs) 
+  // Prioridade: DASI/VSAQ (mais precisos para METs) > Estimativa por distância
+  const METsFromTests = testResults?.dasi?.estimatedMETs || testResults?.vsaq?.estimatedMETs;
   
-  // --- LÓGICA DE ESTRATIFICAÇÃO ---
+  const distance = testResults?.sixMinuteWalkTest?.distance || 0;
+  const estimatedMETsFromDistance = distance > 0 ? (distance * 0.03) / 3.5 : 0; 
+  
+  const finalMETs = METsFromTests || estimatedMETsFromDistance || 0;
+
+  // 3. Critérios de Instabilidade
+  const hasAngina = testResults?.symptoms?.angina?.type && testResults.symptoms.angina.type !== 'none';
+  const hasLowITB = testResults?.vascularAssessment?.arterial?.itb && parseFloat(testResults.vascularAssessment.arterial.itb) < 0.9;
+  const hasStructuralDamage = !!patientInfo?.structureAlteration;
+
+  // --- LÓGICA DE ESTRATIFICAÇÃO (AACVPR / SBC) ---
 
   // ALTO RISCO (High Risk)
-  // FEVE < 40%, Capacidade Funcional baixa, ou presença de isquemia/sintomas
-  if (feve < 40 || (estimatedMETs > 0 && estimatedMETs < 5) || hasAngina || hasIschemia) {
+  // Critérios: FEVE < 40%, METs < 5, Angina ou Isquemia detectada
+  if (feve < 40 || (finalMETs > 0 && finalMETs < 5) || hasAngina || hasLowITB) {
     return {
       level: 'ALTO RISCO',
       qualifier: 'Classe C/D',
-      color: '#e11d48', // Rose 600
+      color: 'text-rose-600',
       bg: 'bg-rose-50/50',
-      border: 'border-rose-100',
-      text: 'text-rose-700',
-      desc: 'Monitorização contínua de ECG necessária. Supervisão médica direta e limitação estrita de carga.',
-      iconColor: 'text-rose-500'
+      border: 'border-rose-200',
+      desc: 'Monitorização contínua (ECG) obrigatória. Alta probabilidade de eventos. Supervisão direta.',
+      status: 'critical'
     };
   }
 
   // RISCO MODERADO (Intermediate Risk)
-  // FEVE 40-49% ou METs entre 5 e 7
-  if ((feve >= 40 && feve <= 49) || (estimatedMETs >= 5 && estimatedMETs <= 7)) {
+  // Critérios: FEVE 40-49%, METs 5-7 ou Dano Estrutural sem sintomas agudos
+  if ((feve >= 40 && feve <= 49) || (finalMETs >= 5 && finalMETs <= 7) || hasStructuralDamage) {
     return {
       level: 'RISCO MODERADO',
       qualifier: 'Classe B',
-      color: '#d97706', // Amber 600
+      color: 'text-amber-600',
       bg: 'bg-amber-50/50',
-      border: 'border-amber-100',
-      text: 'text-amber-700',
-      desc: 'Monitorização intermitente recomendada. Progressão cautelosa de intensidade conforme sintomas.',
-      iconColor: 'text-amber-500'
+      border: 'border-amber-200',
+      desc: 'Monitorização intermitente. Progressão gradual. Sinais vitais a cada troca de fase.',
+      status: 'warning'
     };
   }
 
   // BAIXO RISCO (Low Risk)
-  // FEVE > 50%, boa capacidade funcional, sem sintomas complicadores
+  // Critérios: FEVE >= 50% e METs > 7
   return {
     level: 'BAIXO RISCO',
     qualifier: 'Classe A',
-    color: '#059669', // Emerald 600
+    color: 'text-emerald-600',
     bg: 'bg-emerald-50/50',
-    border: 'border-emerald-100',
-    text: 'text-emerald-700',
-    desc: 'Supervisão padrão. Monitorização de ECG conforme protocolo institucional. Progressão livre.',
-    iconColor: 'text-emerald-500'
+    border: 'border-emerald-200',
+    desc: 'Supervisão padrão. Progressão conforme protocolo clínico. Baixo risco de eventos agudos.',
+    status: 'safe'
   };
 };
