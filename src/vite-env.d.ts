@@ -8,14 +8,3 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
-
-// Sintaxe minimalista: sem nomes de variáveis internas para evitar sublinhados vermelhos
-declare module "*.css" {
-  const content: { [className: string]: string };
-  export default content;
-}
-declare module "*.png";
-declare module "*.svg";
-declare module "*.jpg";
-declare module "*.jpeg";
-declare module "*.gif";
