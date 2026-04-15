@@ -10,7 +10,8 @@ import {
   FolderHeart,
   UserPlus,
   FileBarChart,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 import { Category } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -30,20 +31,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { logout } = useAuth();
 
-  // 1. MENU ATUALIZADO PARA REFLETIR OS MÓDULOS CLÍNICOS
   const menuItems = [
     { id: 'Home', label: 'Dashboard', icon: Home },
     { id: 'Cadastro', label: 'Cadastro / Anamnese', icon: UserPlus },
-    { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart }, // Ícone Heart para Perfil/Sinais
-    { id: 'Vascular', label: 'Integridade Vascular', icon: FolderHeart },     // Ícone FolderHeart para Vascular
+    { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart },
+    { id: 'Vascular', label: 'Integridade Vascular', icon: FolderHeart },
     { id: 'Capacidade Aeróbica', label: 'Capacidade Aeróbica', icon: Activity },
-    { id: 'Avaliação de Sintomas', label: 'Sintomas', icon: Search },          // Sincronizado com o novo App.tsx
+    { id: 'Avaliação de Sintomas', label: 'Sintomas', icon: Search },
     { id: 'Relatório Final', label: 'Relatório Final', icon: FileBarChart },
   ];
 
   return (
     <>
-      {/* Mobile/Desktop Overlay */}
+      {/* Overlay refinado com Blur mais intenso */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -51,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onToggle}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-40"
           />
         )}
       </AnimatePresence>
@@ -59,67 +59,89 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.aside
-            initial={{ x: -280 }}
+            initial={{ x: -300 }}
             animate={{ x: 0 }}
-            exit={{ x: -280 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed left-0 top-0 h-full w-[280px] bg-vitality-graphite text-slate-300 z-50 flex flex-col border-r border-slate-800 shadow-2xl"
+            exit={{ x: -300 }}
+            transition={{ type: 'spring', damping: 22, stiffness: 180 }}
+            className="fixed left-0 top-0 h-full w-[300px] bg-[#0F172A] text-slate-400 z-50 flex flex-col border-r border-slate-800/50 shadow-[20px_0_50px_rgba(0,0,0,0.3)]"
           >
-            {/* Logo Section */}
-            <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
+            {/* Seção da Logo (Sincronizada com o Header) */}
+            <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800/50 bg-slate-900/20">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-vitality-lime flex items-center justify-center flex-shrink-0">
-                  <Activity className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <Activity className="w-6 h-6 text-slate-900" />
                 </div>
-                <span className="font-bold text-white text-lg tracking-tight">
-                  CardioTools
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-xl font-black text-white italic uppercase tracking-tighter leading-none">
+                    Cardio<span className="text-emerald-500">Tools</span>
+                  </span>
+                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">
+                    v.2.0.26
+                  </span>
+                </div>
               </div>
               <button 
                 onClick={onToggle}
-                className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                className="p-2 hover:bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-all active:scale-90"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft size={20} />
               </button>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    // 2. LOGICA DE NAVEGAÇÃO
-                    // Se clicar em Home, o App.tsx reseta o selectedModule e volta para as pastas
-                    onSelectCategory(item.id as any);
-                    onToggle(); 
-                  }}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group relative ${
-                    selectedCategory === item.id 
-                      ? 'bg-vitality-lime/10 text-vitality-lime' 
-                      : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'
-                  }`}
-                >
-                  <item.icon className={`w-5 h-5 flex-shrink-0 ${selectedCategory === item.id ? 'text-vitality-lime' : ''}`} />
-                  <span className="text-sm font-medium">
-                    {item.label}
-                  </span>
-                </button>
-              ))}
+            {/* Navegação Estilizada */}
+            <nav className="flex-1 py-8 px-4 space-y-2 overflow-y-auto custom-scrollbar">
+              <p className="px-4 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-4">Módulos Clínicos</p>
+              
+              {menuItems.map((item) => {
+                const isActive = selectedCategory === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      onSelectCategory(item.id as any);
+                      onToggle(); 
+                    }}
+                    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+                      isActive 
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]' 
+                        : 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-100 border border-transparent'
+                    }`}
+                  >
+                    {/* Indicador Ativo Lateral */}
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeIndicator"
+                        className="absolute left-0 w-1 h-6 bg-emerald-500 rounded-r-full"
+                      />
+                    )}
+
+                    <item.icon size={22} className={`${isActive ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-200'}`} />
+                    
+                    <span className={`text-sm tracking-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
+                      {item.label}
+                    </span>
+
+                    {isActive && (
+                      <Sparkles size={12} className="ml-auto text-emerald-400 animate-pulse" />
+                    )}
+                  </button>
+                );
+              })}
             </nav>
 
-            {/* Footer Actions */}
-            <div className="p-3 border-t border-slate-800 space-y-2">
-              <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 text-slate-400 transition-all">
-                <Settings className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm font-medium">Configurações</span>
+            {/* Ações de Rodapé */}
+            <div className="p-4 bg-slate-900/30 border-t border-slate-800/50 space-y-2">
+              <button className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-800/50 text-slate-500 hover:text-white transition-all group border border-transparent">
+                <Settings size={20} className="group-hover:rotate-45 transition-transform" />
+                <span className="text-sm font-bold tracking-tight">Configurações</span>
               </button>
+              
               <button 
                 onClick={logout}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all"
+                className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-all border border-transparent group"
               >
-                <LogOut className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm font-medium">Sair do Sistema</span>
+                <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
+                <span className="text-sm font-bold tracking-tight">Sair do Sistema</span>
               </button>
             </div>
           </motion.aside>

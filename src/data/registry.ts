@@ -1,162 +1,158 @@
-import React from 'react';
 import { Calculator } from '../types';
 
-// 1. Importações da pasta raiz de componentes
-import { TSL5X } from '../calculators/components/TSL5X';
-import { TSL30S } from '../calculators/components/TSL30S';
+// ==========================================
+// 1. IMPORTAÇÃO DOS COMPONENTES
+// Caminhos ajustados conforme sua árvore de arquivos real
+// ==========================================
+
+// --- GRUPO A: Localizados em src/calculators/components/ ---
+import { PatientRegistration } from '../calculators/components/PatientRegistration';
+import { TC6M } from '../calculators/components/TC6M';
 import { TD2M } from '../calculators/components/TD2M';
 import { TSL1M } from '../calculators/components/TSL1M';
-import { TC6M } from '../calculators/components/TC6M';
-import { VSAQ } from '../calculators/components/VSAQ';
+import { TSL30S } from '../calculators/components/TSL30S';
+import { TSL5X } from '../calculators/components/TSL5X';
 import { TUG } from '../calculators/components/TUG';
-import { DASI } from '../calculators/components/DASI';
-import { PatientRegistration } from '../calculators/components/PatientRegistration';
+import { VSAQ } from '../calculators/components/VSAQ';
 import { FinalReport } from '../calculators/components/FinalReport';
 
-// 2. Subpastas específicas
-import { HRV } from '../calculators/components/autonomic/HRV';
-import { AnginaAlgorithm } from '../calculators/components/diagnosis/AnginaAlgorithm';
-import { ClaudicationAlgorithm } from '../calculators/components/diagnosis/ClaudicationAlgorithm';
-import { FatigabilityScales } from '../calculators/components/diagnosis/FatigabilityScales';
-import { FunctionalDiagnosis } from '../calculators/components/diagnosis/FunctionalDiagnosis';
+// --- GRUPO B: Hemodinâmica (src/calculators/components/hemodynamics/) ---
+// Ajustado para o nome da pasta no plural e arquivos corretos
 import { ABI } from '../calculators/components/hemodynamics/ABI';
 import { HRR } from '../calculators/components/hemodynamics/HRR';
 import { OrthostaticDrop } from '../calculators/components/hemodynamics/OrthostaticDrop';
 
-// AQUI ESTÁ O QUE TINHA SUMIDO:
+// --- GRUPO C: Vascular (src/calculators/components/vascular/) ---
+// Apenas o exame físico está aqui na sua árvore
 import { VascularPhysicalExam } from '../calculators/components/vascular/VascularPhysicalExam';
 
+// --- GRUPO D: Especialidades (Subpastas de src/calculators/components/) ---
+// HRV, Angina, Claudicação e Fadigabilidade estão em subpastas
+import { HRV } from '../calculators/components/autonomic/HRV';
+import { AnginaAlgorithm } from '../calculators/components/diagnosis/AnginaAlgorithm';
+import { ClaudicationAlgorithm } from '../calculators/components/diagnosis/ClaudicationAlgorithm';
+import { FatigabilityScales } from '../calculators/components/diagnosis/FatigabilityScales';
+
+// ==========================================
+// 2. REGISTRO DE CALCULADORAS
+// ==========================================
 export const CALCULATORS: Calculator[] = [
   {
     id: 'patient-registration',
     name: 'Cadastro / Anamnese Rápida',
-    description: 'Dados antropométricos e perfil farmacológico para base de cálculo.',
+    description: 'Perfil antropométrico, farmacológico e clínico basal.',
     category: 'Cadastro',
     component: PatientRegistration
   },
   {
+    id: 'tc6m',
+    name: 'Caminhada de 6 Minutos (TC6M)',
+    description: 'Avaliação da capacidade aeróbica e tolerância ao esforço.',
+    category: 'Capacidade Aeróbica',
+    component: TC6M
+  },
+  {
+    id: 'td2m',
+    name: 'Teste de Degrau / Marcha (2 min)',
+    description: 'Alternativa funcional para avaliação cardiovascular.',
+    category: 'Capacidade Aeróbica',
+    component: TD2M
+  },
+  {
+    id: 'tsl-1m',
+    name: 'Sentar-Levantar (1 min)',
+    description: 'Avaliação da resistência muscular de membros inferiores.',
+    category: 'Capacidade Aeróbica',
+    component: TSL1M
+  },
+  {
+    id: 'tsl-30s',
+    name: 'Sentar-Levantar (30 seg)',
+    description: 'Teste de força e potência funcional.',
+    category: 'Capacidade Aeróbica',
+    component: TSL30S
+  },
+  {
+    id: 'tsl-5x',
+    name: 'Sentar-Levantar (5 vezes)',
+    description: 'Avaliação de mobilidade e risco de quedas.',
+    category: 'Capacidade Aeróbica',
+    component: TSL5X
+  },
+  {
+    id: 'tug',
+    name: 'Timed Up and Go (TUG)',
+    description: 'Equilíbrio dinâmico e agilidade funcional.',
+    category: 'Capacidade Aeróbica',
+    component: TUG
+  },
+  {
+    id: 'vsaq',
+    name: 'Protocolo VSAQ',
+    description: 'Questionário de Atividade Física de Veteranos.',
+    category: 'Capacidade Aeróbica',
+    component: VSAQ
+  },
+  {
     id: 'hrv',
     name: 'Variabilidade da FC (VFC)',
-    description: 'Avaliação do tônus autonômico através do RMSSD.',
+    description: 'Análise do balanço autonômico via RMSSD e SDNN.',
     category: 'Avaliação Autonômica',
     component: HRV
   },
   {
+    id: 'orthostatic',
+    name: 'Hipotensão Ortostática',
+    description: 'Resposta pressórica à mudança de decúbito.',
+    category: 'Avaliação Autonômica',
+    component: OrthostaticDrop
+  },
+  {
+    id: 'hrr',
+    name: 'Recuperação da FC (HRR)',
+    description: 'Análise da reativação vagal pós-esforço.',
+    category: 'Avaliação Autonômica',
+    component: HRR
+  },
+  {
     id: 'angina-algorithm',
     name: 'Algoritmo de Angina',
-    description: 'Triagem clínica para Doença Arterial Coronariana (DAC).',
-    category: 'Sintomas',
+    description: 'Triagem e classificação de dor precordial.',
+    category: 'Avaliação de Sintomas',
     component: AnginaAlgorithm
   },
   {
-    id: 'claudication-algorithm',
+    id: 'claudication',
     name: 'Algoritmo de Claudicação',
-    description: 'Triagem clínica para Doença Arterial Periférica (DAP).',
-    category: 'Sintomas',
+    description: 'Avaliação de dor em membros inferiores.',
+    category: 'Avaliação de Sintomas',
     component: ClaudicationAlgorithm
   },
   {
-    id: 'fatigability-scales',
+    id: 'fatigability',
     name: 'Escalas de Fadigabilidade',
-    description: 'Avaliação subjetiva do esforço (Borg Modificada).',
+    description: 'Monitoramento de Borg e percepção de esforço.',
     category: 'Avaliação de Sintomas',
     component: FatigabilityScales
   },
   {
-    id: 'functional-diagnosis',
-    name: 'Diagnóstico Funcional',
-    description: 'Classificação baseada na CBDF e funcionalidade.',
-    category: 'Diagnóstico',
-    component: FunctionalDiagnosis
-  },
-  {
-    id: 'vascular-exam', // REATIVADO
-    name: 'Avaliação Vascular Completa',
-    description: 'Exame físico, Pulsos, CEAP e Edema.',
+    id: 'vascular-exam',
+    name: 'Exame Físico Vascular',
+    description: 'Avaliação de pulsos, edema e sinais tróficos.',
     category: 'Vascular',
     component: VascularPhysicalExam
   },
   {
     id: 'abi',
     name: 'Índice Tornozelo-Braquial (ITB)',
-    description: 'Ferramenta diagnóstica para Doença Arterial Periférica (DAP).',
+    description: 'Rastreio de doença arterial periférica.',
     category: 'Vascular',
     component: ABI
   },
   {
-    id: 'hrr',
-    name: 'Recuperação da FC (HRR)',
-    description: 'Avaliação da reativação vagal após o esforço.',
-    category: 'Avaliação Autonômica',
-    component: HRR
-  },
-  {
-    id: 'orthostatic',
-    name: 'Hipotensão Ortostática',
-    description: 'Avaliação da resposta pressórica à mudança de decúbito.',
-    category: 'Avaliação Autonômica',
-    component: OrthostaticDrop
-  },
-  {
-    id: 'tsl30s',
-    name: 'Sentar e Levantar 30s',
-    category: 'Capacidade Aeróbica',
-    component: TSL30S,
-    description: 'Resistência de membros inferiores.'
-  },
-  {
-    id: 'tsl5x',
-    name: 'Teste de Sentar e Levantar 5x',
-    category: 'Capacidade Aeróbica',
-    component: TSL5X,
-    description: 'Força de membros inferiores.'
-  },
-  {
-    id: 'td2m',
-    name: 'Marcha Estacionária 2 min',
-    category: 'Capacidade Aeróbica',
-    component: TD2M,
-    description: 'Teste de resistência funcional.'
-  },
-  {
-    id: 'tsl1m',
-    name: 'Sentar e Levantar 1 min',
-    category: 'Capacidade Aeróbica',
-    component: TSL1M,
-    description: 'Capacidade funcional.'
-  },
-  {
-    id: 'tc6m',
-    name: 'Caminhada de 6 Minutos',
-    category: 'Capacidade Aeróbica',
-    component: TC6M,
-    description: 'Padrão-ouro submáximo.'
-  },
-  {
-    id: 'vsaq',
-    name: 'VSAQ',
-    category: 'Capacidade Aeróbica',
-    component: VSAQ,
-    description: 'Estimativa de METs por atividades.'
-  },
-  {
-    id: 'dasi',
-    name: 'DASI Index',
-    category: 'Capacidade Aeróbica',
-    component: DASI,
-    description: 'Estimativa de METs (AHA).'
-  },
-  {
-    id: 'tug',
-    name: 'Timed Up and Go (TUG)',
-    category: 'Capacidade Aeróbica',
-    component: TUG,
-    description: 'Mobilidade e risco de queda.'
-  },
-  {
     id: 'final-report',
     name: 'Relatório Final',
-    description: 'Consolidação de todos os dados e interpretação.',
+    description: 'Consolidação de todos os achados clínicos.',
     category: 'Relatório Final',
     component: FinalReport
   }

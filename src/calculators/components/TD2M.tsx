@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Info, BookOpen, Activity, Save, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Info, BookOpen, Activity, Save, CheckCircle2, ChevronRight, LayoutDashboard } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export const TD2M: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
+  const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(false);
 
-  // Estados locais para Sintomas Pós-Teste (Padrão CardioTools)
+  // Estados locais para Sintomas Pós-Teste
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
@@ -58,7 +60,6 @@ export const TD2M: React.FC = () => {
   const handleGlobalSave = (data: any) => {
     const efficiency = (data.count / predictedRikli) * 100;
 
-    // RESOLUÇÃO DAS COBRINHAS: Garantindo que os objetos existam antes do spread (...)
     const currentScales = testResults?.fatigabilityScales || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
       exercise: { dyspnea: 0, fatigue: 0 } 
@@ -77,7 +78,6 @@ export const TD2M: React.FC = () => {
         interpretation: interpretation(120, data.count)[0].label,
         hr: data.hr
       },
-      // Salvamento seguro das escalas de fadiga
       fatigabilityScales: {
         ...currentScales,
         exercise: { 
@@ -85,7 +85,6 @@ export const TD2M: React.FC = () => {
           fatigue: postFadiga || 0 
         }
       },
-      // Salvamento seguro dos sintomas de angina
       symptoms: {
         ...currentSymptoms,
         angina: {
@@ -100,7 +99,8 @@ export const TD2M: React.FC = () => {
   };
 
   return (
-    <div className="pb-48"> 
+    /* PB-60 para garantir que o rodapé não cubra as referências */
+    <div className="max-w-4xl mx-auto pb-60 relative"> 
       <TimedTestTemplate
         title="Teste de Marcha Estacionária (2MST)"
         description="Avaliação da resistência aeróbica funcional (Senior Fitness Test)."
@@ -117,32 +117,32 @@ export const TD2M: React.FC = () => {
         ]}
         reference="Rikli RE, Jones CJ. Senior Fitness Test Manual. 2nd ed, 2013."
       >
-        <div className="space-y-6">
+        <div className="space-y-6 px-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-              <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Predito</p>
-              <p className="text-2xl font-black text-emerald-900">{predictedRikli.toFixed(1)}</p>
+            <div className="p-5 bg-emerald-50 rounded-[24px] border border-emerald-100 shadow-sm">
+              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Predito</p>
+              <p className="text-3xl font-black text-emerald-900">{predictedRikli.toFixed(1)}</p>
             </div>
-            <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
-              <p className="text-[9px] font-black text-rose-600 uppercase tracking-widest">Corte (LIN)</p>
-              <p className="text-2xl font-black text-rose-900">{lin.toFixed(0)}</p>
+            <div className="p-5 bg-rose-50 rounded-[24px] border border-rose-100 shadow-sm">
+              <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Corte (LIN)</p>
+              <p className="text-3xl font-black text-rose-900">{lin.toFixed(0)}</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
-              <Activity className="text-indigo-500" size={16}/> Sintomas Pós-Esforço
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
+            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest border-b pb-3">
+              <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Percepção de Fadiga (Borg 0-10)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fadiga (Borg 0-10)</label>
               <div className="grid grid-cols-6 gap-2">
                 {[0, 2, 4, 6, 8, 10].map(n => (
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setPostFadiga(n)}
-                    className={`py-3 rounded-xl font-bold transition-all ${postFadiga === n ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    onClick={() => { setPostFadiga(n); setIsSaved(false); }}
+                    className={`py-4 rounded-2xl font-black transition-all active:scale-95 ${postFadiga === n ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n}
                   </button>
@@ -151,16 +151,16 @@ export const TD2M: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-bold text-slate-400 uppercase">Graduação de Angina (0-4)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Angina (CCS 0-4)</label>
               <div className="grid grid-cols-5 gap-2">
                 {[0, 1, 2, 3, 4].map(n => (
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setPostAngina(n)}
-                    className={`py-3 rounded-xl font-bold transition-all ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    onClick={() => { setPostAngina(n); setIsSaved(false); }}
+                    className={`py-4 rounded-2xl font-black transition-all active:scale-95 ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
-                    {n === 0 ? 'Nenhuma' : n}
+                    {n === 0 ? 'Não' : n}
                   </button>
                 ))}
               </div>
@@ -169,27 +169,23 @@ export const TD2M: React.FC = () => {
         </div>
       </TimedTestTemplate>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-50 space-y-3">
+      {/* RODAPÉ FIXO CORRIGIDO: Z-INDEX 999 */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
         <button
           type="button"
-          onClick={() => {
-            // Dispara o clique no botão de submit interno do Template
-            const submitBtn = document.querySelector('button[type="submit"]') as HTMLButtonElement;
-            submitBtn?.click();
-          }} 
-          className={`w-full py-4 rounded-3xl font-black shadow-2xl flex items-center justify-center gap-3 transition-all ${isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:scale-[1.02]'}`}
+          onClick={() => (document.querySelector('button[type="submit"]') as HTMLButtonElement)?.click()} 
+          className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
         >
-          {isSaved ? <CheckCircle2 className="w-5 h-5" /> : <Save className="w-5 h-5 text-emerald-400" />}
-          {isSaved ? 'MARCHA GRAVADA' : 'GRAVAR RESULTADO'}
+          {isSaved ? <CheckCircle2 className="w-6 h-6" /> : <Save className="w-6 h-6 text-emerald-400" />}
+          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'MARCHA GRAVADA' : 'GRAVAR RESULTADO'}</span>
         </button>
         
         <button
           type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
-          className="w-full bg-white text-slate-600 py-3 rounded-2xl font-bold border border-slate-200 flex items-center justify-center gap-3 text-sm shadow-sm"
+          onClick={() => navigate('/dashboard')} 
+          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest active:scale-95 transition-all"
         >
-          PROSSEGUIR PARA FUNÇÃO DOS VASOS
-          <ChevronRight className="w-4 h-4 text-indigo-500" />
+          <LayoutDashboard size={18} /> PAINEL DE MÓDULOS
         </button>
       </div>
     </div>

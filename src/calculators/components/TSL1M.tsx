@@ -1,27 +1,26 @@
 import React, { useState } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Info, BookOpen, Activity, Save, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Info, BookOpen, Activity, Save, CheckCircle2, ChevronRight, LayoutDashboard } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export const TSL1M: React.FC = () => {
-  const { patientInfo, setPatientInfo, testResults, updateTestResults } = usePatient();
+  const { patientInfo, testResults, updateTestResults } = usePatient();
+  const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(false);
 
-  // Estados locais para Sintomas Pós-Teste (Padrão CardioTools)
+  // Estados locais para Sintomas Pós-Teste
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // Tratamento de dados com fallbacks seguros
   const age = parseInt(patientInfo.age as string) || 60;
   const sex = patientInfo.sex === 'female' ? 'F' : 'M';
   const height = parseFloat(patientInfo.height as string) || 170;
   const weight = parseFloat(patientInfo.weight as string) || 70;
   const bmi = weight / ((height / 100) ** 2);
 
-  /**
-   * CÁLCULO DO PREDITO - EQUAÇÃO BRASILEIRA (Furlanetto KC, et al. 2022)
-   */
+  // CÁLCULO DO PREDITO - EQUAÇÃO BRASILEIRA (Furlanetto KC, et al. 2022)
   const calculatePredictedFurlanetto = () => {
     const sexVal = sex === 'F' ? 1 : 0;
     const predicted = 60.6 - (0.36 * age) - (2.8 * sexVal) - (0.31 * bmi);
@@ -59,7 +58,6 @@ export const TSL1M: React.FC = () => {
   const handleGlobalSave = (data: any) => {
     const efficiency = (data.count / predictedFurlanetto) * 100;
 
-    // Proteção contra 'undefined' (Garante que as cobrinhas vermelhas sumam)
     const currentScales = testResults?.fatigabilityScales || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
       exercise: { dyspnea: 0, fatigue: 0 } 
@@ -78,7 +76,6 @@ export const TSL1M: React.FC = () => {
         interpretation: interpretation(60, data.count)[0].label,
         hr: data.hr
       },
-      // Integrando Borg de Fadiga de MMII no salvamento global
       fatigabilityScales: {
         ...currentScales,
         exercise: { 
@@ -86,7 +83,6 @@ export const TSL1M: React.FC = () => {
           fatigue: postFadiga || 0 
         }
       },
-      // Integrando Angina no salvamento global
       symptoms: {
         ...currentSymptoms,
         angina: {
@@ -101,7 +97,8 @@ export const TSL1M: React.FC = () => {
   };
 
   return (
-    <div className="pb-48"> 
+    /* AJUSTE DE CSS: pb-60 evita que os botões fixos cubram o conteúdo final */
+    <div className="max-w-4xl mx-auto pb-60 relative"> 
       <TimedTestTemplate
         title="Teste de Sentar e Levantar (1 Minuto)"
         description="Avaliação da resistência muscular periférica e endurance funcional."
@@ -118,33 +115,32 @@ export const TSL1M: React.FC = () => {
         ]}
         reference="Furlanetto KC, et al. Braz J Phys Ther. 2022."
       >
-        <div className="space-y-6">
+        <div className="space-y-6 px-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-900 rounded-2xl shadow-xl">
-              <p className="text-[9px] font-bold text-indigo-400 uppercase mb-1">Predito (Furlanetto)</p>
-              <p className="text-3xl font-black text-white">{predictedFurlanetto.toFixed(1)} <span className="text-xs font-normal opacity-50">REP</span></p>
+            <div className="p-5 bg-slate-900 rounded-[24px] shadow-xl border border-slate-800">
+              <p className="text-[10px] font-black text-indigo-400 uppercase mb-1 tracking-widest">Predito (Furlanetto)</p>
+              <p className="text-3xl font-black text-white">{predictedFurlanetto.toFixed(1)} <span className="text-xs font-bold opacity-40 uppercase">rep</span></p>
             </div>
-            <div className="p-4 bg-white rounded-2xl border-2 border-slate-50 flex flex-col justify-center">
-              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">IMC Atual</p>
-              <p className="text-xl font-black text-slate-700">{bmi.toFixed(1)} <span className="text-[10px] font-normal text-slate-400 italic">kg/m²</span></p>
+            <div className="p-5 bg-white rounded-[24px] border border-slate-100 shadow-sm flex flex-col justify-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">IMC Calculado</p>
+              <p className="text-xl font-black text-slate-700">{bmi.toFixed(1)} <span className="text-[10px] font-bold text-slate-300 italic uppercase">kg/m²</span></p>
             </div>
           </div>
 
-          {/* SINTOMAS PÓS-ESFORÇO */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
-              <Activity className="text-indigo-500" size={16}/> Sintomas Pós-Esforço
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
+            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest border-b pb-3">
+              <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Fadiga de Membros Inferiores (Borg 0-10)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fadiga de MMII (Borg)</label>
               <div className="grid grid-cols-6 gap-2">
                 {[0, 2, 4, 6, 8, 10].map(n => (
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setPostFadiga(n)}
-                    className={`py-3 rounded-xl font-bold transition-all ${postFadiga === n ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    onClick={() => { setPostFadiga(n); setIsSaved(false); }}
+                    className={`py-4 rounded-2xl font-black transition-all active:scale-95 ${postFadiga === n ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n}
                   </button>
@@ -153,16 +149,16 @@ export const TSL1M: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Graduação de Angina (0-4)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Graduação de Angina (0-4)</label>
               <div className="grid grid-cols-5 gap-2">
                 {[0, 1, 2, 3, 4].map(n => (
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setPostAngina(n)}
-                    className={`py-3 rounded-xl font-bold transition-all ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    onClick={() => { setPostAngina(n); setIsSaved(false); }}
+                    className={`py-4 rounded-2xl font-black transition-all active:scale-95 ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
-                    {n === 0 ? 'Nenhuma' : n}
+                    {n === 0 ? 'Não' : n}
                   </button>
                 ))}
               </div>
@@ -171,24 +167,23 @@ export const TSL1M: React.FC = () => {
         </div>
       </TimedTestTemplate>
 
-      {/* RODAPÉ FIXO DE AÇÃO */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-50 space-y-3">
+      {/* RODAPÉ FIXO CORRIGIDO: Z-INDEX 999 para garantir interatividade */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
         <button
           type="button"
           onClick={() => (document.querySelector('button[type="submit"]') as HTMLButtonElement)?.click()} 
-          className={`w-full py-4 rounded-3xl font-black shadow-2xl flex items-center justify-center gap-3 transition-all ${isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:scale-[1.02]'}`}
+          className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
         >
-          {isSaved ? <CheckCircle2 className="w-5 h-5" /> : <Save className="w-5 h-5 text-emerald-400" />}
-          {isSaved ? 'TESTE GRAVADO' : 'GRAVAR RESULTADO'}
+          {isSaved ? <CheckCircle2 className="w-6 h-6" /> : <Save className="w-6 h-6 text-emerald-400" />}
+          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'TESTE GRAVADO' : 'GRAVAR RESULTADO'}</span>
         </button>
         
         <button
           type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
-          className="w-full bg-white text-slate-600 py-3 rounded-2xl font-bold border border-slate-200 flex items-center justify-center gap-3 text-sm shadow-sm"
+          onClick={() => navigate('/dashboard')} 
+          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest active:scale-95 transition-all"
         >
-          PROSSEGUIR PARA PRÓXIMO TESTE
-          <ChevronRight className="w-4 h-4 text-indigo-500" />
+          <LayoutDashboard size={18} /> PAINEL DE MÓDULOS
         </button>
       </div>
     </div>

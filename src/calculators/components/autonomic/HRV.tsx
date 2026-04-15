@@ -36,11 +36,9 @@ export const HRV: React.FC = () => {
     if (isNaN(rmssdNum)) return;
     const interpretation = getInterpretation(rmssdNum);
     updateTestResults({
-      hrv: {
-        rmssd: rmssdNum,
-        interpretation: interpretation.label
-      }
-    });
+      rmssd: rmssdNum,
+      hrvInterpretation: interpretation.label
+    } as any);
     setIsSaved(true);
   };
 

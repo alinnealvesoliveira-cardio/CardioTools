@@ -8,49 +8,69 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { logout } = useAuth();
+
   return (
-    <header className="h-16 border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-30 px-4 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
+    <header className="h-20 border-b border-slate-100 bg-white/90 backdrop-blur-xl sticky top-0 z-40 px-6 flex items-center justify-between">
+      <div className="flex items-center gap-6">
+        {/* Lado Esquerdo: Menu e Logo */}
+        <div className="flex items-center gap-4">
           <button 
             onClick={onMenuClick}
-            className="p-2 hover:bg-slate-100 rounded-lg"
+            className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors active:scale-95"
+            aria-label="Abrir menu"
           >
-            <Menu className="w-5 h-5 text-slate-600" />
+            <Menu className="w-6 h-6 text-slate-700" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-vitality-lime flex items-center justify-center shadow-sm">
-              <Activity className="w-4 h-4 text-white" />
+          
+          <div className="flex items-center gap-2.5 group cursor-default">
+            <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:rotate-6 transition-transform">
+              <Activity className="w-5 h-5 text-emerald-400" />
             </div>
-            <span className="text-base font-black text-slate-900 tracking-tight">
-              Cardio<span className="text-emerald-500">Tools</span>
-            </span>
+            <div className="flex flex-col">
+              <span className="text-xl font-black text-slate-900 tracking-tighter leading-none italic uppercase">
+                Cardio<span className="text-emerald-500 font-black">Tools</span>
+              </span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mt-1">
+                Clinical Engine
+              </span>
+            </div>
           </div>
         </div>
-        <div className="hidden md:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl w-48 lg:w-80 border border-transparent focus-within:border-emerald-500 focus-within:bg-white transition-all">
+
+        {/* Barra de Busca - Otimizada para maior legibilidade */}
+        <div className="hidden md:flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-2xl w-64 lg:w-96 border border-slate-100 focus-within:border-emerald-500 focus-within:bg-white focus-within:shadow-sm transition-all duration-300">
           <Search className="w-4 h-4 text-slate-400" />
           <input 
             type="text" 
-            placeholder="Buscar escala ou calculadora..." 
-            className="bg-transparent border-none outline-none text-sm w-full text-slate-700 placeholder:text-slate-400"
+            placeholder="Buscar escala, teste ou paciente..." 
+            className="bg-transparent border-none outline-none text-sm w-full text-slate-700 font-medium placeholder:text-slate-400 placeholder:font-normal"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button className="p-2 hover:bg-slate-100 rounded-lg relative">
-          <Bell className="w-5 h-5 text-slate-600" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white"></span>
+      {/* Lado Direito: Ações de Usuário */}
+      <div className="flex items-center gap-3">
+        {/* Notificações */}
+        <button className="p-2.5 hover:bg-slate-50 rounded-xl relative group transition-colors">
+          <Bell className="w-5 h-5 text-slate-500 group-hover:text-emerald-600 transition-colors" />
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></span>
         </button>
+
+        <div className="h-8 w-[1px] bg-slate-100 mx-1 hidden sm:block" />
+
+        {/* Botão de Logout */}
         <button 
           onClick={logout}
-          className="p-2 hover:bg-red-50 rounded-lg text-slate-600 hover:text-red-500 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 hover:bg-rose-50 rounded-xl text-slate-500 hover:text-rose-600 transition-all group font-bold text-xs uppercase tracking-widest"
           title="Sair do Sistema"
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-4 h-4" />
+          <span className="hidden lg:block">Sair</span>
         </button>
-        <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs border border-emerald-200">
-          <User className="w-4 h-4" />
+
+        {/* Perfil do Usuário */}
+        <div className="h-10 w-10 rounded-2xl bg-slate-900 flex items-center justify-center text-emerald-400 border border-slate-800 shadow-md cursor-pointer hover:border-emerald-500 transition-colors">
+          <User className="w-5 h-5" />
         </div>
       </div>
     </header>

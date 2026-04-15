@@ -21,84 +21,114 @@ export const VascularDiagnosticHelp: React.FC<VascularDiagnosticHelpProps> = ({ 
       sinal: 'Edema',
       arterial: 'Ausente ou Leve',
       venosa: 'Melhora com Elevação',
-      linfatica: 'Não melhora com Elevação'
+      linfatica: 'Fixo (Não melhora)'
     },
     {
       sinal: 'Cor da Pele',
-      arterial: 'Pálida/Cianótica',
-      venosa: 'Escurecida (Dermatite)',
-      linfatica: 'Normal ou Espessada'
+      arterial: 'Pálida / Cianótica',
+      venosa: 'Ocre / Dermatite',
+      linfatica: 'Espessada / Verrucosa'
     },
     {
       sinal: 'Temperatura',
-      arterial: 'Fria',
+      arterial: 'Fria (Isquemia)',
       venosa: 'Quente ou Normal',
       linfatica: 'Normal'
     },
     {
       sinal: 'Dor',
       arterial: 'Melhora no Repouso',
-      venosa: 'Melhora com Caminhada',
-      linfatica: 'Sensação de Peso'
+      venosa: 'Melhora em Movimento',
+      linfatica: 'Peso / Desconforto'
     }
   ];
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        {/* Overlay com Blur Profundo */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+        />
+
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden"
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative bg-white rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden border border-white/20"
         >
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-vitality-lime/10 text-vitality-lime rounded-xl">
-                <Info className="w-6 h-6" />
+          {/* Header Técnico */}
+          <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-emerald-400 shadow-lg">
+                <Info size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Ajuda Diagnóstica Vascular</h2>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Diferenciação Clínica</p>
+                <h2 className="text-2xl font-black text-slate-900 italic uppercase tracking-tighter leading-none">
+                  Diagnóstico Diferencial <span className="text-emerald-500">Vascular</span>
+                </h2>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
+                  Semiologia Clínica Avançada
+                </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+              className="p-3 hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all text-slate-400 active:scale-90"
             >
-              <X className="w-6 h-6 text-slate-400" />
+              <X size={24} />
             </button>
           </div>
 
-          <div className="p-6 overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          {/* Tabela de Dados */}
+          <div className="p-8 overflow-x-auto">
+            <table className="w-full border-separate border-spacing-y-2">
               <thead>
-                <tr className="border-b-2 border-slate-100">
-                  <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-widest">Sinal</th>
-                  <th className="py-4 px-4 text-xs font-black text-vitality-risk uppercase tracking-widest bg-vitality-risk/5">Arterial (ITB &lt; 0.9)</th>
-                  <th className="py-4 px-4 text-xs font-black text-vitality-lime uppercase tracking-widest bg-vitality-lime/5">Venosa (Insuficiência)</th>
-                  <th className="py-4 px-4 text-xs font-black text-vitality-graphite uppercase tracking-widest bg-vitality-graphite/5">Linfática (Linfedema)</th>
+                <tr>
+                  <th className="py-4 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-left">Parâmetro</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] text-center bg-rose-50/50 rounded-t-2xl">Arterial</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] text-center bg-emerald-50/50 rounded-t-2xl">Venosa</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] text-center bg-indigo-50/50 rounded-t-2xl">Linfática</th>
                 </tr>
               </thead>
               <tbody>
                 {tableData.map((row, idx) => (
-                  <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                    <td className="py-4 px-4 text-sm font-bold text-slate-700">{row.sinal}</td>
-                    <td className="py-4 px-4 text-sm text-slate-600 font-medium bg-vitality-risk/5">{row.arterial}</td>
-                    <td className="py-4 px-4 text-sm text-slate-600 font-medium bg-vitality-lime/5">{row.venosa}</td>
-                    <td className="py-4 px-4 text-sm text-slate-600 font-medium bg-vitality-graphite/5">{row.linfatica}</td>
+                  <tr key={idx} className="group">
+                    <td className="py-5 px-6 text-xs font-black text-slate-800 uppercase tracking-tight border-b border-slate-50">
+                      {row.sinal}
+                    </td>
+                    <td className="py-5 px-6 text-xs font-bold text-slate-600 text-center bg-rose-50/20 border-b border-white">
+                      {row.arterial}
+                    </td>
+                    <td className="py-5 px-6 text-xs font-bold text-slate-600 text-center bg-emerald-50/20 border-b border-white">
+                      {row.venosa}
+                    </td>
+                    <td className="py-5 px-6 text-xs font-bold text-slate-600 text-center bg-indigo-50/20 border-b border-white">
+                      {row.linfatica}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-vitality-risk flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-slate-500 leading-relaxed">
-              <strong>Nota Clínica:</strong> Esta tabela é um guia simplificado. O diagnóstico definitivo deve considerar a história clínica completa, 
-              o exame físico detalhado e exames complementares (Doppler, ITB, etc.). O sinal de Stemmer positivo é altamente sugestivo de linfedema.
-            </p>
+          {/* Rodapé Informativo */}
+          <div className="p-8 bg-slate-900 flex items-start gap-4">
+            <div className="p-2 bg-rose-500/20 text-rose-500 rounded-lg shrink-0">
+              <AlertCircle size={20} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-white uppercase tracking-widest">Aviso de Conduta Profissional</p>
+              <p className="text-[11px] text-slate-400 font-medium leading-relaxed italic">
+                Esta tabela é um suporte à decisão clínica baseada em evidências. O diagnóstico final de insuficiências vasculares 
+                deve integrar o <strong>Índice Tornozelo-Braquial (ITB)</strong>, o <strong>Sinal de Stemmer</strong> e, se necessário, 
+                mapeamento por Duplex-Scan.
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>

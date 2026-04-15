@@ -1,110 +1,192 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Activity, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Activity, Info, CheckCircle2, Save, AlertTriangle, Zap } from 'lucide-react';
+import { usePatient } from '../../../context/PatientContext';
+import { toast } from 'react-hot-toast';
 
 export const ClaudicationScale: React.FC = () => {
+  const { updateTestResults } = usePatient();
   const [selectedScore, setSelectedScore] = useState<number | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
 
   const CLAUDICATION_ITEMS = [
-    { score: 0, label: "Grau 0", description: "Sem dor ou desconforto." },
-    { score: 1, label: "Grau 1", description: "Desconforto ou dor mínima (claudicação leve)." },
-    { score: 2, label: "Grau 2", description: "Dor moderada, mas o paciente consegue continuar caminhando." },
-    { score: 3, label: "Grau 3", description: "Dor intensa, o paciente precisa parar de caminhar." },
-    { score: 4, label: "Grau 4", description: "Dor insuportável (claudicação máxima)." },
+    { score: 0, label: "GRAU 0", description: "Absoluta ausência de dor ou desconforto isquêmico." },
+    { score: 1, label: "GRAU 1", description: "Início de desconforto. Dor mínima ou sensação de aperto." },
+    { score: 2, label: "GRAU 2", description: "Dor moderada. O paciente consegue prosseguir o esforço com foco." },
+    { score: 3, label: "GRAU 3", description: "Dor intensa. Próximo ao limite funcional, mas ainda em movimento." },
+    { score: 4, label: "GRAU 4", description: "Dor insuportável. Claudicação máxima que exige interrupção imediata." },
   ];
 
   const getInterpretation = (score: number) => {
-    if (score === 0) return { label: "Sem Claudicação", color: "green", desc: "Ausência de sintomas isquêmicos durante o esforço." };
-    if (score <= 2) return { label: "Claudicação Leve a Moderada", color: "yellow", desc: "Sintomas isquêmicos presentes, mas toleráveis." };
-    return { label: "Claudicação Grave", color: "red", desc: "Sintomas isquêmicos limitantes, indicando doença arterial periférica obstrutiva importante." };
+    if (score === 0) return { 
+      label: "SEM CLAUDICAÇÃO", 
+      color: "bg-emerald-500", 
+      light: "bg-emerald-50", 
+      border: "border-emerald-200",
+      desc: "Ausência de sintomas isquêmicos durante o esforço físico." 
+    };
+    if (score <= 2) return { 
+      label: "CLAUDICAÇÃO LEVE/MODERADA", 
+      color: "bg-amber-500", 
+      light: "bg-amber-50", 
+      border: "border-amber-200",
+      desc: "Isquemia muscular presente, porém não limitante a curto prazo." 
+    };
+    return { 
+      label: "CLAUDICAÇÃO GRAVE", 
+      color: "bg-red-600", 
+      light: "bg-red-50", 
+      border: "border-red-200",
+      desc: "Sintomatologia limitante. Indica obstrução arterial periférica significativa." 
+    };
+  };
+
+  const handleSave = () => {
+    if (selectedScore === null) return;
+    
+    updateTestResults({
+      claudication: {
+        score: selectedScore,
+        interpretation: getInterpretation(selectedScore).label,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    setIsSaved(true);
+    toast.success("Nível de claudicação registrado!");
+    setTimeout(() => setIsSaved(false), 2000);
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Escala de Claudicação Intermitente</h1>
-        <p className="text-slate-500 text-sm">Avaliação subjetiva da dor isquêmica em membros inferiores durante o esforço.</p>
+    <div className="max-w-5xl mx-auto p-4 space-y-8 pb-32">
+      <header className="px-2 space-y-1">
+        <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase flex items-center gap-3">
+          <Zap className="text-amber-500" fill="currentColor" /> Escala de Claudicação
+        </h1>
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Monitoramento de Isquemia em MMII</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Selecione o grau de dor relatado</label>
-            <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* SELEÇÃO DE GRAU */}
+        <div className="lg:col-span-7 space-y-6">
+          <section className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 space-y-6">
+            <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
+                <Activity size={24} />
+              </div>
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest italic">Nível de Dor Isquêmica</h2>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
               {CLAUDICATION_ITEMS.map((item) => (
                 <button
                   key={item.score}
-                  onClick={() => setSelectedScore(item.score)}
-                  className={`w-full p-4 rounded-2xl text-left transition-all border-2 flex items-center gap-4 ${
+                  onClick={() => {
+                    setSelectedScore(item.score);
+                    setIsSaved(false);
+                  }}
+                  className={`group relative w-full p-5 rounded-[24px] text-left transition-all border-2 flex items-center gap-5 ${
                     selectedScore === item.score
-                      ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-md'
+                      ? 'bg-slate-900 border-slate-900 text-white shadow-xl translate-x-2'
                       : 'bg-slate-50 border-transparent text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-                    selectedScore === item.score ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400 shadow-sm'
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg transition-all ${
+                    selectedScore === item.score 
+                      ? 'bg-amber-500 text-slate-900' 
+                      : 'bg-white text-slate-400 shadow-sm group-hover:scale-110'
                   }`}>
                     {item.score}
                   </div>
                   <div className="flex-1">
-                    <div className="font-bold text-sm">{item.label}</div>
-                    <div className="text-xs opacity-70">{item.description}</div>
+                    <div className={`font-black text-xs uppercase tracking-widest ${selectedScore === item.score ? 'text-amber-400' : 'text-slate-800'}`}>
+                      {item.label}
+                    </div>
+                    <div className={`text-[11px] font-medium leading-relaxed italic ${selectedScore === item.score ? 'text-slate-300' : 'text-slate-500'}`}>
+                      {item.description}
+                    </div>
                   </div>
-                  {selectedScore === item.score && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+                  {selectedScore === item.score && (
+                    <motion.div layoutId="check" className="bg-emerald-500 p-1.5 rounded-full">
+                      <CheckCircle2 size={16} className="text-white" />
+                    </motion.div>
+                  )}
                 </button>
               ))}
             </div>
-          </div>
+          </section>
         </div>
 
-        <div className="space-y-6">
-          {selectedScore !== null ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
-            >
-              <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 text-center space-y-2">
-                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">Grau de Claudicação</div>
-                <div className="text-6xl font-black text-emerald-600 tabular-nums">
-                  {selectedScore}
-                </div>
-                <div className="text-xs text-slate-400">Escala de Dor Isquêmica</div>
-              </div>
-
-              {(() => {
-                const interpretation = getInterpretation(selectedScore);
-                return (
-                  <div className={`rounded-2xl p-6 border-2 shadow-lg ${
-                    interpretation.color === 'red' ? 'bg-red-50 border-red-200 text-red-700' : 
-                    interpretation.color === 'yellow' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                    'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  }`}>
-                    <div className="text-sm font-bold uppercase tracking-wider opacity-70 mb-2">Interpretação</div>
-                    <div className="text-xl font-bold mb-2">{interpretation.label}</div>
-                    <p className="text-sm opacity-90">{interpretation.desc}</p>
+        {/* INTERPRETAÇÃO E SALVAMENTO */}
+        <div className="lg:col-span-5">
+          <div className="sticky top-6 space-y-6">
+            <AnimatePresence mode="wait">
+              {selectedScore !== null ? (
+                <motion.div
+                  key="interpretation"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="bg-white rounded-[44px] p-10 shadow-xl border border-slate-100 text-center space-y-2">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Score Selecionado</div>
+                    <div className="text-8xl font-black text-slate-900 italic tracking-tighter italic">
+                      {selectedScore}
+                    </div>
+                    <div className="text-[9px] font-black text-amber-600 bg-amber-50 inline-block px-4 py-1 rounded-full uppercase tracking-widest">
+                      Dor Isquêmica Periférica
+                    </div>
                   </div>
-                );
-              })()}
-            </motion.div>
-          ) : (
-            <div className="bg-slate-50 rounded-3xl p-8 border-2 border-dashed border-slate-200 text-center">
-              <Activity className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-400 font-medium">Selecione um grau para ver o resultado.</p>
-            </div>
-          )}
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm">
-                <Info className="w-4 h-4" />
-                Pérolas Clínicas
+                  {(() => {
+                    const info = getInterpretation(selectedScore);
+                    return (
+                      <div className={`rounded-[32px] p-8 border shadow-lg ${info.light} ${info.border}`}>
+                        <div className="flex items-center gap-3 mb-4 text-slate-900">
+                          <AlertTriangle size={18} className="text-amber-500" />
+                          <div className="text-[10px] font-black uppercase tracking-widest">Avaliação Técnica</div>
+                        </div>
+                        <div className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2 italic">
+                          {info.label}
+                        </div>
+                        <p className="text-sm font-medium text-slate-600 italic leading-relaxed">
+                          "{info.desc}"
+                        </p>
+                      </div>
+                    );
+                  })()}
+
+                  <button
+                    onClick={handleSave}
+                    className={`w-full py-6 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-2xl ${
+                      isSaved 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-slate-900 text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {isSaved ? <CheckCircle2 size={20} /> : <Save size={20} className="text-amber-400" />}
+                    {isSaved ? 'DADO REGISTRADO' : 'SALVAR NA AVALIAÇÃO'}
+                  </button>
+                </motion.div>
+              ) : (
+                <div className="bg-slate-50 rounded-[44px] p-12 border-4 border-dashed border-slate-200 text-center flex flex-col items-center justify-center min-h-[400px]">
+                   <Activity className="w-16 h-16 text-slate-200 mb-6 animate-pulse" />
+                   <h3 className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] leading-relaxed">
+                     Aguardando avaliação <br /> do paciente durante esforço
+                   </h3>
+                </div>
+              )}
+            </AnimatePresence>
+
+            <div className="bg-amber-900 rounded-[32px] p-6 text-amber-100 flex gap-4 border-none">
+              <Info className="shrink-0 text-amber-400" size={20} />
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-400">Pérola Clínica</p>
+                <p className="text-[11px] leading-relaxed italic font-medium">
+                  Em pacientes com DAP, a claudicação Grau 3 ou 4 costuma ser o critério de interrupção do TC6M, sendo um forte preditor de funcionalidade reduzida.
+                </p>
               </div>
-              <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
-                <li>A claudicação é o sintoma clássico da Doença Arterial Periférica (DAP).</li>
-                <li>Geralmente ocorre em panturrilhas, mas pode ser em coxas ou glúteos.</li>
-                <li>O teste de caminhada (TC6M) é ideal para induzir e graduar a claudicação.</li>
-              </ul>
             </div>
           </div>
         </div>

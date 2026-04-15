@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Activity, Info, AlertCircle, CheckCircle2, ChevronRight, RefreshCcw, Save } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Activity, Info, AlertCircle, CheckCircle2, ChevronRight, RefreshCcw, Save, ShieldAlert } from 'lucide-react';
 import { usePatient } from '../../../context/PatientContext';
+import { toast } from 'react-hot-toast';
 
 export const ClaudicationAlgorithm: React.FC = () => {
   const { updateTestResults } = usePatient();
@@ -13,32 +14,98 @@ export const ClaudicationAlgorithm: React.FC = () => {
     {
       id: 1,
       text: "Você sente dor ou desconforto nas pernas ao caminhar?",
-      desc: "A claudicação intermitente é a dor muscular que ocorre durante o exercício e alivia com o repouso."
+      desc: "A claudicação é a dor muscular que surge no exercício e cessa no repouso."
     },
     {
       id: 2,
       text: "A dor começa após uma distância específica de caminhada?",
-      desc: "A reprodutibilidade da distância é uma característica clássica da claudicação arterial."
+      desc: "A reprodutibilidade da distância (limiar isquêmico) sugere origem arterial."
     },
     {
       id: 3,
-      text: "A dor desaparece rapidamente (em menos de 10 minutos) quando você para de caminhar?",
-      desc: "O alívio rápido com o repouso em pé sugere origem arterial."
+      text: "A dor desaparece em menos de 10 minutos quando você para?",
+      desc: "O alívio rápido ao interromper a carga é típico da claudicação arterial."
     },
     {
       id: 4,
       text: "A dor ocorre mesmo quando você está parado ou sentado?",
-      desc: "Dor em repouso pode indicar isquemia crítica (estágio avançado)."
+      desc: "Atenção: Dor em repouso pode indicar isquemia crítica (Fontaine III/IV)."
     }
   ];
 
   const handleAnswer = (answer: boolean) => {
-    setAnswers({ ...answers, [step]: answer });
+    const newAnswers = { ...answers, [step]: answer };
+    setAnswers(newAnswers);
     if (step < questions.length) {
       setStep(step + 1);
     } else {
-      setStep(5); // Result step
+      setStep(5); // Passo de resultado
     }
+  };
+
+  const getResult = () => {
+    const { 1: q1, 2: q2, 3: q3, 4: q4 } = answers;
+
+    if (q4) return {
+      title: "Isquemia Crítica Provável",
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      border: "border-rose-200",
+      icon: <ShieldAlert className="w-12 h-12" />,
+      desc: "Dor em repouso indica estágio avançado de DAP (Fontaine III ou IV). Alto risco de perda de membro.",
+      recommendation: "ENCAMINHAMENTO URGENTE para Vascular + Realizar ITB."
+    };
+
+    if (q1 && q2 && q3) return {
+      title: "Claudicação Típica",
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+      border: "border-orange-200",
+      icon: <Activity className="w-12 h-12" />,
+      desc: "Padrão clássico de Edimburgo positivo para Doença Arterial Periférica.",
+      recommendation: "Confirmar com ITB e iniciar Treinamento Supervisionado."
+    };
+
+    if (q1 && (!q2 || !q3)) return {
+      title: "Claudicação Atípica",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      border: "border-amber-200",
+      icon: <Info className="w-12 h-12" />,
+      desc: "Sintomas sugestivos, mas não seguem o padrão isquêmico clássico.",
+      recommendation: "Avaliar diagnóstico diferencial (Venoso, Neurogênico ou Ortopédico)."
+    };
+
+    return {
+      title: "Probabilidade Baixa",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-200",
+      icon: <CheckCircle2 className="w-12 h-12" />,
+      desc: "Sintomas relatados não sugerem obstrução arterial significativa no momento.",
+      recommendation: "Investigar outras causas e monitorar sinais tróficos."
+    };
+  };
+
+  const result = step === 5 ? getResult() : null;
+
+  const handleSave = () => {
+    if (!result) return;
+    updateTestResults({
+      symptoms: {
+        claudication: answers[1],
+        claudicationDetails: {
+          title: result.title,
+          description: result.desc
+        },
+        angina: {
+          type: "none",
+          description: "Not evaluated in this assessment"
+        }
+      }
+    });
+    setIsSaved(true);
+    toast.success("Avaliação vascular gravada!");
   };
 
   const reset = () => {
@@ -47,172 +114,101 @@ export const ClaudicationAlgorithm: React.FC = () => {
     setIsSaved(false);
   };
 
-  const getResult = () => {
-    const q1 = answers[1];
-    const q2 = answers[2];
-    const q3 = answers[3];
-    const q4 = answers[4];
-
-    if (q4) return {
-      title: "Isquemia Crítica Provável",
-      color: "red",
-      desc: "A presença de dor em repouso sugere doença arterial periférica avançada (Fontaine III ou IV). Requer avaliação vascular urgente.",
-      recommendation: "Encaminhar para cirurgia vascular e realizar ITB imediatamente."
-    };
-
-    if (q1 && q2 && q3) return {
-      title: "Claudicação Intermitente Típica",
-      color: "orange",
-      desc: "O padrão de dor induzida pelo exercício e aliviada pelo repouso é altamente sugestivo de Doença Arterial Periférica (DAP).",
-      recommendation: "Realizar ITB para confirmação e iniciar protocolo de caminhada supervisionada."
-    };
-
-    if (q1 && (!q2 || !q3)) return {
-      title: "Claudicação Atípica ou Outras Causas",
-      color: "yellow",
-      desc: "Os sintomas não seguem o padrão clássico. Pode ser de origem venosa, neurogênica (estenose de canal) ou osteoarticular.",
-      recommendation: "Avaliar sinais de insuficiência venosa ou compressão radicular."
-    };
-
-    return {
-      title: "Baixa Probabilidade de Claudicação Arterial",
-      color: "green",
-      desc: "Os sintomas relatados não sugerem obstrução arterial significativa no momento.",
-      recommendation: "Monitorar sintomas e avaliar outras causas de dor em membros inferiores."
-    };
-  };
-
-  const handleSave = () => {
-    const result = getResult();
-    updateTestResults({
-      symptoms: {
-        claudication: true,
-        claudicationDetails: {
-          title: result.title,
-          description: result.desc
-        }
-      }
-    });
-    setIsSaved(true);
-  };
-
-  const result = step === 5 ? getResult() : null;
-
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-slate-900">Algoritmo de Claudicação</h1>
-        <p className="text-slate-500 text-sm">Triagem clínica para Doença Arterial Periférica (DAP).</p>
+    <div className="max-w-2xl mx-auto p-4 space-y-6 pb-20">
+      <header className="px-2">
+        <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic">EDIMBURGO VASCULAR</h1>
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Triagem de Doença Arterial Periférica</p>
       </header>
 
-      <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 min-h-[400px] flex flex-col">
-        {step <= 4 ? (
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex-1 flex flex-col justify-center space-y-8"
-          >
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase tracking-widest">
-                Questão {step} de 4
+      <div className="bg-white rounded-[44px] p-10 shadow-sm border border-slate-100 min-h-[460px] flex flex-col justify-center relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          {step <= 4 ? (
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-10"
+            >
+              <div className="space-y-4">
+                <span className="bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                  Questão {step}/4
+                </span>
+                <h2 className="text-3xl font-black text-slate-800 leading-tight tracking-tight">
+                  {questions[step - 1].text}
+                </h2>
+                <div className="flex gap-2 items-center text-slate-400 bg-slate-50 w-fit px-4 py-2 rounded-2xl">
+                  <Info size={14} />
+                  <p className="text-xs font-bold italic">{questions[step - 1].desc}</p>
+                </div>
               </div>
-              <h2 className="text-2xl font-bold text-slate-800 leading-tight">
-                {questions[step - 1].text}
-              </h2>
-              <p className="text-slate-500 text-sm italic">
-                {questions[step - 1].desc}
-              </p>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => handleAnswer(true)}
-                className="p-6 rounded-2xl border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50 transition-all font-bold text-slate-700 flex flex-col items-center gap-2 group"
-              >
-                <CheckCircle2 className="w-8 h-8 text-slate-200 group-hover:text-emerald-500 transition-colors" />
-                Sim
-              </button>
-              <button
-                onClick={() => handleAnswer(false)}
-                className="p-6 rounded-2xl border-2 border-slate-100 hover:border-red-500 hover:bg-red-50 transition-all font-bold text-slate-700 flex flex-col items-center gap-2 group"
-              >
-                <AlertCircle className="w-8 h-8 text-slate-200 group-hover:text-red-500 transition-colors" />
-                Não
-              </button>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col justify-center space-y-8 text-center"
-          >
-            <div className={`mx-auto w-20 h-20 rounded-3xl flex items-center justify-center ${
-              result?.color === 'red' ? 'bg-red-100 text-red-600' :
-              result?.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-              result?.color === 'yellow' ? 'bg-amber-100 text-amber-600' :
-              'bg-emerald-100 text-emerald-600'
-            }`}>
-              <Activity className="w-10 h-10" />
-            </div>
-
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-slate-900">{result?.title}</h2>
-              <p className="text-slate-600 leading-relaxed">{result?.desc}</p>
-            </div>
-
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 text-left">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                <ChevronRight className="w-4 h-4" />
-                Conduta Sugerida
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => handleAnswer(true)}
+                  className="py-8 rounded-[32px] bg-slate-900 text-white font-black text-lg hover:bg-slate-800 active:scale-95 transition-all shadow-xl shadow-slate-200"
+                >
+                  SIM
+                </button>
+                <button
+                  onClick={() => handleAnswer(false)}
+                  className="py-8 rounded-[32px] bg-slate-50 text-slate-400 font-black text-lg hover:bg-slate-100 active:scale-95 transition-all"
+                >
+                  NÃO
+                </button>
               </div>
-              <p className="text-sm font-bold text-slate-700">{result?.recommendation}</p>
-            </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center space-y-8"
+            >
+              <div className={`mx-auto w-24 h-24 rounded-[38px] flex items-center justify-center shadow-inner ${result?.bg} ${result?.color}`}>
+                {result?.icon}
+              </div>
 
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={reset}
-                className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
-              >
-                <RefreshCcw className="w-4 h-4" />
-                Reiniciar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaved}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
-                  isSaved 
-                    ? 'bg-emerald-100 text-emerald-600 cursor-not-allowed'
-                    : 'bg-slate-900 text-white hover:bg-slate-800'
-                }`}
-              >
-                {isSaved ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Gravado
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Gravar Resultado
-                  </>
-                )}
-              </button>
-            </div>
-          </motion.div>
-        )}
+              <div className="space-y-2">
+                <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase">{result?.title}</h2>
+                <p className="text-slate-600 text-sm font-medium px-4">{result?.desc}</p>
+              </div>
+
+              <div className={`p-6 ${result?.bg} rounded-[32px] border ${result?.border} space-y-2 text-left`}>
+                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <ChevronRight className="w-4 h-4" /> Conduta Recomendada
+                </div>
+                <p className={`text-sm font-black ${result?.color} leading-snug`}>{result?.recommendation}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
+                <button 
+                  onClick={reset} 
+                  className="flex items-center justify-center gap-2 p-5 bg-slate-100 text-slate-600 rounded-[24px] font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  <RefreshCcw size={16} /> REFAZER
+                </button>
+                <button 
+                  onClick={handleSave}
+                  disabled={isSaved}
+                  className={`flex items-center justify-center gap-2 p-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${
+                    isSaved ? 'bg-emerald-500 text-white shadow-emerald-100' : 'bg-slate-900 text-white shadow-slate-200'
+                  }`}
+                >
+                  {isSaved ? <CheckCircle2 size={16} /> : <Save size={16} />}
+                  {isSaved ? 'GRAVADO' : 'GRAVAR'}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 flex gap-4">
-        <Info className="w-6 h-6 text-emerald-600 flex-shrink-0" />
-        <div className="space-y-1">
-          <p className="text-sm font-bold text-emerald-900">Nota sobre o Questionário de Edimburgo</p>
-          <p className="text-xs text-emerald-700 leading-relaxed">
-            Este algoritmo é baseado nos critérios do Questionário de Edimburgo para Claudicação Intermitente, 
-            que possui sensibilidade de 80-90% e especificidade acima de 95% para DAP.
-          </p>
-        </div>
+      <div className="bg-indigo-50/50 rounded-[28px] p-6 border border-indigo-100 flex gap-4">
+        <Info className="w-6 h-6 text-indigo-600 shrink-0" />
+        <p className="text-[10px] text-indigo-900 leading-relaxed font-bold uppercase tracking-tight italic">
+          O Questionário de Edimburgo possui sensibilidade de 80-90% e especificidade &gt;95% para o diagnóstico clínico de DAP.
+        </p>
       </div>
     </div>
   );

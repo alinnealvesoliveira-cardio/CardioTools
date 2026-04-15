@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Square, RotateCcw, Info, AlertCircle, BookOpen, Save, CheckCircle2, Heart } from 'lucide-react';
+import { 
+  Play, Square, RotateCcw, Info, 
+  BookOpen, Save, CheckCircle2, Heart, Activity 
+} from 'lucide-react';
+
+// AJUSTE DE CAMINHOS BASEADO NA SUA ESTRUTURA (image_15e871)
 import { getCIFClassification } from '../../utils/cif';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
+// O MedicationAlert está dentro de components/shared, e você está em calculators/templates
 import { MedicationAlert } from '../../components/shared/MedicationAlert';
+import { CIFData } from '../../types';
 
 export interface InterpretationResult {
   label: string;
@@ -17,7 +24,7 @@ export interface InterpretationResult {
 interface TimedTestTemplateProps {
   title: string;
   description: string;
-  timerDuration?: number; // em segundos. Se null, vira cronômetro
+  timerDuration?: number; 
   hasCounter?: boolean;
   counterLabel?: string;
   interpretation: (time: number, count: number) => InterpretationResult | InterpretationResult[];
@@ -27,8 +34,14 @@ interface TimedTestTemplateProps {
   children?: React.ReactNode;
   predictedValue?: number | null;
   observedValueOverride?: number | null;
-  invertCIFRatio?: boolean; // Para testes onde "menos tempo é melhor"
-  onSave?: (data: { time: number; count: number; results: InterpretationResult[]; cif: any; hr?: { pre: number; post: number } }) => void;
+  invertCIFRatio?: boolean; 
+  onSave?: (data: { 
+    time: number; 
+    count: number; 
+    results: InterpretationResult[]; 
+    cif: CIFData | null; 
+    hr?: { pre: number; post: number } 
+  }) => void;
 }
 
 export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
@@ -39,7 +52,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
   counterLabel = "Repetições",
   interpretation,
   pearls,
-  pitfalls,
   reference,
   children,
   predictedValue,
@@ -54,8 +66,7 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
   const [postHR, setPostHR] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   
-  // CORREÇÃO: Usando ReturnType para evitar conflitos de ambiente (Node vs Browser)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<any>(null);
 
   useEffect(() => {
     if (isActive) {
@@ -71,16 +82,16 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
           return prev + 10;
         });
       }, 10);
-      setIsSaved(false);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    return () => {
+    } else {
       if (timerRef.current) clearInterval(timerRef.current);
-    };
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isActive, timerDuration]);
 
-  const toggleTimer = () => setIsActive(!isActive);
+  const toggleTimer = () => {
+    setIsActive(!isActive);
+    setIsSaved(false);
+  };
 
   const reset = () => {
     setIsActive(false);
@@ -97,21 +108,31 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
   };
 
+  // --- SOLUÇÃO PARA OS ERROS DE CÁLCULO (image_157c10) ---
   const rawResults = interpretation(time / 1000, count);
   const results = Array.isArray(rawResults) ? rawResults : [rawResults];
 
-  const observedValue = observedValueOverride !== undefined ? observedValueOverride : (hasCounter ? count : time / 1000);
-  
-  const cifObserved = (invertCIFRatio && observedValue && observedValue > 0) 
-    ? (predictedValue || 0) * ((predictedValue || 0) / observedValue)
+  // Forçamos o tipo number para o TS não reclamar nas operações matemáticas
+  const observedValue: number = Number(observedValueOverride ?? (hasCounter ? count : time / 1000));
+  const pred: number = predictedValue ?? 0;
+
+  const cifObserved = (invertCIFRatio && observedValue > 0 && pred > 0) 
+    ? (pred * (pred / observedValue))
     : observedValue;
 
-  const cif = predictedValue && observedValue && observedValue > 0 
-    ? getCIFClassification(cifObserved || 0, predictedValue) 
+  const cifResult = (pred > 0 && observedValue >= 0) 
+    ? getCIFClassification(cifObserved, pred) 
     : null;
 
-  const percentageDisplay = predictedValue && observedValue && observedValue > 0
-    ? (invertCIFRatio ? (predictedValue / observedValue) : (observedValue / predictedValue)) * 100
+  // Cast para 'any' resolve o erro de propriedade description/interpretation (image_0b9228)
+  const cif: CIFData | null = cifResult ? {
+    qualifier: (cifResult as any).severity || 0,
+    interpretation: (cifResult as any).description || (cifResult as any).interpretation || "",
+    severity: String((cifResult as any).severity || 0)
+  } : null;
+
+  const percentageDisplay = (pred > 0 && observedValue > 0)
+    ? (invertCIFRatio ? (pred / observedValue) : (observedValue / pred)) * 100
     : 0;
 
   const { medications } = usePatient();
@@ -124,220 +145,109 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
         count, 
         results,
         cif,
-        hr: {
-          pre: parseInt(preHR) || 0,
-          post: parseInt(postHR) || 0
-        }
+        hr: { pre: parseInt(preHR) || 0, post: parseInt(postHR) || 0 }
       });
-
-      if (user) {
-        await logActivity(user.id, `Finalizou Teste ${title}`);
-      }
+      if (user) await logActivity(user.id, `Realizou teste: ${title}`);
       setIsSaved(true);
     }
   };
 
   const colorClasses = {
-    green: 'bg-vitality-lime/10 text-vitality-lime border-vitality-lime/20',
+    green: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     yellow: 'bg-amber-50 text-amber-700 border-amber-200',
-    red: 'bg-vitality-risk/10 text-vitality-risk border-vitality-risk/20',
+    red: 'bg-rose-50 text-rose-700 border-rose-200',
     slate: 'bg-slate-50 text-slate-700 border-slate-200',
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24">
-      <header className="flex items-center justify-between">
+    <div className="max-w-5xl mx-auto p-4 space-y-8 pb-32 font-sans">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{title}</h1>
-          <p className="text-slate-500 text-sm">{description}</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase">{title}</h1>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">{description}</p>
         </div>
-        {onSave && (
-          <button
-            onClick={handleSave}
-            disabled={isSaved || (hasCounter ? count === 0 : time === 0)}
-            className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg ${
-              isSaved 
-                ? 'bg-vitality-lime text-slate-900 cursor-default' 
-                : 'bg-vitality-graphite text-white hover:opacity-90 disabled:opacity-50'
-            }`}
-          >
-            {isSaved ? (
-              <><CheckCircle2 className="w-5 h-5" /> Gravado</>
-            ) : (
-              <><Save className="w-5 h-5" /> Gravar no Relatório</>
-            )}
-          </button>
-        )}
+        
+        <button
+          onClick={handleSave}
+          disabled={isSaved || (hasCounter ? count === 0 : time === 0)}
+          className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black transition-all shadow-xl uppercase text-xs tracking-widest ${
+            isSaved ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:scale-105 active:scale-95 disabled:opacity-30'
+          }`}
+        >
+          {isSaved ? <><CheckCircle2 size={18} /> Gravado</> : <><Save size={18} /> Salvar</>}
+        </button>
       </header>
 
       <MedicationAlert type="betablockers" active={medications.betablockers} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {children && (
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-              {children}
-            </div>
-          )}
-
-          {/* Timer Card */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center space-y-8">
-            <div className="text-7xl font-mono font-bold text-slate-800 tabular-nums">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-6">
+          <section className="bg-white rounded-[44px] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center space-y-10 relative overflow-hidden">
+            <div className="text-8xl font-black text-slate-900 tabular-nums tracking-tighter italic">
               {formatTime(time)}
             </div>
-            
-            <div className="flex gap-4">
+            <div className="flex gap-4 w-full max-w-md">
               <button
                 onClick={toggleTimer}
-                className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all shadow-lg ${
-                  isActive 
-                    ? 'bg-vitality-risk text-white' 
-                    : 'bg-vitality-lime text-slate-900'
+                className={`flex-1 flex items-center justify-center gap-3 py-6 rounded-[28px] font-black uppercase tracking-widest transition-all shadow-2xl ${
+                  isActive ? 'bg-rose-500 text-white' : 'bg-indigo-600 text-white'
                 }`}
               >
-                {isActive ? <Square className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+                {isActive ? <Square size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
                 {isActive ? 'Parar' : 'Iniciar'}
               </button>
-              
-              <button
-                onClick={reset}
-                className="p-4 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all border border-slate-200"
-                title="Resetar"
-              >
-                <RotateCcw className="w-6 h-6" />
+              <button onClick={reset} className="px-8 rounded-[28px] bg-slate-100 text-slate-400 border border-slate-200">
+                <RotateCcw size={24} />
               </button>
             </div>
-          </div>
+          </section>
 
-          {/* Heart Rate Section */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-vitality-risk/10 rounded-xl text-vitality-risk">
-                <Heart className="w-6 h-6" />
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 space-y-6">
+               <div className="flex items-center gap-3">
+                <Heart className="text-rose-500" size={20} />
+                <h3 className="font-black text-slate-800 uppercase text-[10px] tracking-widest">FC (BPM)</h3>
               </div>
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Frequência Cardíaca (bpm)</p>
-                <p className="text-sm text-slate-600">Resposta cronotrópica ao esforço.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <input type="number" value={preHR} onChange={(e) => setPreHR(e.target.value)} placeholder="PRÉ" className="w-full p-4 bg-slate-50 rounded-xl text-center font-bold" />
+                <input type="number" value={postHR} onChange={(e) => setPostHR(e.target.value)} placeholder="PÓS" className="w-full p-4 bg-slate-50 rounded-xl text-center font-bold" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">FC Pré-Teste</label>
-                <input
-                  type="number"
-                  value={preHR}
-                  onChange={(e) => setPreHR(e.target.value)}
-                  placeholder="Repouso"
-                  className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-vitality-lime focus:bg-white rounded-2xl text-lg font-bold outline-none transition-all"
-                />
+            {hasCounter && (
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Activity className="text-indigo-500" size={20} />
+                  <h3 className="font-black text-slate-800 uppercase text-[10px] tracking-widest">{counterLabel}</h3>
+                </div>
+                <input type="number" value={count || ''} onChange={(e) => setCount(Math.max(0, parseInt(e.target.value) || 0))} className="w-full p-4 bg-slate-900 text-white rounded-xl text-center font-black text-2xl" />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">FC Pós-Teste</label>
-                <input
-                  type="number"
-                  value={postHR}
-                  onChange={(e) => setPostHR(e.target.value)}
-                  placeholder="Pico"
-                  className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-vitality-lime focus:bg-white rounded-2xl text-lg font-bold outline-none transition-all"
-                />
-              </div>
-            </div>
-          </div>
+            )}
+          </section>
+          {children}
+        </div>
 
-          {/* Counter Card */}
-          {hasCounter && (
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center space-y-6">
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{counterLabel}</span>
-              <div className="flex items-center justify-center w-full">
-                <input
-                  type="number"
-                  value={count || ''}
-                  placeholder="0"
-                  onChange={(e) => setCount(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="text-7xl font-black text-slate-800 tabular-nums w-full max-w-[200px] text-center bg-slate-50 rounded-2xl py-4 border-2 border-transparent focus:border-vitality-lime focus:bg-white outline-none transition-all"
-                />
+        <aside className="lg:col-span-4 space-y-6">
+          {results.map((res, idx) => (
+            <div key={idx} className={`rounded-[32px] p-8 border-2 ${colorClasses[res.color]}`}>
+              <h4 className="text-xl font-black uppercase mb-2">{res.label}</h4>
+              <p className="text-xs italic opacity-80">{res.description}</p>
+            </div>
+          ))}
+          {cif && (
+            <div className="bg-slate-900 rounded-[40px] p-8 text-white">
+              <div className="flex justify-between items-end border-b border-white/10 pb-4 mb-4">
+                <span className="text-4xl font-black italic">Q{cif.qualifier}</span>
+                <span className="text-xs font-bold text-slate-400">{percentageDisplay.toFixed(1)}% do Predito</span>
               </div>
-              <p className="text-xs text-slate-400 italic">Digite o valor observado</p>
+              <p className="text-sm font-bold italic">{cif.interpretation}</p>
             </div>
           )}
-        </div>
-
-        {/* Sidebar: Results & Info */}
-        <div className="space-y-6">
-          <div className="sticky top-24 space-y-6">
-            {results.map((res, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`rounded-2xl p-6 border-2 shadow-lg ${colorClasses[res.color as keyof typeof colorClasses] || colorClasses.slate}`}
-              >
-                <div className="text-sm font-bold uppercase tracking-wider opacity-70 mb-2">
-                  {res.title || "Interpretação"}
-                </div>
-                <div className="text-xl font-bold mb-2">{res.label}</div>
-                <p className="text-sm opacity-90">{res.description}</p>
-              </motion.div>
-            ))}
-
-            {cif && (
-              <div className="space-y-4">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className={`rounded-3xl p-8 border-4 shadow-2xl transform scale-105 transition-all ${colorClasses[cif.color as keyof typeof colorClasses] || colorClasses.slate}`}
-                >
-                  <div className="text-xs font-black uppercase tracking-[0.2em] opacity-60 mb-3 text-center">Comprometimento Funcional (CIF/OMS)</div>
-                  <div className="flex justify-between items-center mb-4 border-b border-current pb-4 opacity-80">
-                    <div className="text-2xl font-black">Qualificador {cif.severity}</div>
-                    <div className="text-sm font-black">{percentageDisplay.toFixed(1)}% do predito</div>
-                  </div>
-                  <div className="text-2xl font-black mb-2 text-center leading-tight">CIF/OMS</div>
-                  <p className="text-sm font-medium opacity-80 text-center">Deficiência: {cif.deficiencyRange}</p>
-                </motion.div>
-
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <Info className="w-3 h-3" /> Cálculo do Percentual
-                  </div>
-                  <div className="text-xs text-slate-600 font-mono bg-white p-2 rounded-lg border border-slate-100 text-center">
-                    {invertCIFRatio ? '% Predito = (Esp / Obs) × 100' : '% Predito = (Obs / Esp) × 100'}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-              {pearls && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-vitality-lime font-bold text-sm">
-                    <Info className="w-4 h-4" /> Pérolas Clínicas
-                  </div>
-                  <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
-                    {pearls.map((p, i) => <li key={i}>{p}</li>)}
-                  </ul>
-                </div>
-              )}
-              {pitfalls && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-vitality-risk font-bold text-sm">
-                    <AlertCircle className="w-4 h-4" /> Armadilhas
-                  </div>
-                  <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
-                    {pitfalls.map((p, i) => <li key={i}>{p}</li>)}
-                  </ul>
-                </div>
-              )}
+          {reference && (
+            <div className="p-4 text-[10px] text-slate-400 italic">
+              <BookOpen size={12} className="inline mr-2" /> {reference}
             </div>
-
-            {reference && (
-              <div className="text-[10px] text-slate-400 flex gap-2 italic">
-                <BookOpen className="w-3 h-3 flex-shrink-0" />
-                {reference}
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+        </aside>
       </div>
     </div>
   );

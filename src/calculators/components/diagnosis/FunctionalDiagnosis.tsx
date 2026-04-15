@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { FileText, Copy, Check, Info, AlertCircle, Activity, Heart, Wind, Droplets } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, Copy, Check, Info, Activity, Heart, Droplets, ClipboardList, Share2, ChevronRight } from 'lucide-react';
 import { usePatient } from '../../../context/PatientContext';
+import { toast } from 'react-hot-toast';
 
 type Severity = 'Leve' | 'Moderada' | 'Grave' | 'Completa';
 
@@ -14,271 +15,224 @@ export const FunctionalDiagnosis: React.FC = () => {
   const [hrMedication, setHrMedication] = useState<boolean>(
     !!(medications.betablockers || medications.antihypertensives)
   );
-  const [cateDone, setCateDone] = useState<boolean>(false);
-  const [cateFindings, setCateFindings] = useState<string>('');
   const [copied, setCopied] = useState(false);
 
-  // 1. Cálculo de Fadiga baseado na escala de esforço
-  const maxFatigue = Math.max(
+  // 1. Lógica de Intensidade de Fadiga (Maior valor de Borg registrado)
+  const maxFatigueScore = Math.max(
     testResults.fatigabilityScales?.exercise.fatigue || 0,
     testResults.fatigabilityScales?.exercise.dyspnea || 0
   );
   
-  let fatigue = 'Nenhuma';
-  if (maxFatigue >= 10) fatigue = 'Exaustiva';
-  else if (maxFatigue >= 7) fatigue = 'Grave';
-  else if (maxFatigue >= 4) fatigue = 'Moderada';
-  else if (maxFatigue >= 1) fatigue = 'Leve';
+  const getFatigueLabel = (score: number) => {
+    if (score >= 10) return 'EXAUSTIVA';
+    if (score >= 7) return 'GRAVE';
+    if (score >= 4) return 'MODERADA';
+    if (score >= 1) return 'LEVE';
+    return 'NENHUMA';
+  };
 
-  // 2. Auto-população baseada nos resultados salvos
+  // 2. Agregador Universal de Testes (Hierarquia de Capacidade Aeróbica)
   useEffect(() => {
-    // Capacidade Aeróbica (Prioridade para o TC6M)
+    // Ordem de prioridade para definir o % do previsto: TC6M > TD2M > TSL1M
     if (testResults.sixMinuteWalkTest) {
-      const efficiency = testResults.sixMinuteWalkTest.efficiency || 0;
-      if (efficiency < 5) setAerobicCapacity('0-4');
-      else if (efficiency < 25) setAerobicCapacity('5-24');
-      else if (efficiency < 50) setAerobicCapacity('25-49');
+      const eff = testResults.sixMinuteWalkTest.efficiency || 0;
+      if (eff < 5) setAerobicCapacity('0-4');
+      else if (eff < 25) setAerobicCapacity('5-24');
+      else if (eff < 50) setAerobicCapacity('25-49');
       else setAerobicCapacity('50-95');
-    } else if (testResults.td2m?.cif) {
+    } 
+    else if (testResults.td2m?.cif) {
       const q = testResults.td2m.cif.qualifier;
-      if (q === 4) setAerobicCapacity('0-4');
-      else if (q === 3) setAerobicCapacity('5-24');
-      else if (q === 2) setAerobicCapacity('25-49');
-      else if (q === 1) setAerobicCapacity('50-95');
+      const mapping: Record<number, string> = { 4: '0-4', 3: '5-24', 2: '25-49', 1: '50-95' };
+      setAerobicCapacity(mapping[q] || '50-95');
+    }
+    else if (testResults.tsl1m?.cif) {
+      const q = testResults.tsl1m.cif.qualifier;
+      const mapping: Record<number, string> = { 4: '0-4', 3: '5-24', 2: '25-49', 1: '50-95' };
+      setAerobicCapacity(mapping[q] || '50-95');
     }
 
-    // Avaliação Vascular
+    // Sincronização Vascular
     if (testResults.vascularAssessment) {
-      const { arterial, venous, lymphatic } = testResults.vascularAssessment;
-      if (arterial && arterial.cif !== '0') {
+      const { arterial, venous } = testResults.vascularAssessment;
+      if (arterial && arterial.cif && arterial.cif.qualifier !== 4) {
         setVesselType('Arterial');
-        setVesselSeverity(arterial.cif as any);
-      } else if (venous && venous.cif !== '0') {
+        const severityMap: Record<number, Severity> = { 1: 'Leve', 2: 'Moderada', 3: 'Grave', 4: 'Completa' };
+        setVesselSeverity(severityMap[arterial.cif.qualifier] || 'Leve');
+      } else if (venous && venous.cif && venous.cif.qualifier !== 4) {
         setVesselType('Venosa');
-        setVesselSeverity(venous.cif as any);
-      } else if (lymphatic && lymphatic.cif !== '0') {
-        setVesselType('Linfática');
-        setVesselSeverity(lymphatic.cif as any);
+        const severityMap: Record<number, Severity> = { 1: 'Leve', 2: 'Moderada', 3: 'Grave', 4: 'Completa' };
+        setVesselSeverity(severityMap[venous.cif.qualifier] || 'Leve');
       }
     }
 
-    // Estado de Fadiga
-    if (testResults.sixMinuteWalkTest || testResults.stepTest) {
+    if (testResults.sixMinuteWalkTest || testResults.td2m || testResults.stepTest) {
       setFatigueState('Esforço');
     }
   }, [testResults]);
 
-  useEffect(() => {
-    setHrMedication(!!(medications.betablockers || medications.antihypertensives));
-  }, [medications]);
-
   const generateDiagnosis = () => {
-    const structureStr = patientInfo.structureAlteration ? 'Com' : 'Sem';
-    const base = `D05.01.4.4.1.4 - Deficiência Cinético-funcional Cardiovascular - ${structureStr} alteração de estrutura`;
-    const capacity = ` | ${aerobicCapacity === '0-4' ? 'Completa' : aerobicCapacity === '5-24' ? 'Grave' : aerobicCapacity === '25-49' ? 'Moderada' : 'Leve'} alteração da capacidade aeróbica: (${aerobicCapacity}% do previsto)`;
+    const struct = patientInfo.structureAlteration ? 'COM' : 'SEM';
+    const capLevel = 
+      aerobicCapacity === '0-4' ? 'COMPLETA' : 
+      aerobicCapacity === '5-24' ? 'GRAVE' : 
+      aerobicCapacity === '25-49' ? 'MODERADA' : 'LEVE';
     
-    let vessel = '';
+    let text = `DIAGNÓSTICO CINÉTICO-FUNCIONAL: D05.01.4.4.1.4 - DEFICIÊNCIA FUNCIONAL CARDIOVASCULAR - ${struct} ALTERAÇÃO DE ESTRUTURA.`;
+    text += ` | DEFICIÊNCIA ${capLevel} DA CAPACIDADE AERÓBICA (FAIXA DE ${aerobicCapacity}% DO PREVISTO).`;
+    
     if (vesselType !== 'Nenhuma') {
-      vessel = ` | Com alteração das funções dos vasos - ${vesselType.toLowerCase()}-${vesselSeverity.toLowerCase()}`;
+      text += ` | ALTERAÇÃO DAS FUNÇÕES DOS VASOS (${vesselType.toUpperCase()}) EM GRAU ${vesselSeverity.toUpperCase()}.`;
     }
 
-    const fatigueStr = ` | ${fatigue} fadiga - ${fatigueState.toLowerCase()}`;
-    const hr = ` | Com alteração da frequência cardíaca - ${hrMedication ? 'Com medicação' : 'Sem medicação'}`;
-    const cate = cateDone ? ` | CATE: ${cateFindings || 'Realizado'}` : '';
+    text += ` | FADIGA ${getFatigueLabel(maxFatigueScore)} AO ${fatigueState.toUpperCase()}.`;
+    text += ` | RESPOSTA CRONOTRÓPICA: ${hrMedication ? 'INFLUENCIADA POR FÁRMACOS' : 'FISIOLÓGICA'}.`;
 
-    let testsSummary = '';
-    const tests = [];
-    if (testResults.sixMinuteWalkTest) tests.push(`TC6M: ${testResults.sixMinuteWalkTest.distance}m (${testResults.sixMinuteWalkTest.efficiency?.toFixed(1)}%)`);
-    if (testResults.td2m) tests.push(`TD2M: ${testResults.td2m.count} passos`);
-    if (testResults.tsl1m) tests.push(`TSL1M: ${testResults.tsl1m.count} rep`);
-    if (testResults.tsl5x) tests.push(`TSL5X: ${testResults.tsl5x.time}s`);
-    if (testResults.tug) tests.push(`TUG: ${testResults.tug.time}s`);
-    
-    if (tests.length > 0) {
-      testsSummary = `\n\nTestes Realizados: ${tests.join(' | ')}`;
+    // LISTAGEM DE TODOS OS TESTES EXECUTADOS
+    const testsPerformed = [];
+    if (testResults.sixMinuteWalkTest) testsPerformed.push(`TC6M: ${testResults.sixMinuteWalkTest.distance}M (${testResults.sixMinuteWalkTest.efficiency?.toFixed(1)}%)`);
+    if (testResults.td2m) testsPerformed.push(`TD2M: ${testResults.td2m.count} DEGRAUS`);
+    if (testResults.tsl1m) testsPerformed.push(`TSL1M: ${testResults.tsl1m.count} REPETIÇÕES`);
+    if (testResults.tsl5x) testsPerformed.push(`TSL5X: ${testResults.tsl5x.time}S`);
+    if (testResults.tug) testsPerformed.push(`TUG: ${testResults.tug.time}S`);
+    if (testResults.stepTest) testsPerformed.push(`STEP TEST: ${testResults.stepTest.time}S`);
+
+    if (testsPerformed.length > 0) {
+      text += `\n\n[SUMÁRIO DE TESTES: ${testsPerformed.join(' | ')}]`;
     }
 
-    return `${base}${capacity}${vessel}${fatigueStr}${hr}${cate}${testsSummary}`;
+    return text.toUpperCase();
   };
 
-  const diagnosis = generateDiagnosis();
-
   const handleCopy = () => {
-    navigator.clipboard.writeText(diagnosis);
+    navigator.clipboard.writeText(generateDiagnosis());
     setCopied(true);
+    toast.success("Diagnóstico copiado!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-24">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Gerador de Diagnóstico Funcional</h1>
-        <p className="text-slate-500 text-sm">Construa o diagnóstico cinético-funcional padronizado.</p>
+    <div className="max-w-5xl mx-auto p-4 space-y-8 pb-32">
+      <header className="px-2">
+        <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase flex items-center gap-3">
+          <FileText className="text-indigo-600" size={32} /> Laudo Final
+        </h1>
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Consolidação de Dados Cinético-Funcionais</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
-              <Heart className="w-5 h-5 text-red-500" />
-              Estrutura e Capacidade
-            </div>
-            
-            <div className="space-y-4">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Alteração de Estrutura</label>
-              <div className="flex gap-2">
-                {['Com', 'Sem'].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => updatePatientInfo({ structureAlteration: s === 'Com' })}
-                    className={`flex-1 py-3 rounded-xl font-bold transition-all border-2 ${
-                      (patientInfo.structureAlteration ? 'Com' : 'Sem') === s ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-500 border-transparent'
-                    }`}
-                  >
-                    {s} alteração
-                  </button>
-                ))}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 space-y-6">
+          {/* SEÇÃO 1: ESTRUTURA E CAPACIDADE */}
+          <section className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 space-y-8">
+            <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
+              <div className="p-3 bg-red-50 text-red-500 rounded-2xl">
+                <Heart size={24} />
               </div>
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Capacidade Aeróbica</h2>
             </div>
 
-            <div className="space-y-4">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Capacidade Aeróbica (% do previsto)</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { range: '0-4', label: 'Completa (0-4%)' },
-                  { range: '5-24', label: 'Grave (5-24%)' },
-                  { range: '25-49', label: 'Moderada (25-49%)' },
-                  { range: '50-95', label: 'Leve (50-95%)' },
-                ].map((c) => (
-                  <button
-                    key={c.range}
-                    onClick={() => setAerobicCapacity(c.range)}
-                    className={`py-3 px-4 rounded-xl font-bold text-xs transition-all border-2 ${
-                      aerobicCapacity === c.range ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-slate-50 text-slate-500 border-transparent'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
-              <Droplets className="w-5 h-5 text-blue-500" />
-              Função dos Vasos
-            </div>
-
-            <div className="space-y-4">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tipo de Alteração</label>
-              <div className="flex flex-wrap gap-2">
-                {['Arterial', 'Venosa', 'Linfática', 'Nenhuma'].map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => setVesselType(v as any)}
-                    className={`px-4 py-2 rounded-xl font-bold text-xs transition-all border-2 ${
-                      vesselType === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-500 border-transparent'
-                    }`}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {vesselType !== 'Nenhuma' && (
-              <div className="space-y-4">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gravidade Vascular</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['Leve', 'Moderada', 'Grave', 'Completa'] as Severity[]).map((s) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Alteração de Estrutura</label>
+                <div className="flex bg-slate-100 p-1 rounded-2xl">
+                  {[true, false].map((val) => (
                     <button
-                      key={s}
-                      onClick={() => setVesselSeverity(s)}
-                      className={`py-2 rounded-xl font-bold text-[10px] transition-all border-2 ${
-                        vesselSeverity === s ? 'bg-blue-100 text-blue-900 border-blue-200' : 'bg-slate-50 text-slate-500 border-transparent'
+                      key={val ? 'sim' : 'nao'}
+                      onClick={() => updatePatientInfo({ structureAlteration: val })}
+                      className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${
+                        patientInfo.structureAlteration === val ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'
                       }`}
                     >
-                      {s}
+                      {val ? 'Com Alteração' : 'Sem Alteração'}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
-              <Activity className="w-5 h-5 text-amber-500" />
-              Fadiga e Frequência Cardíaca
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Intensidade Fadiga</label>
-                <div className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-600">
-                  {fatigue}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Estado</label>
-                <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                  {['Repouso', 'Esforço'].map(s => (
-                    <button
-                      key={s}
-                      onClick={() => setFatigueState(s as any)}
-                      className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
-                        fatigueState === s ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hrMedication ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
-                  <Activity className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-slate-800">Frequência Cardíaca</div>
-                  <div className="text-[10px] text-slate-500">Uso de medicação cronotrópica</div>
-                </div>
-              </div>
-              <button
-                onClick={() => setHrMedication(!hrMedication)}
-                className={`w-12 h-6 rounded-full transition-all relative ${hrMedication ? 'bg-emerald-500' : 'bg-slate-300'}`}
-              >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${hrMedication ? 'left-7' : 'left-1'}`} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="sticky top-24 space-y-6">
-            <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-2xl space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold flex items-center gap-2 text-emerald-400">
-                  <FileText className="w-4 h-4" />
-                  Diagnóstico Final
-                </h3>
-                <button
-                  onClick={handleCopy}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-all"
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Nível de Deficiência</label>
+                <select 
+                  value={aerobicCapacity}
+                  onChange={(e) => setAerobicCapacity(e.target.value)}
+                  className="w-full bg-slate-50 border-none rounded-2xl p-3 font-black text-[10px] uppercase text-slate-600 focus:ring-2 focus:ring-emerald-500"
                 >
-                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  <option value="0-4">Completa (0-4%)</option>
+                  <option value="5-24">Grave (5-24%)</option>
+                  <option value="25-49">Moderada (25-49%)</option>
+                  <option value="50-95">Leve (50-95%)</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          {/* SEÇÃO 2: VASCULAR E SISTÊMICO */}
+          <section className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 space-y-8">
+            <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
+              <div className="p-3 bg-blue-50 text-blue-500 rounded-2xl">
+                <Droplets size={24} />
+              </div>
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Funções Vasculares</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Comprometimento</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Arterial', 'Venosa', 'Nenhuma'].map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setVesselType(type as any)}
+                      className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase transition-all ${
+                        vesselType === type ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-400'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Uso de Beta-bloqueador</label>
+                <button
+                  onClick={() => setHrMedication(!hrMedication)}
+                  className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 ${
+                    hrMedication ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-50 text-slate-400'
+                  }`}
+                >
+                  {hrMedication ? <Check size={14} /> : null}
+                  {hrMedication ? 'Medicação Ativa' : 'Sem Influência'}
                 </button>
               </div>
+            </div>
+          </section>
+        </div>
 
-              <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                <p className="text-sm leading-relaxed font-mono break-words">
-                  {diagnosis}
-                </p>
+        {/* COLUNA DO LAUDO (DIREITA) */}
+        <div className="lg:col-span-5">
+          <div className="sticky top-6">
+            <div className="bg-slate-900 rounded-[44px] p-10 text-white shadow-2xl space-y-8">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-black italic tracking-tighter">DIAGNÓSTICO E CIF</h3>
+                <ClipboardList className="text-slate-600" size={24} />
               </div>
+
+              <div className="bg-white/5 p-6 rounded-[32px] border border-white/10 min-h-[250px] relative group">
+                <p className="text-[11px] leading-relaxed font-mono text-slate-300 break-words uppercase">
+                  {generateDiagnosis()}
+                </p>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent pointer-events-none rounded-[32px]" />
+              </div>
+
+              <button
+                onClick={handleCopy}
+                className={`w-full py-6 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${
+                  copied ? 'bg-emerald-500 scale-95' : 'bg-indigo-600 hover:bg-indigo-500'
+                }`}
+              >
+                {copied ? <Check size={20} /> : <Share2 size={20} />}
+                {copied ? 'CONCLUÍDO' : 'COPIAR PARA O PRONTUÁRIO'}
+              </button>
             </div>
           </div>
         </div>

@@ -1,23 +1,22 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { PatientInfo, TestResults, Medications } from '../types';
 
 interface PatientContextType {
   patientInfo: PatientInfo;
   setPatientInfo: React.Dispatch<React.SetStateAction<PatientInfo>>;
-  updatePatientInfo: (updates: Partial<PatientInfo>) => void; // Adicionado para limpar erros no registro
+  updatePatientInfo: (updates: Partial<PatientInfo>) => void;
   medications: Medications;
   setMedications: React.Dispatch<React.SetStateAction<Medications>>;
   testResults: TestResults;
   setTestResults: React.Dispatch<React.SetStateAction<TestResults>>;
-  updateTestResults: (updates: Partial<TestResults>) => void; // Melhorado para aceitar atualizações parciais
+  updateTestResults: (updates: Partial<TestResults>) => void;
   resetData: () => void;
 }
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'cardiotools_patient_data';
+const STORAGE_KEY = 'cardiotools_v2_data';
 
-// Sincronizado com os campos que você usa no formulário
 const initialPatientInfo: PatientInfo = {
   name: '',
   age: '',
@@ -45,7 +44,6 @@ const initialMedications: Medications = {
   others: ''
 };
 
-// Sincronizado com os nomes oficiais: sixMinuteWalkTest, td2m, etc.
 const initialTestResults: TestResults = {
   fatigabilityScales: {
     rest: { dyspnea: 0, fatigue: 0 },
@@ -70,46 +68,51 @@ const initialTestResults: TestResults = {
 };
 
 export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Estado inicial carregado do LocalStorage para persistência
   const [patientInfo, setPatientInfo] = useState<PatientInfo>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_info`);
-    return saved ? JSON.parse(saved) : initialPatientInfo;
+    return saved ? { ...initialPatientInfo, ...JSON.parse(saved) } : initialPatientInfo;
   });
 
   const [medications, setMedications] = useState<Medications>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_meds`);
-    return saved ? JSON.parse(saved) : initialMedications;
+    return saved ? { ...initialMedications, ...JSON.parse(saved) } : initialMedications;
   });
 
   const [testResults, setTestResults] = useState<TestResults>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_tests`);
-    return saved ? JSON.parse(saved) : initialTestResults;
+    return saved ? { ...initialTestResults, ...JSON.parse(saved) } : initialTestResults;
   });
 
+  // Efeito de Persistência Auto-save
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_info`, JSON.stringify(patientInfo));
     localStorage.setItem(`${STORAGE_KEY}_meds`, JSON.stringify(medications));
     localStorage.setItem(`${STORAGE_KEY}_tests`, JSON.stringify(testResults));
   }, [patientInfo, medications, testResults]);
 
-  // Função utilitária para facilitar atualizações
-  const updatePatientInfo = (updates: Partial<PatientInfo>) => {
+  // Funções de atualização usando useCallback para evitar re-renders infinitos em sub-componentes
+  const updatePatientInfo = useCallback((updates: Partial<PatientInfo>) => {
     setPatientInfo(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
 
-  // Melhorado para lidar com objetos complexos como 'symptoms'
-  const updateTestResults = (updates: Partial<TestResults>) => {
+  const updateTestResults = useCallback((updates: Partial<TestResults>) => {
     setTestResults(prev => ({
       ...prev,
       ...updates
     }));
-  };
+  }, []);
 
-  const resetData = () => {
-    localStorage.clear();
-    setPatientInfo(initialPatientInfo);
-    setMedications(initialMedications);
-    setTestResults(initialTestResults);
-  };
+  const resetData = useCallback(() => {
+    if (window.confirm("Isso apagará todos os dados da avaliação atual. Deseja continuar?")) {
+      localStorage.removeItem(`${STORAGE_KEY}_info`);
+      localStorage.removeItem(`${STORAGE_KEY}_meds`);
+      localStorage.removeItem(`${STORAGE_KEY}_tests`);
+      setPatientInfo(initialPatientInfo);
+      setMedications(initialMedications);
+      setTestResults(initialTestResults);
+    }
+  }, []);
 
   return (
     <PatientContext.Provider value={{ 
