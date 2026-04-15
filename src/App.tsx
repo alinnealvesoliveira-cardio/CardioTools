@@ -102,28 +102,29 @@ function AppContent() {
   };
 
   const activeCategory = useMemo(() => {
-  if (activeCalculator) return activeCalculator.category as CategoryName;
-  if (currentModule) return currentModule.category;
-  return 'Home' as CategoryName;
-}, [activeCalculator, currentModule]);
+    if (activeCalculator) return activeCalculator.category as CategoryName;
+    if (currentModule) return currentModule.category;
+    return 'Home' as CategoryName;
+  }, [activeCalculator, currentModule]);
 
   const ActiveCalculatorComponent = activeCalculator?.component;
 
   return (
     <Layout 
-  selectedCategory={activeCategory as any} 
-  onSelectCategory={(cat: any) => { // Use any aqui se o Layout estiver reclamando da tipagem
-    if (cat === 'Home') {
-      handleGoHome();
-    } else {
-      const mod = CLINICAL_MODULES.find(m => m.category === cat);
-      if (mod) {
-        setSelectedModuleId(mod.id);
-        setActiveCalculator(null);
-      }
-    }
-  }}
->      <AnimatePresence mode="wait">
+      selectedCategory={activeCategory as any} 
+      onSelectCategory={(cat: any) => {
+        if (cat === 'Home') {
+          handleGoHome();
+        } else {
+          const mod = CLINICAL_MODULES.find(m => m.category === cat);
+          if (mod) {
+            setSelectedModuleId(mod.id);
+            setActiveCalculator(null);
+          }
+        }
+      }}
+    >
+      <AnimatePresence mode="wait">
         {activeCalculator ? (
           <motion.div 
             key={`calc-${activeCalculator.id}`}
