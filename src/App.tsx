@@ -17,7 +17,6 @@ interface ClinicalModule {
   categories: string[];
 }
 
-// Reordenado para refletir o fluxo clínico ideal
 const CLINICAL_MODULES: ClinicalModule[] = [
   {
     id: 'perfil',
@@ -87,6 +86,7 @@ function AppContent() {
     setActiveCalculator(null);
   };
 
+  // Trava de segurança: identifica o componente antes de renderizar
   const ActiveCalculatorComponent = activeCalculator?.component;
 
   return (
@@ -96,8 +96,8 @@ function AppContent() {
     >
       <AnimatePresence mode="wait">
         
-        {/* VIEW 3: CALCULADORA ATIVA */}
-        {activeCalculator && ActiveCalculatorComponent ? (
+        {/* VIEW 3: CALCULADORA ATIVA (Com trava de segurança para evitar tela branca) */}
+        {activeCalculator ? (
           <motion.div 
             key="calc" 
             initial={{ opacity: 0, y: 10 }} 
@@ -112,7 +112,22 @@ function AppContent() {
               <ChevronRight className="w-4 h-4 rotate-180 group-hover:-translate-x-1 transition-transform" /> 
               Voltar ao Módulo
             </button>
-            <ActiveCalculatorComponent />
+            
+            {/* CORREÇÃO: Verifica se o componente existe antes de chamar */}
+            {ActiveCalculatorComponent ? (
+              <ActiveCalculatorComponent />
+            ) : (
+              <div className="p-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] text-center">
+                <div className="bg-amber-100 text-amber-700 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Módulo em Manutenção</h3>
+                <p className="text-slate-500 max-w-sm mx-auto">
+                  O componente <strong>{activeCalculator.name}</strong> não pôde ser carregado. 
+                  Verifique se o nome do arquivo no VS Code coincide com o import no registro.
+                </p>
+              </div>
+            )}
           </motion.div>
         ) : selectedModule ? (
           
