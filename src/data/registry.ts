@@ -14,6 +14,7 @@ import { TSL30S } from '../calculators/components/TSL30S';
 import { TSL5X } from '../calculators/components/TSL5X';
 import { TUG } from '../calculators/components/TUG';
 import { VSAQ } from '../calculators/components/VSAQ';
+import { DASI } from '../calculators/components/DASI';
 import { FinalReport } from '../calculators/components/FinalReport';
 
 // --- GRUPO B: Hemodinâmica (src/calculators/components/hemodynamics/) ---
@@ -92,6 +93,13 @@ export const CALCULATORS: Calculator[] = [
     description: 'Questionário de Atividade Física de Veteranos.',
     category: 'Capacidade Aeróbica',
     component: VSAQ
+  },
+  {
+    id: 'dasi',
+    name: 'Protocolo DASI',
+    description: 'duke activity status index',
+    category: 'Capacidade Aeróbica',
+    component: DASI
   },
   {
     id: 'hrv',
