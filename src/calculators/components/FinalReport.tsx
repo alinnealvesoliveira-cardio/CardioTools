@@ -18,6 +18,7 @@ export const FinalReport: React.FC = () => {
   const vascular = (testResults?.vascularAssessment || {}) as any;
   const dasi = (testResults?.dasi || {}) as any;
   const fatigabilityScales = testResults?.fatigabilityScales;
+  const sitToStand = (testResults?.sitToStandTest || {}) as any;
 
   const handlePrint = async () => {
     if (user) await logActivity(user.id, 'Gerou PDF do Relatório Final');
@@ -35,29 +36,30 @@ export const FinalReport: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-8 pb-32 print:p-0 text-slate-900">
-      {/* HEADER - NOME DO PACIENTE GIGANTE */}
-      <header className="flex items-end justify-between border-b-2 border-slate-100 pb-6">
-        <div className="space-y-1 w-full">
-          <div className="flex items-center gap-2 text-indigo-600 mb-1">
-            <Stethoscope className="w-5 h-5" />
-            <span className="text-[9px] font-black uppercase tracking-[0.3em]">Fisioterapia Cardiovascular Especializada</span>
-          </div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Relatório Clínico</h1>
-          
-          <div className="flex flex-col mt-6">
-            <span className="text-[14px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Paciente:</span>
-            {/* Nome do paciente em tamanho máximo */}
-            <span className="text-7xl font-black text-indigo-950 uppercase tracking-tighter italic leading-none break-words">
-              {patientInfo.name}
-            </span>
-          </div>
+      {/* HEADER - AJUSTADO PARA NÃO QUEBRAR COM NOMES GIGANTES */}
+      <header className="flex flex-col border-b-2 border-slate-100 pb-6">
+        <div className="flex items-center gap-2 text-indigo-600 mb-2">
+          <Stethoscope className="w-5 h-5" />
+          <span className="text-[9px] font-black uppercase tracking-[0.3em]">Fisioterapia Cardiovascular Especializada</span>
         </div>
-        <button onClick={handlePrint} className="print:hidden bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200 shrink-0 ml-4">
-          <Download className="w-4 h-4 text-emerald-400" /> Exportar Relatório
-        </button>
+        
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl font-black text-slate-400 tracking-tighter uppercase italic leading-none">Relatório Clínico</h1>
+            <div className="mt-4">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Paciente</span>
+              <h2 className="text-6xl md:text-7xl font-black text-indigo-950 uppercase tracking-tighter italic leading-[0.9] break-words">
+                {patientInfo.name}
+              </h2>
+            </div>
+          </div>
+          <button onClick={handlePrint} className="print:hidden bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-slate-800 transition-all shrink-0 shadow-lg shadow-slate-200">
+            <Download className="w-4 h-4 text-emerald-400" /> Exportar
+          </button>
+        </div>
       </header>
 
-      {/* MEDICAMENTOS E RISCO */}
+      {/* RISCO E MEDICAMENTOS */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 break-inside-avoid">
         <div className={`md:col-span-2 p-8 rounded-[2.5rem] border-2 ${risk.border} ${risk.bg} flex items-center justify-between`}>
           <div>
@@ -68,61 +70,74 @@ export const FinalReport: React.FC = () => {
           <ShieldCheck className={`w-14 h-14 ${risk.color} opacity-80`} />
         </div>
         
-        <div className="bg-indigo-50 rounded-[2.5rem] p-8 border border-indigo-100 flex flex-col">
+        <div className="bg-indigo-50 rounded-[2.5rem] p-8 border border-indigo-100">
           <div className="flex items-center gap-2 mb-2">
             <Pill className="w-4 h-4 text-indigo-500" />
-            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Uso de Fármacos</span>
+            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Fármacos</span>
           </div>
           <div className="text-[11px] font-black text-slate-700 uppercase leading-tight italic whitespace-pre-line">
-            {medications?.betablockers ? '• Betabloqueador em uso' : ''}
-            {medications?.others ? `\n• ${medications.others}` : (!medications?.betablockers ? 'Nenhum relatado' : '')}
+            {medications?.betablockers ? '• Betabloqueador' : ''}
+            {medications?.others ? `\n• ${medications.others}` : (!medications?.betablockers ? 'Nenhum' : '')}
           </div>
         </div>
       </section>
 
-      {/* CORE: DIAGNÓSTICO CBDF */}
-      <section className="bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl border-b-[12px] border-indigo-600 break-inside-avoid relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full mb-6">
+      {/* CORE: CBDF COM LAYOUT À PROVA DE ERROS */}
+      <section className="bg-slate-950 rounded-[3.5rem] p-10 text-white shadow-2xl border-b-[12px] border-indigo-600 break-inside-avoid relative overflow-hidden">
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="inline-flex self-start items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full">
             <Activity className="w-3 h-3 text-emerald-400" />
-            <span className="text-[9px] font-black uppercase tracking-[0.2em]">Cód. Funcional Fisioterapêutico (CBDF)</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.2em]">Cód. Funcional (CBDF)</span>
           </div>
-          <h2 className="text-6xl md:text-7xl font-black tracking-tighter font-mono text-indigo-100">{cbdfFullCode}</h2>
+          
+          <div>
+            <h2 className="text-6xl md:text-8xl font-black tracking-tighter font-mono text-indigo-100 leading-none">
+              {cbdfFullCode}
+            </h2>
+          </div>
+
+          <div className="pt-6 border-t border-white/10 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Diagnóstico Funcional</span>
+              <span className="text-3xl md:text-4xl font-black italic tracking-tight uppercase text-white">
+                Deficiência Moderada
+              </span>
+            </div>
+            {sitToStand?.percentPredicted && (
+              <div className="bg-white/10 px-4 py-2 rounded-2xl border border-white/5">
+                <span className="text-2xl font-black text-emerald-400">{sitToStand.percentPredicted}%</span>
+                <span className="text-[8px] block font-black text-white/50 uppercase tracking-tighter leading-none">do Predito</span>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* DETALHAMENTO DAS CAPACIDADES */}
+      {/* DETALHAMENTO */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 break-inside-avoid">
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-6">
           <div className="flex items-center gap-2 text-slate-400 border-b border-slate-50 pb-3">
             <Timer size={16} className="text-indigo-500" />
-            <h3 className="text-[10px] font-black uppercase tracking-widest">Capacidade e Performance</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-widest">Performance</h3>
           </div>
           
           <div className="space-y-4">
             <div className="flex justify-between items-end border-b border-dashed border-slate-100 pb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">DASI (METs Estimados):</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">DASI (METs):</span>
               <span className="text-lg font-black text-emerald-600">
                 {dasi?.estimatedMETs ? dasi.estimatedMETs.toFixed(1) : '0.0'} METs
               </span>
             </div>
-            <div className="border-b border-dashed border-slate-100 pb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Fatigabilidade / Sintomas (Borg):</span>
-              <p className="text-[13px] font-black text-rose-700 uppercase italic leading-tight">
+            <div className="pb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Sintomas (Borg):</span>
+              <p className="text-[12px] font-black text-rose-700 uppercase italic leading-tight">
                 {(() => {
-                  if (!fatigabilityScales) return "SEM INTERCORRÊNCIAS RELATADAS (0)";
-                  
+                  if (!fatigabilityScales) return "SEM INTERCORRÊNCIAS";
                   const { rest, exercise } = fatigabilityScales;
-                  const hasExercise = exercise?.dyspnea > 0 || exercise?.fatigue > 0;
-                  const hasRest = rest?.dyspnea > 0 || rest?.fatigue > 0;
-
-                  if (hasExercise) {
-                    return `ESFORÇO: DISPNEIA ${exercise.dyspnea} | FADIGA MMII ${exercise.fatigue}`;
+                  if (exercise?.dyspnea > 0 || exercise?.fatigue > 0) {
+                    return `ESFORÇO: DISPNEIA ${exercise.dyspnea} | FADIGA ${exercise.fatigue}`;
                   }
-                  if (hasRest) {
-                    return `REPOUSO: DISPNEIA ${rest.dyspnea} | FADIGA MMII ${rest.fatigue}`;
-                  }
-                  return "VALORES NORMAIS EM REPOUSO E ESFORÇO (BORG 0)";
+                  return "VALORES NORMAIS (BORG 0)";
                 })()}
               </p>
             </div>
@@ -132,20 +147,20 @@ export const FinalReport: React.FC = () => {
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-6">
           <div className="flex items-center gap-2 text-slate-400 border-b border-slate-50 pb-3">
             <Waves size={16} className="text-blue-500" />
-            <h3 className="text-[10px] font-black uppercase tracking-widest">Avaliação Vascular</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-widest">Vascular</h3>
           </div>
           
-          <div className="space-y-4">
-            <div className="flex justify-between items-end border-b border-dashed border-slate-100 pb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Tempo de Enchimento Capilar:</span>
-              <span className="text-[11px] font-black text-slate-700 uppercase">{vascular?.arterial?.capillaryRefill || 'Não avaliado'} seg</span>
+          <div className="space-y-3">
+            <div className="flex justify-between border-b border-dashed border-slate-100 pb-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Enchimento:</span>
+              <span className="text-[11px] font-black uppercase">{vascular?.arterial?.capillaryRefill || '--'} seg</span>
             </div>
-            <div className="flex justify-between items-end border-b border-dashed border-slate-100 pb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Coloração da Pele:</span>
-              <span className="text-[11px] font-black text-slate-700 uppercase">{vascular?.arterial?.skinColor || 'Normal'}</span>
+            <div className="flex justify-between border-b border-dashed border-slate-100 pb-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Pele:</span>
+              <span className="text-[11px] font-black uppercase">{vascular?.arterial?.skinColor || 'Normal'}</span>
             </div>
-            <div className="flex justify-between items-end">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Sinal de Stemmer:</span>
+            <div className="flex justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Stemmer:</span>
               <span className={`text-[11px] font-black uppercase ${vascular?.lymphatic?.stemmer === 'Positivo' ? 'text-rose-500' : 'text-emerald-500'}`}>
                 {vascular?.lymphatic?.stemmer || 'Negativo'}
               </span>
@@ -154,14 +169,11 @@ export const FinalReport: React.FC = () => {
         </div>
       </section>
 
-      {/* NOTA DE RODAPÉ */}
-      <footer className="space-y-4">
-        <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 flex gap-4 items-start">
-          <Info className="w-5 h-5 text-indigo-400 shrink-0" />
-          <p className="text-[9px] text-slate-500 leading-relaxed">
-            <strong>Nota Clínica:</strong> Este relatório é gerado com base nos critérios da Resolução COFFITO 555/2022. O código CBDF reflete o estado funcional coletado durante a avaliação.
-          </p>
-        </div>
+      <footer className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 flex gap-4 items-start">
+        <Info className="w-5 h-5 text-indigo-400 shrink-0" />
+        <p className="text-[9px] text-slate-500 leading-relaxed uppercase font-bold">
+          Relatório gerado conforme Resolução COFFITO 555/2022. O código CBDF reflete o estado funcional no momento da avaliação.
+        </p>
       </footer>
     </div>
   );

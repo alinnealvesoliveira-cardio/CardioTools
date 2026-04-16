@@ -11,15 +11,23 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
-  // Função otimizada para encerrar a sessão sem dar tela branca
+  // Função com limpeza profunda de cache e estado
   const handleLogoutClick = async () => {
     try {
+      // 1. Limpa o armazenamento local para não sobrar "lixo" de sessão
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // 2. Executa o logout do Firebase/Supabase
       await logout(); 
-      // Mudança estratégica: forçamos o recarregamento total da página
-      // Isso ignora erros de rota interna da Vercel e limpa a tela branca
+
+      // 3. Redirecionamento forçado via window.location
+      // Isso mata qualquer processo travado no React e recarrega o app do zero
       window.location.href = '/login';
     } catch (error) {
-      console.error("Erro ao sair:", error);
+      console.error("Erro crítico ao sair:", error);
+      // Fallback: mesmo com erro, limpa tudo e manda para o login
+      localStorage.clear();
       window.location.href = '/login';
     }
   };
@@ -73,13 +81,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
         <div className="h-8 w-[1px] bg-slate-100 mx-1 hidden sm:block" />
 
-        {/* Botão de Logout Corrigido */}
+        {/* Botão de Logout com Estilo de Alerta */}
         <button 
           onClick={handleLogoutClick}
-          className="flex items-center gap-2 px-3 py-2 hover:bg-rose-50 rounded-xl text-slate-500 hover:text-rose-600 transition-all group font-bold text-xs uppercase tracking-widest"
-          title="Sair do Sistema"
+          className="flex items-center gap-2 px-3 py-2 hover:bg-rose-50 rounded-xl text-slate-400 hover:text-rose-600 transition-all group font-bold text-xs uppercase tracking-widest"
+          title="Encerrar Sessão Segura"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
           <span className="hidden lg:block">Sair</span>
         </button>
 
