@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Menu, Bell, User, LogOut, Activity } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -8,6 +9,21 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Função otimizada para encerrar a sessão sem dar tela branca
+  const handleLogoutClick = async () => {
+    try {
+      await logout(); 
+      // O replace: true remove a página atual do histórico, 
+      // impedindo que o "voltar" do navegador quebre o app
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+      // Fallback de segurança caso o router falhe
+      window.location.href = '/login';
+    }
+  };
 
   return (
     <header className="h-20 border-b border-slate-100 bg-white/90 backdrop-blur-xl sticky top-0 z-40 px-6 flex items-center justify-between">
@@ -37,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </div>
         </div>
 
-        {/* Barra de Busca - Otimizada para maior legibilidade */}
+        {/* Barra de Busca */}
         <div className="hidden md:flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-2xl w-64 lg:w-96 border border-slate-100 focus-within:border-emerald-500 focus-within:bg-white focus-within:shadow-sm transition-all duration-300">
           <Search className="w-4 h-4 text-slate-400" />
           <input 
@@ -58,9 +74,9 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
         <div className="h-8 w-[1px] bg-slate-100 mx-1 hidden sm:block" />
 
-        {/* Botão de Logout */}
+        {/* Botão de Logout Corrigido */}
         <button 
-          onClick={logout}
+          onClick={handleLogoutClick}
           className="flex items-center gap-2 px-3 py-2 hover:bg-rose-50 rounded-xl text-slate-500 hover:text-rose-600 transition-all group font-bold text-xs uppercase tracking-widest"
           title="Sair do Sistema"
         >

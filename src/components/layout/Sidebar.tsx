@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom'; // 1. Importação necessária
 import { 
   Activity,
   ChevronLeft, 
@@ -31,8 +32,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectCategory 
 }) => {
   const { logout } = useAuth();
+  const navigate = useNavigate(); // 2. Inicialização do hook de navegação
 
-  // Mapeamento de itens baseado nos módulos reais da aplicação
+  // Função de logout otimizada para evitar tela branca
+  const handleLogoutClick = async () => {
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error("Erro ao encerrar sessão:", error);
+      window.location.href = '/login';
+    }
+  };
+
   const menuItems = [
     { id: 'Home', label: 'Dashboard Principal', icon: Home },
     { id: 'Cadastro', label: 'Anamnese e Perfil', icon: UserPlus },
@@ -46,7 +58,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Overlay com Blur Progressivo */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -124,7 +135,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </span>
 
                     {isActive && (
-                      <Sparkles size={12} className="ml-auto text-emerald-400 animate-pulse" />
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="ml-auto"
+                      >
+                        <Sparkles size={12} className="text-emerald-400 animate-pulse" />
+                      </motion.div>
                     )}
                   </button>
                 );
@@ -139,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
               
               <button 
-                onClick={logout}
+                onClick={handleLogoutClick} // 3. Vinculado à nova função
                 className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-rose-500/10 text-slate-600 hover:text-rose-400 transition-all group"
               >
                 <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
