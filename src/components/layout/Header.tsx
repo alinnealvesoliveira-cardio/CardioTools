@@ -15,12 +15,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const handleLogoutClick = async () => {
     try {
       await logout(); 
-      // O replace: true remove a página atual do histórico, 
-      // impedindo que o "voltar" do navegador quebre o app
-      navigate('/login', { replace: true });
+      // Mudança estratégica: forçamos o recarregamento total da página
+      // Isso ignora erros de rota interna da Vercel e limpa a tela branca
+      window.location.href = '/login';
     } catch (error) {
       console.error("Erro ao sair:", error);
-      // Fallback de segurança caso o router falhe
       window.location.href = '/login';
     }
   };
