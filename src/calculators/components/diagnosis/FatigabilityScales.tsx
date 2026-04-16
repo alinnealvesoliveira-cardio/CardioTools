@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Wind, Info, CheckCircle2, Clock, Zap, Save, ChevronLeft, BarChart3 } from 'lucide-react';
+import { Activity, Wind, BarChart3, Clock, Zap, Save, ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { usePatient } from '../../../context/PatientContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -75,7 +75,7 @@ export const FatigabilityScales: React.FC = () => {
 
   const handleSaveAll = () => {
     setIsSaved(true);
-    toast.success(`Dados de ${mode === 'rest' ? 'Repouso' : 'Exercício'} salvos!`);
+    toast.success(`Dados de ${mode === 'rest' ? 'Repouso' : 'Esforço'} salvos!`);
   };
 
   return (
@@ -83,27 +83,33 @@ export const FatigabilityScales: React.FC = () => {
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 px-2">
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic flex items-center gap-3">
-            <BarChart3 className="text-indigo-600" /> BORG MODIFICADA
+            <BarChart3 className="text-emerald-600" /> BORG MODIFICADA
           </h1>
           <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Monitoramento de Esforço Percebido</p>
         </div>
 
-        <div className="flex bg-slate-100 p-1.5 rounded-[28px] border border-slate-200 shadow-inner">
+        {/* SELETOR DE MODO - REFEITO COM O TERMO ESFORÇO */}
+        <div className="flex bg-slate-200/50 p-2 rounded-[32px] border-2 border-slate-100 shadow-inner">
           <button
             onClick={() => { setMode('rest'); setIsSaved(false); }}
-            className={`flex items-center gap-2 px-8 py-3 rounded-[22px] text-[10px] font-black uppercase tracking-widest transition-all ${
-              mode === 'rest' ? 'bg-white text-indigo-600 shadow-lg' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-3 px-10 py-4 rounded-[26px] text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${
+              mode === 'rest' 
+                ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-500/40 scale-105 animate-pulse' 
+                : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <Clock size={14} /> Repouso
+            <Clock size={16} className={mode === 'rest' ? 'text-emerald-100' : ''} /> Repouso
           </button>
+          
           <button
             onClick={() => { setMode('exercise'); setIsSaved(false); }}
-            className={`flex items-center gap-2 px-8 py-3 rounded-[22px] text-[10px] font-black uppercase tracking-widest transition-all ${
-              mode === 'exercise' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-3 px-10 py-4 rounded-[26px] text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${
+              mode === 'exercise' 
+                ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/40 scale-105 animate-pulse' 
+                : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <Zap size={14} className="text-amber-400" /> Exercício
+            <Zap size={16} className={mode === 'exercise' ? 'text-white' : 'text-orange-400'} /> Esforço
           </button>
         </div>
       </header>
@@ -111,25 +117,27 @@ export const FatigabilityScales: React.FC = () => {
       <AnimatePresence mode="wait">
         <motion.div 
           key={mode}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, x: mode === 'rest' ? -20 : 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: mode === 'rest' ? 20 : -20 }}
           className="grid grid-cols-1 gap-6"
         >
           {scales.map((scale) => (
             <section key={scale.id} className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 space-y-8">
               <div className="flex items-center justify-between border-b border-slate-50 pb-6">
                 <div className="flex items-center gap-4">
-                  <div className={`p-4 rounded-3xl ${mode === 'exercise' ? 'bg-amber-50 text-amber-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                  <div className={`p-4 rounded-3xl ${mode === 'exercise' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}`}>
                     {scale.icon}
                   </div>
                   <div>
-                    <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight leading-none">{scale.name}</h2>
+                    <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight leading-none">
+                      {scale.name} <span className="text-[10px] text-slate-400 ml-2 italic">({mode === 'rest' ? 'Repouso' : 'Esforço'})</span>
+                    </h2>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{scale.subtitle}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`text-4xl font-black italic ${mode === 'exercise' ? 'text-amber-500' : 'text-indigo-600'}`}>
+                  <span className={`text-5xl font-black italic ${mode === 'exercise' ? 'text-orange-500' : 'text-emerald-600'}`}>
                     {testResults.fatigabilityScales?.[mode]?.[scale.id as 'dyspnea' | 'fatigue'] || 0}
                   </span>
                 </div>
@@ -142,20 +150,20 @@ export const FatigabilityScales: React.FC = () => {
                     <button
                       key={level.value}
                       onClick={() => handleUpdateScale(scale.id as any, level.value)}
-                      className={`relative py-5 rounded-[24px] border-2 transition-all flex flex-col items-center justify-center gap-1 group ${
+                      className={`relative py-6 rounded-[24px] border-2 transition-all flex flex-col items-center justify-center gap-1 group ${
                         isSelected 
                           ? 'bg-slate-900 border-slate-900 text-white scale-105 shadow-xl shadow-slate-200' 
                           : 'bg-slate-50 border-transparent text-slate-400 hover:bg-white hover:border-slate-200'
                       }`}
                     >
-                      <span className={`text-xl font-black italic ${isSelected ? 'text-white' : 'text-slate-800 group-hover:text-indigo-600'}`}>
+                      <span className={`text-2xl font-black italic ${isSelected ? 'text-white' : 'text-slate-800 group-hover:text-emerald-600'}`}>
                         {level.value}
                       </span>
-                      <span className={`text-[7px] font-black uppercase tracking-tighter text-center px-1 ${isSelected ? 'text-white/50' : 'text-slate-400'}`}>
+                      <span className={`text-[8px] font-black uppercase tracking-tighter text-center px-1 ${isSelected ? 'text-white/50' : 'text-slate-400'}`}>
                         {level.label}
                       </span>
                       {isSelected && (
-                        <motion.div layoutId={`dot-${scale.id}`} className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${level.color}`} />
+                        <motion.div layoutId={`dot-${scale.id}`} className={`absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-white shadow-sm ${level.color}`} />
                       )}
                     </button>
                   );
@@ -166,7 +174,6 @@ export const FatigabilityScales: React.FC = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* RODAPÉ DE AÇÃO FIXO */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 z-50">
         <div className="bg-white/80 backdrop-blur-xl p-3 rounded-[32px] border border-white shadow-2xl flex gap-3">
           <button
@@ -183,7 +190,7 @@ export const FatigabilityScales: React.FC = () => {
             }`}
           >
             {isSaved ? <CheckCircle2 size={18} /> : <Save size={18} className="text-emerald-400" />}
-            {isSaved ? 'GRAVADO' : `SALVAR ${mode.toUpperCase()}`}
+            {isSaved ? 'GRAVADO COM SUCESSO' : `SALVAR BORG ${mode === 'rest' ? 'REPOUSO' : 'ESFORÇO'}`}
           </button>
         </div>
       </div>

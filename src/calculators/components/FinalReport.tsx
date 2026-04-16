@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Download, User, Activity, ShieldCheck, Stethoscope, Waves, Timer, AlertCircle, Info, Pill
+  Download, Stethoscope, ShieldCheck, Activity, Timer, Waves, Info, Pill, AlertCircle
 } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import { useAuth } from '../../context/AuthContext';
@@ -13,13 +13,11 @@ export const FinalReport: React.FC = () => {
   const { user } = useAuth(); 
 
   const cbdfFullCode = generateCBDFCode(patientInfo, testResults, medications);
-  const codeParts = cbdfFullCode.split('.');
   const risk = calculateRisk(patientInfo, testResults);
 
   const vascular = (testResults?.vascularAssessment || {}) as any;
-  const sitToStand = (testResults?.sitToStandTest || {}) as any;
-  const fatigability = (testResults?.fatigabilityScales?.exercise || {}) as any;
   const dasi = (testResults?.dasi || {}) as any;
+  const fatigabilityScales = testResults?.fatigabilityScales;
 
   const handlePrint = async () => {
     if (user) await logActivity(user.id, 'Gerou PDF do Relatório Final');
@@ -37,20 +35,24 @@ export const FinalReport: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-8 pb-32 print:p-0 text-slate-900">
-      {/* HEADER - NOME DO PACIENTE AUMENTADO */}
+      {/* HEADER - NOME DO PACIENTE GIGANTE */}
       <header className="flex items-end justify-between border-b-2 border-slate-100 pb-6">
-        <div className="space-y-1">
+        <div className="space-y-1 w-full">
           <div className="flex items-center gap-2 text-indigo-600 mb-1">
             <Stethoscope className="w-5 h-5" />
             <span className="text-[9px] font-black uppercase tracking-[0.3em]">Fisioterapia Cardiovascular Especializada</span>
           </div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Relatório Clínico</h1>
-          <div className="flex flex-col mt-2">
-            <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Paciente:</span>
-            <span className="text-3xl font-black text-indigo-900 uppercase tracking-tight">{patientInfo.name}</span>
+          
+          <div className="flex flex-col mt-6">
+            <span className="text-[14px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Paciente:</span>
+            {/* Nome do paciente em tamanho máximo */}
+            <span className="text-7xl font-black text-indigo-950 uppercase tracking-tighter italic leading-none break-words">
+              {patientInfo.name}
+            </span>
           </div>
         </div>
-        <button onClick={handlePrint} className="print:hidden bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200">
+        <button onClick={handlePrint} className="print:hidden bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200 shrink-0 ml-4">
           <Download className="w-4 h-4 text-emerald-400" /> Exportar Relatório
         </button>
       </header>
@@ -66,17 +68,16 @@ export const FinalReport: React.FC = () => {
           <ShieldCheck className={`w-14 h-14 ${risk.color} opacity-80`} />
         </div>
         
-        {/* SEÇÃO DE MEDICAMENTOS ADICIONADA */}
         <div className="bg-indigo-50 rounded-[2.5rem] p-8 border border-indigo-100 flex flex-col">
-  <div className="flex items-center gap-2 mb-2">
-    <Pill className="w-4 h-4 text-indigo-500" />
-    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Uso de Fármacos</span>
-  </div>
-  <div className="text-[11px] font-black text-slate-700 uppercase leading-tight italic">
-    {medications?.betablockers ? '• Betabloqueador em uso' : ''}
-    {medications?.others ? `\n• ${medications.others}` : (!medications?.betablockers ? 'Nenhum relatado' : '')}
-  </div>
-</div>
+          <div className="flex items-center gap-2 mb-2">
+            <Pill className="w-4 h-4 text-indigo-500" />
+            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Uso de Fármacos</span>
+          </div>
+          <div className="text-[11px] font-black text-slate-700 uppercase leading-tight italic whitespace-pre-line">
+            {medications?.betablockers ? '• Betabloqueador em uso' : ''}
+            {medications?.others ? `\n• ${medications.others}` : (!medications?.betablockers ? 'Nenhum relatado' : '')}
+          </div>
+        </div>
       </section>
 
       {/* CORE: DIAGNÓSTICO CBDF */}
@@ -92,7 +93,6 @@ export const FinalReport: React.FC = () => {
 
       {/* DETALHAMENTO DAS CAPACIDADES */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 break-inside-avoid">
-        {/* Capacidade Aeróbica + DASI + Fatigabilidade */}
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-6">
           <div className="flex items-center gap-2 text-slate-400 border-b border-slate-50 pb-3">
             <Timer size={16} className="text-indigo-500" />
@@ -102,18 +102,33 @@ export const FinalReport: React.FC = () => {
           <div className="space-y-4">
             <div className="flex justify-between items-end border-b border-dashed border-slate-100 pb-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase">DASI (METs Estimados):</span>
-              <span className="text-lg font-black text-emerald-600">{dasi?.estimatedMETs?.toFixed(1) || '0.0'} METs</span>
+              <span className="text-lg font-black text-emerald-600">
+                {dasi?.estimatedMETs ? dasi.estimatedMETs.toFixed(1) : '0.0'} METs
+              </span>
             </div>
             <div className="border-b border-dashed border-slate-100 pb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Fatigabilidade / Sintomas:</span>
-              <p className="text-[11px] font-black text-rose-600 uppercase italic">
-                {fatigability?.symptoms || 'Sem intercorrências relatadas'} (Borg: {fatigability?.fatigue || '0'})
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Fatigabilidade / Sintomas (Borg):</span>
+              <p className="text-[13px] font-black text-rose-700 uppercase italic leading-tight">
+                {(() => {
+                  if (!fatigabilityScales) return "SEM INTERCORRÊNCIAS RELATADAS (0)";
+                  
+                  const { rest, exercise } = fatigabilityScales;
+                  const hasExercise = exercise?.dyspnea > 0 || exercise?.fatigue > 0;
+                  const hasRest = rest?.dyspnea > 0 || rest?.fatigue > 0;
+
+                  if (hasExercise) {
+                    return `ESFORÇO: DISPNEIA ${exercise.dyspnea} | FADIGA MMII ${exercise.fatigue}`;
+                  }
+                  if (hasRest) {
+                    return `REPOUSO: DISPNEIA ${rest.dyspnea} | FADIGA MMII ${rest.fatigue}`;
+                  }
+                  return "VALORES NORMAIS EM REPOUSO E ESFORÇO (BORG 0)";
+                })()}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Sistema Vascular + Enchimento Capilar */}
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-6">
           <div className="flex items-center gap-2 text-slate-400 border-b border-slate-50 pb-3">
             <Waves size={16} className="text-blue-500" />
@@ -144,7 +159,7 @@ export const FinalReport: React.FC = () => {
         <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 flex gap-4 items-start">
           <Info className="w-5 h-5 text-indigo-400 shrink-0" />
           <p className="text-[9px] text-slate-500 leading-relaxed">
-            <strong>Nota Clínica:</strong> Este relatório é gerado com base nos critérios da Resolução COFFITO 555/2022. O código CBDF reflete o estado funcional.
+            <strong>Nota Clínica:</strong> Este relatório é gerado com base nos critérios da Resolução COFFITO 555/2022. O código CBDF reflete o estado funcional coletado durante a avaliação.
           </p>
         </div>
       </footer>
