@@ -13,7 +13,7 @@ export const FinalReport: React.FC = () => {
   const { user } = useAuth(); 
 
   const rawCode = generateCBDFCode(patientInfo, testResults, medications);
-  // Remove o "Q" e garante que o código não quebre o layout
+  // Remove o "Q" que estava aparecendo no início do código funcional
   const cbdfFullCode = rawCode.replace(/^Q/, '').trim();
   
   const risk = calculateRisk(patientInfo, testResults);
@@ -45,7 +45,6 @@ export const FinalReport: React.FC = () => {
           <Stethoscope className="w-5 h-5" />
           <span className="text-[9px] font-black uppercase tracking-[0.3em]">Fisioterapia Cardiovascular</span>
         </div>
-        
         <div className="flex flex-col md:flex-row justify-between items-start gap-4">
           <div className="flex-1 w-full">
             <h1 className="text-xl md:text-2xl font-black text-slate-400 tracking-tighter uppercase italic">Relatório Clínico</h1>
@@ -78,11 +77,9 @@ export const FinalReport: React.FC = () => {
               <Activity className="w-3 h-3 text-emerald-400" />
               <span className="text-[9px] font-black uppercase tracking-[0.2em]">Cód. Funcional (CBDF)</span>
             </div>
-            
             <h2 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter font-mono text-indigo-100 leading-none truncate">
               {cbdfFullCode}
             </h2>
-
             <div className="pt-6 border-t border-white/10">
               <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Diagnóstico</span>
               <span className="text-3xl md:text-5xl font-black italic uppercase text-white leading-tight">
@@ -99,15 +96,13 @@ export const FinalReport: React.FC = () => {
           <Timer size={16} className="text-indigo-500" />
           <h3 className="text-[10px] font-black uppercase tracking-widest">Performance e Esforço</h3>
         </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase">DASI (METs):</span>
             <div className="text-3xl font-black text-emerald-600">
-              {dasi?.estimatedMETs ? dasi.estimatedMETs.toFixed(1) : '0.0'}
+              {dasi?.estimatedMETs ? Number(dasi.estimatedMETs).toFixed(1) : '0.0'}
             </div>
           </div>
-          
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Sintomas em Esforço:</span>
             <div className="text-[12px] font-black text-rose-700 uppercase italic">
@@ -115,7 +110,6 @@ export const FinalReport: React.FC = () => {
                 const ex = fatigabilityScales?.exercise;
                 const d = Number(ex?.dyspnea || 0);
                 const f = Number(ex?.fatigue || 0);
-                
                 if (d > 0 || f > 0) {
                   return `ESFORÇO: DISPNEIA ${d} | FADIGA ${f}`;
                 }
@@ -129,7 +123,7 @@ export const FinalReport: React.FC = () => {
       <footer className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 flex gap-4 items-start break-inside-avoid">
         <Info className="w-5 h-5 text-indigo-400 shrink-0" />
         <p className="text-[9px] text-slate-500 leading-relaxed uppercase font-bold">
-          Relatório gerado conforme Resolução COFFITO 555/2022. O código CBDF reflete o estado funcional no momento da avaliação.
+          Relatório gerado conforme Resolução COFFITO 555/2022.
         </p>
       </footer>
     </div>
