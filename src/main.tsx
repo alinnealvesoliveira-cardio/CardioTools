@@ -7,10 +7,7 @@ import App from './App';
 import './index.css';
 
 const rootElement = document.getElementById('root');
-
-if (!rootElement) {
-  throw new Error("Não foi possível encontrar o elemento root. Verifique seu index.html.");
-}
+if (!rootElement) throw new Error("Root element not found");
 
 createRoot(rootElement).render(
   <StrictMode>
