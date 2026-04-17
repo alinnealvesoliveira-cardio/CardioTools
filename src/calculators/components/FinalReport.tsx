@@ -14,7 +14,7 @@ export const FinalReport: React.FC = () => {
 
   const rawCode = generateCBDFCode(patientInfo, testResults, medications);
   // Remove o "Q" que estava aparecendo no início do código funcional
-  const cbdfFullCode = rawCode.replace(/^Q/, '').trim();
+  const cbdfFullCode = rawCode.replace(/^Q/, '').trim();//update
   
   const risk = calculateRisk(patientInfo, testResults);
   const vascular = (testResults?.vascularAssessment || {}) as any;
