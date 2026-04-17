@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BrowserRouter } from 'react-router-dom'; // IMPORTANTE: Adicionado para resolver o erro #310
 import { Layout } from './components/layout/Layout';
 import { Calculator, CategoryName } from './types';
 import { CALCULATORS } from './data/registry';
@@ -253,12 +254,15 @@ function AppContent() {
   );
 }
 
+// ESTA PARTE FOI CORRIGIDA:
 export default function App() {
   return (
-    <AuthProvider>
-      <PatientProvider>
-        <AppContent />
-      </PatientProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <PatientProvider>
+          <AppContent />
+        </PatientProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
