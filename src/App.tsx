@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { BrowserRouter } from 'react-router-dom'; // IMPORTANTE: Adicionado para resolver o erro #310
 import { Layout } from './components/layout/Layout';
 import { Calculator, CategoryName } from './types';
 import { CALCULATORS } from './data/registry';
@@ -172,7 +171,7 @@ function AppContent() {
             
             <div className="mb-12">
                <h2 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight italic uppercase">
-                 {currentModule?.name}
+                  {currentModule?.name}
                </h2>
                <div className="h-1.5 w-24 bg-emerald-500 mt-6 rounded-full" />
             </div>
@@ -254,15 +253,12 @@ function AppContent() {
   );
 }
 
-// ESTA PARTE FOI CORRIGIDA:
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <PatientProvider>
-          <AppContent />
-        </PatientProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <PatientProvider>
+        <AppContent />
+      </PatientProvider>
+    </AuthProvider>
   );
 }
