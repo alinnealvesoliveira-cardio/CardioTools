@@ -47,7 +47,6 @@ export const DASI: React.FC = () => {
 
   const { score, vo2, mets } = calculateResults();
   
-  // Predito Gulati para Mulheres ou Tanaka para Homens (Simplificado para 14.7 - 0.11 * idade)
   const predictedMETs = age > 0 ? (14.7 - (0.11 * age)) : 10;
   const percentage = predictedMETs > 0 ? (mets / predictedMETs) * 100 : 0;
 
@@ -60,6 +59,8 @@ export const DASI: React.FC = () => {
   };
 
   const cbdf = getCBDF();
+  // Sanitização centralizada para uso no componente
+  const cleanSeverity = cbdf.severity.replace(/^Q/, '').trim();
 
   const handleSave = async () => {
     updateTestResults({
@@ -68,8 +69,8 @@ export const DASI: React.FC = () => {
         estimatedMETs: mets,
         predictedMETs: predictedMETs,
         percentage: percentage,
-        interpretation: cbdf.severity,
-        cif: { qualifier: cbdf.qualifier, severity: cbdf.severity }
+        interpretation: cleanSeverity,
+        cif: { qualifier: cbdf.qualifier, severity: cleanSeverity }
       }
     });
 
@@ -146,7 +147,7 @@ export const DASI: React.FC = () => {
 
                 <div className="bg-white/5 border-l-4 p-6 rounded-r-2xl space-y-1 relative z-10" style={{ borderColor: cbdf.color }}>
                   <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Status Funcional (CBDF)</p>
-                  <p className="text-xl font-black text-white leading-tight">.{cbdf.qualifier} — {cbdf.severity}</p>
+                  <p className="text-xl font-black text-white leading-tight">.{cbdf.qualifier} — {cleanSeverity}</p>
                   <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tighter">Impacto Funcional de {cbdf.range}</p>
                 </div>
 

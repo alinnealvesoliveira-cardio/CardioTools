@@ -1,7 +1,6 @@
 import React from 'react';
 import { Search, Menu, Bell, User, LogOut, Activity } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -9,24 +8,15 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { logout } = useAuth();
-  const navigate = useNavigate();
 
-  // Função com limpeza profunda de cache e estado
   const handleLogoutClick = async () => {
     try {
-      // 1. Limpa o armazenamento local para não sobrar "lixo" de sessão
       localStorage.clear();
       sessionStorage.clear();
-
-      // 2. Executa o logout do Firebase/Supabase
       await logout(); 
-
-      // 3. Redirecionamento forçado via window.location
-      // Isso mata qualquer processo travado no React e recarrega o app do zero
       window.location.href = '/login';
     } catch (error) {
       console.error("Erro crítico ao sair:", error);
-      // Fallback: mesmo com erro, limpa tudo e manda para o login
       localStorage.clear();
       window.location.href = '/login';
     }
@@ -73,7 +63,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
       {/* Lado Direito: Ações de Usuário */}
       <div className="flex items-center gap-3">
-        {/* Notificações */}
         <button className="p-2.5 hover:bg-slate-50 rounded-xl relative group transition-colors">
           <Bell className="w-5 h-5 text-slate-500 group-hover:text-emerald-600 transition-colors" />
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></span>
@@ -81,7 +70,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
         <div className="h-8 w-[1px] bg-slate-100 mx-1 hidden sm:block" />
 
-        {/* Botão de Logout com Estilo de Alerta */}
         <button 
           onClick={handleLogoutClick}
           className="flex items-center gap-2 px-3 py-2 hover:bg-rose-50 rounded-xl text-slate-400 hover:text-rose-600 transition-all group font-bold text-xs uppercase tracking-widest"
@@ -91,7 +79,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <span className="hidden lg:block">Sair</span>
         </button>
 
-        {/* Perfil do Usuário */}
         <div className="h-10 w-10 rounded-2xl bg-slate-900 flex items-center justify-center text-emerald-400 border border-slate-800 shadow-md cursor-pointer hover:border-emerald-500 transition-colors">
           <User className="w-5 h-5" />
         </div>
