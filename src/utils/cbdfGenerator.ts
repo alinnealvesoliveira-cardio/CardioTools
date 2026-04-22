@@ -1,81 +1,68 @@
 import { PatientInfo, TestResults, Medications } from '../types';
 
-/**
- * Gera o código da Classificação Brasileira de Diagnóstico Fisioterapêutico (CBDF)
- * Baseado na Resolução COFFITO 555/2022.
- * Estrutura: PREFIXO.ESTRUTURA.CAPACIDADE.VASCULAR.FADIGABILIDADE.MEDICAÇÃO
- */
 export const generateCBDFCode = (
   patient: PatientInfo,
   results: TestResults,
   meds: Medications
 ): string => {
-  const prefix = "D05"; // Domínio Cardiovascular
-  const res = results as any; 
+  const prefix = "D05";
 
   // 1. ESTRUTURA (EST)
-  // Define se há dano estrutural cardíaco prévio (FEVE reduzida ou marcador de lesão)
-  const feveValue = parseInt(patient.ejectionFraction?.toString() || "60");
-  const hasStructuralDamage = feveValue < 50 || !!(patient as any).structureAlteration;
+  const feve = Number(patient.ejectionFraction) || 60;
+  const hasStructuralDamage = feve < 50 || !!patient.structureAlteration;
   const structure = hasStructuralDamage ? "01" : "00";
 
   // 2. CAPACIDADE AERÓBICA (CAP)
-  // Analisa todos os testes realizados e seleciona o maior nível de deficiência
-  let capacityQual = "8"; // Padrão: Não testado
-  
-  const efficiencies = [
-    res.sixMinuteWalkTest?.efficiency,
-    res.twoMinuteStepTest?.efficiency,
-    res.sitToStandTest?.efficiency,
-    res.stepTest?.efficiency,
-    res.dasi?.percentage // Adicionado o DASI que finalizamos
-  ].filter(val => val !== undefined && val !== null && !isNaN(val));
+  const getCapacityQual = (): string => {
+    const efficiencies = [
+      results.sixMinuteWalkTest?.efficiency,
+      results.stepTest?.efficiency,
+      results.sitToStandTest?.efficiency,
+      results.dasi?.percentage
+    ].filter((val): val is number => typeof val === 'number' && !isNaN(val));
 
-  if (efficiencies.length > 0) {
-    const minEfficiency = Math.min(...efficiencies);
+    if (efficiencies.length === 0) return "8"; 
     
-    if (minEfficiency < 25) capacityQual = "4";      // Deficiência Completa
-    else if (minEfficiency < 50) capacityQual = "3"; // Deficiência Grave
-    else if (minEfficiency < 75) capacityQual = "2"; // Deficiência Moderada
-    else if (minEfficiency < 95) capacityQual = "1"; // Deficiência Leve
-    else capacityQual = "0";                         // Sem Deficiência
-  }
+    const minEfficiency = Math.min(...efficiencies);
+    if (minEfficiency < 25) return "4";
+    if (minEfficiency < 50) return "3";
+    if (minEfficiency < 75) return "2";
+    if (minEfficiency < 95) return "1";
+    return "0";
+  };
 
   // 3. SISTEMA VASCULAR (VAS)
-  let vascQual = "8"; 
-  const vasc = res.vascularAssessment;
+  const getVascQual = (): string => {
+    if (!results.vascularAssessment) return "8";
+    
+    const { venous, lymphatic, arterial } = results.vascularAssessment;
 
-  if (vasc) {
-    const godet = parseInt(vasc.venous?.godet || "0");
-    const isStemmerPos = vasc.lymphatic?.stemmer === 'Positivo';
-    const isPulseAlt = vasc.arterial?.pulses === 'Diminuídos' || vasc.arterial?.pulses === 'Ausentes';
+    const godet = parseInt(venous?.godet || "0"); 
+    const isStemmerPos = lymphatic?.stemmer === 'Positivo';
+    // Ajustado para 'pulse' (singular), conforme seu types.ts
+    const isPulseAlt = arterial?.pulse === 'Diminuídos' || arterial?.pulse === 'Ausentes';
 
-    if (isStemmerPos || godet >= 3) vascQual = "3";
-    else if (godet > 0 || isPulseAlt) vascQual = "2";
-    else vascQual = "0";
-  }
+    if (isStemmerPos || godet >= 3) return "3";
+    if (godet > 0 || isPulseAlt) return "2";
+    return "0";
+  };
 
   // 4. FADIGABILIDADE / CRONOTROPISMO (FAD)
-  let fadQual = "8";
-  // Busca dados de FC peak e rest de qualquer teste disponível
-  const hrRest = res.sixMinuteWalkTest?.restingHR || res.sitToStandTest?.restingHR;
-  const hrPeak = res.sixMinuteWalkTest?.peakHR || res.sitToStandTest?.peakHR;
-  const borgExercise = res.fatigabilityScales?.exercise?.fatigue || 0;
+  const getFadQual = (): string => {
+    const borgExercise = results.fatigabilityScales?.exercise?.fatigue || 0;
+    const hrRest = results.sixMinuteWalkTest?.restingHR || results.sitToStandTest?.restingHR;
+    const hrPeak = results.sixMinuteWalkTest?.peakHR || results.sitToStandTest?.peakHR;
 
-  if (hrRest && hrPeak) {
-    const chronotropicIncompetence = (hrPeak - hrRest) < 15;
-    
-    if (chronotropicIncompetence || borgExercise >= 7) fadQual = "3";
-    else if (borgExercise >= 4) fadQual = "2";
-    else if (borgExercise >= 2) fadQual = "1";
-    else fadQual = "0";
-  }
+    const hasChronotropicIncompetence = (hrRest && hrPeak) ? (hrPeak - hrRest) < 15 : false;
+
+    if (hasChronotropicIncompetence || borgExercise >= 7) return "3";
+    if (borgExercise >= 4) return "2";
+    if (borgExercise >= 2) return "1";
+    return "0";
+  };
 
   // 5. PERFIL FARMACOLÓGICO (MED)
-  // Medicamentos que alteram a resposta hemodinâmica ou indicam falência de bomba
-  const isMedicated = meds?.betablockers || meds?.antiarrhythmics || meds?.digitalis || meds?.diuretics;
-  const medQual = isMedicated ? "4" : "0";
+  const medQual = (meds?.betablockers || meds?.antiarrhythmics || meds?.digitalis || meds?.diuretics) ? "4" : "0";
 
-  // Retorno no formato: D05.EST.CAP.VAS.FAD.MED
-  return `${prefix}.${structure}.${capacityQual}.${vascQual}.${fadQual}.${medQual}`;
+  return `${prefix}.${structure}.${getCapacityQual()}.${getVascQual()}.${getFadQual()}.${medQual}`;
 };
