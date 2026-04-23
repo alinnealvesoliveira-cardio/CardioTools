@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { Category } from '../../types';
 import { AnimatePresence, motion } from 'framer-motion';
+import { CategoryName } from '../../types';
 
 interface LayoutProps {
   children: React.ReactNode;
-  /** * selectedCategory: Identifica o módulo ativo para estilização na Sidebar.
-   */
-  selectedCategory: Category | 'Home' | null; 
-  /**
-   * onSelectCategory: Callback para trocar o módulo renderizado no App.tsx.
-   */
-  onSelectCategory: (category: Category | 'Home') => void;
+  selectedCategory: CategoryName | 'Home' | null;
+  onSelectCategory: (category: CategoryName | 'Home') => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
@@ -20,6 +15,7 @@ export const Layout: React.FC<LayoutProps> = ({
   selectedCategory, 
   onSelectCategory 
 }) => {
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -38,14 +34,15 @@ export const Layout: React.FC<LayoutProps> = ({
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
       {/* Sidebar - Fixa ou Drawer dependendo do viewport */}
       <Sidebar 
-        isOpen={isSidebarOpen} 
-        onToggle={toggleSidebar}
-        selectedCategory={selectedCategory}
-        onSelectCategory={(cat) => {
-          onSelectCategory(cat);
-          closeSidebar();
-        }}
-      />
+  isOpen={isSidebarOpen}
+  onToggle={toggleSidebar}
+  // Use o operador ?? (nullish coalescing) para definir um padrão
+  selectedCategory={selectedCategory ?? ''} 
+  onSelectCategory={(cat) => {
+    onSelectCategory:(cat);
+    closeSidebar();
+  }}
+/>
       
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 h-screen relative">

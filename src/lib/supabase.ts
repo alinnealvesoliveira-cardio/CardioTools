@@ -1,19 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configurações de Acesso - Valores reais inseridos diretamente
-export const supabaseUrl = 'https://uqrgvzazowlhzjfprqui.supabase.co';
-const supabaseAnonKey = 'sb_publishable_nQSdP2fKXJmvPVUqY-8kCQ_t_aj7XaF';
+// Lê as variáveis do arquivo .env (ou variáveis de ambiente do Vercel)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 /**
  * Validação de Configuração
- * Agora simplificada: apenas checa se a URL existe e é válida.
+ * Garante que a URL não esteja vazia antes de tentar conectar.
  */
 export const isSupabaseConfigured = 
   supabaseUrl.trim() !== '' && 
-  !supabaseUrl.includes('xyz.supabase.co');
+  !supabaseUrl.includes('xyz.supabase.co'); // Proteção contra configuração padrão
 
 // Instância do Cliente (Singleton)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Se não estiver configurado, criamos um cliente vazio ou tratamos o erro
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co', 
+  supabaseAnonKey || 'placeholder-key'
+);
 
 /**
  * Log de Atividade Clínica
@@ -21,7 +25,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
  */
 export const logActivity = async (userId: string, testName: string) => {
   if (!isSupabaseConfigured) {
-    console.warn('⚠️ Log de atividade ignorado: Instância Supabase não configurada corretamente.');
+    console.warn('⚠️ Log de atividade ignorado: Instância Supabase não configurada.');
     return;
   }
 

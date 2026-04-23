@@ -12,15 +12,16 @@ export const FinalReport: React.FC = () => {
   const { patientInfo, medications, testResults } = usePatient();
   const { user } = useAuth(); 
 
+  // Gerador de código CBDF
   const rawCode = generateCBDFCode(patientInfo, testResults, medications);
-  // Remove o "Q" que estava aparecendo no início do código funcional
-  const cbdfFullCode = rawCode.replace(/^Q/, '').trim();//update
+  const cbdfFullCode = rawCode.replace(/^Q/, '').trim();
   
+  // Estratificação de risco
   const risk = calculateRisk(patientInfo, testResults);
-  const vascular = (testResults?.vascularAssessment || {}) as any;
-  const dasi = (testResults?.dasi || {}) as any;
+
+  // Acesso seguro aos dados (sem 'as any')
+  const dasi = testResults?.dasi;
   const fatigabilityScales = testResults?.fatigabilityScales;
-  const sitToStand = (testResults?.sitToStandTest || {}) as any;
 
   const handlePrint = async () => {
     if (user) await logActivity(user.id, 'Gerou PDF do Relatório Final');
@@ -55,7 +56,10 @@ export const FinalReport: React.FC = () => {
               </h2>
             </div>
           </div>
-          <button onClick={handlePrint} className="print:hidden w-full md:w-auto bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shrink-0 shadow-lg">
+          <button 
+            onClick={handlePrint} 
+            className="print:hidden w-full md:w-auto bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shrink-0 shadow-lg"
+          >
             <Download className="w-4 h-4 text-emerald-400" /> Exportar
           </button>
         </div>
@@ -90,7 +94,7 @@ export const FinalReport: React.FC = () => {
         </div>
       </section>
 
-      {/* PERFORMANCE E ESFORÇO - CORRIGIDO SEM ERROS VERMELHOS */}
+      {/* PERFORMANCE E ESFORÇO */}
       <section className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm space-y-8">
         <div className="flex items-center gap-2 text-slate-400 border-b pb-4">
           <Timer size={16} className="text-indigo-500" />
@@ -108,8 +112,8 @@ export const FinalReport: React.FC = () => {
             <div className="text-[12px] font-black text-rose-700 uppercase italic">
               {(() => {
                 const ex = fatigabilityScales?.exercise;
-                const d = Number(ex?.dyspnea || 0);
-                const f = Number(ex?.fatigue || 0);
+                const d = Number(ex?.dyspnea ?? 0);
+                const f = Number(ex?.fatigue ?? 0);
                 if (d > 0 || f > 0) {
                   return `ESFORÇO: DISPNEIA ${d} | FADIGA ${f}`;
                 }

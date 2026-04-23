@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom'; // 1. Importação necessária
+import { useNavigate } from 'react-router-dom';
 import { 
   Activity,
   ChevronLeft, 
@@ -15,26 +15,21 @@ import {
   Sparkles,
   ClipboardCheck
 } from 'lucide-react';
-import { Category } from '../../types';
+// Importação correta do tipo unificado
+import { CategoryName } from '../../types'; 
 import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  selectedCategory: Category | 'Home' | null;
-  onSelectCategory: (cat: any) => void;
+   selectedCategory: string; // CategoryName | 'Home' | null;
+  onSelectCategory: (category: string) => void; // (category: CategoryName | 'Home') => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  isOpen, 
-  onToggle, 
-  selectedCategory, 
-  onSelectCategory 
-}) => {
+export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }: SidebarProps) => {
   const { logout } = useAuth();
-  const navigate = useNavigate(); // 2. Inicialização do hook de navegação
+  const navigate = useNavigate();
 
-  // Função de logout otimizada para evitar tela branca
   const handleLogoutClick = async () => {
     try {
       await logout();
@@ -45,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  const menuItems = [
+  const menuItems: { id: CategoryName | 'Home'; label: string; icon: any }[] = [
     { id: 'Home', label: 'Dashboard Principal', icon: Home },
     { id: 'Cadastro', label: 'Anamnese e Perfil', icon: UserPlus },
     { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart },
@@ -156,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
               
               <button 
-                onClick={handleLogoutClick} // 3. Vinculado à nova função
+                onClick={handleLogoutClick}
                 className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-rose-500/10 text-slate-600 hover:text-rose-400 transition-all group"
               >
                 <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />

@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
+
 declare module "*.css";
+
 /**
  * Definição das Variáveis de Ambiente do Vite.
  * Garante o preenchimento automático (autocomplete) e a segurança de tipos 

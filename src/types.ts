@@ -1,26 +1,37 @@
 import React from 'react';
 
 // ==========================================
-// 1. INTERFACES DE NAVEGAÇÃO E TEMPLATES
+// 1. TIPOS DE NAVEGAÇÃO E CATEGORIAS
 // ==========================================
-export interface Calculator {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  component: React.ComponentType<any>;
-}
+
+export type CategoryName = 
+  | 'Home'
+  | 'Cadastro' 
+  | 'Avaliação Autonômica' 
+  | 'Vascular' 
+  | 'Capacidade Aeróbica' 
+  | 'Avaliação de Sintomas' 
+  | 'DASI'
+  | 'Relatório Final';
 
 export interface Category {
-  id: string;
+  id: CategoryName; // Unificado: usando o tipo de string restrito
   name: string;
   icon: React.ElementType;
 }
 
-/**
- * Interfaces para GroupedScoreTemplate
- * Define a estrutura de perguntas e opções de pontuação
- */
+export interface Calculator {
+  id: string;
+  name: string;
+  description: string;
+  category: string; // Pode ser CategoryName se desejar maior rigor
+  component: React.ComponentType<any>;
+}
+
+// ==========================================
+// 2. TEMPLATES DE PONTUAÇÃO
+// ==========================================
+
 export interface ScoreOption {
   label: string;
   score: number;
@@ -38,30 +49,12 @@ export interface ScoreGroup {
   items: ScoreItem[];
 }
 
-
-// Adicione isto ao seu types.ts
-export type CategoryName = 
-  | 'Home'
-  | 'Cadastro' 
-  | 'Avaliação Autonômica' 
-  | 'Vascular' 
-  | 'Capacidade Aeróbica' 
-  | 'Avaliação de Sintomas' 
-  | 'DASI'
-  | 'Relatório Final';
-
-// Atualize sua interface Category existente para usar o nome tipado
-export interface Category {
-  CategoryId: CategoryName; // Agora o ID deve ser um dos nomes acima
-  name: string;
-  icon: React.ElementType;
-}
 // ==========================================
-// 2. INTERFACES DE APOIO (CIF E RESULTADOS)
+// 3. INTERFACES DE RESULTADOS E DADOS
 // ==========================================
+
 export interface CIFData {
   qualifier: number;
-  // interpretation opcional e severity string para compatibilidade total
   interpretation?: string; 
   severity?: string;
 }
@@ -74,7 +67,6 @@ export interface FunctionalTestResult {
   efficiency?: number;
   interpretation?: string;
   estimatedMETs?: number;
-  // Suporte específico para o teste de Sentar e Levantar
   restingHR?: number;
   peakHR?: number;
   hr?: {
@@ -94,14 +86,13 @@ export interface QuestionnaireResult {
 }
 
 // ==========================================
-// 3. INTERFACE PRINCIPAL DE DADOS (TEST RESULTS)
+// 4. INTERFACE PRINCIPAL DE TESTES (TEST RESULTS)
 // ==========================================
+
 export interface TestResults {
-  // --- Questionários ---
   vsaq?: QuestionnaireResult | null;
   dasi?: QuestionnaireResult | null;
 
-  // --- Testes de Capacidade Funcional ---
   sixMinuteWalkTest?: FunctionalTestResult | null;
   stepTest?: FunctionalTestResult | null;
   tug?: FunctionalTestResult | null;
@@ -111,7 +102,6 @@ export interface TestResults {
   tsl5x?: FunctionalTestResult | null;
   sitToStandTest?: FunctionalTestResult | null; 
 
-  // --- Hemodinâmica e Avaliação Autonômica ---
   hrr?: {
     peakHR: number;
     recoveryHR: number;
@@ -132,11 +122,8 @@ export interface TestResults {
     interpretation?: string;
   } | null;
 
-  // Propriedade direta para compatibilidade com HRV.tsx
   rmssd?: number; 
 
-  // --- Sintomatologia e Escalas de Dor ---
-  // claudication na raiz para ClaudicationScale.tsx
   claudication?: boolean | {
     score: number;
     interpretation: string;
@@ -149,7 +136,6 @@ export interface TestResults {
       interpretation: string;
       timestamp: string;
     };
-    // Detalhes gerados pelo algoritmo de decisão clínica
     claudicationDetails?: { 
       title: string;
       description: string;
@@ -161,7 +147,6 @@ export interface TestResults {
     };
   };
 
-  // --- Outras Escalas e ABI ---
   fatigabilityScales?: {
     rest: { dyspnea: number; fatigue: number };
     exercise: { dyspnea: number; fatigue: number };
@@ -192,8 +177,9 @@ export interface TestResults {
 }
 
 // ==========================================
-// 4. PERFIL DO PACIENTE E CLÍNICA
+// 5. PERFIL E FARMACOLOGIA
 // ==========================================
+
 export interface PatientInfo {
   name: string;
   age: string | number;
@@ -210,9 +196,6 @@ export interface PatientInfo {
   cateResult?: string; 
 }
 
-// ==========================================
-// 5. SUPORTE FARMACOLÓGICO
-// ==========================================
 export interface Medications {
   betablockers: boolean;
   bcc: boolean; 

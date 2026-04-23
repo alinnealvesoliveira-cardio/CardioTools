@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pill, CheckCircle2, User, Heart, Save, Activity, Search, Scale } from 'lucide-react';
+import { Pill, CheckCircle2, User, Heart, Save, Activity, Search } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import { supabase } from '../../lib/supabase';
 import { Medications } from '../../types';
@@ -17,22 +17,26 @@ export const PatientRegistration: React.FC = () => {
 
   const handleSaveOnly = async () => {
     try {
-      // Sincronização estrita com a tabela 'patients'
+      // Conversão segura de tipos antes de enviar para o banco
+      const ageNum = Number(patientInfo.age);
+      const weightNum = Number(patientInfo.weight);
+      const heightNum = Number(patientInfo.height);
+
       const { error } = await supabase.from('patients').upsert({
         name: patientInfo.name,
-        age: parseInt(patientInfo.age as any) || null, 
+        age: isNaN(ageNum) ? null : ageNum, 
         sex: patientInfo.sex,
-        weight: parseFloat(patientInfo.weight as any) || null,
-        height: parseFloat(patientInfo.height as any) || null,
-        resting_pas: patientInfo.restingPAS || null,
-        resting_sao2: patientInfo.restingSaO2 || null,
-        ejection_fraction: patientInfo.ejectionFraction || null,
-        updated_at: new Date()
+        weight: isNaN(weightNum) ? null : weightNum,
+        height: isNaN(heightNum) ? null : heightNum,
+        resting_pas: patientInfo.restingPAS ? String(patientInfo.restingPAS) : null,
+        resting_sao2: patientInfo.restingSaO2 ? String(patientInfo.restingSaO2) : null,
+        ejection_fraction: patientInfo.ejectionFraction ? String(patientInfo.ejectionFraction) : null,
+        updated_at: new Date().toISOString()
       });
 
       if (error) throw error;
       toast.success("Perfil atualizado com sucesso!");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro na sincronização:", error);
       toast.success("Salvo localmente no dispositivo.");
     }
@@ -115,7 +119,6 @@ export const PatientRegistration: React.FC = () => {
                 </div>
               </div>
 
-              {/* Adicionado Peso e Altura para o cálculo de IMC no VSAQ */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Peso (kg)</label>
@@ -141,7 +144,7 @@ export const PatientRegistration: React.FC = () => {
             </div>
           </div>
 
-          {/* Exames */}
+          {/* Cardiopatia e Função */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-5">
             <div className="flex items-center gap-2 text-slate-800 font-black uppercase text-xs tracking-widest">
               <Search className="w-4 h-4 text-emerald-500" /> Cardiopatia e Função
@@ -175,7 +178,7 @@ export const PatientRegistration: React.FC = () => {
                 />
               </div>
               <div className="flex flex-col justify-end">
-                 <button
+                <button
                   type="button"
                   onClick={() => updatePatientInfo({ structureAlteration: !patientInfo.structureAlteration })}
                   className={`w-full py-4 rounded-2xl text-[9px] font-black transition-all border-2 ${patientInfo.structureAlteration ? 'bg-rose-50 border-rose-500 text-rose-600 shadow-sm' : 'bg-white border-slate-100 text-slate-400'}`}
@@ -192,26 +195,26 @@ export const PatientRegistration: React.FC = () => {
               <Activity className="w-4 h-4 text-indigo-400" /> Repouso Atual
             </div>
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">PAS (mmHg)</label>
-                  <input
-                    type="number"
-                    value={patientInfo.restingPAS || ''}
-                    onChange={(e) => updatePatientInfo({ restingPAS: e.target.value })}
-                    className="w-full p-4 bg-slate-800 border-none rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 ring-indigo-500"
-                    placeholder="Sistólica"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">SaO2 (%)</label>
-                  <input
-                    type="number"
-                    value={patientInfo.restingSaO2 || ''}
-                    onChange={(e) => updatePatientInfo({ restingSaO2: e.target.value })}
-                    className="w-full p-4 bg-slate-800 border-none rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 ring-indigo-500"
-                    placeholder="Saturação"
-                  />
-                </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">PAS (mmHg)</label>
+                <input
+                  type="number"
+                  value={patientInfo.restingPAS || ''}
+                  onChange={(e) => updatePatientInfo({ restingPAS: e.target.value })}
+                  className="w-full p-4 bg-slate-800 border-none rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 ring-indigo-500"
+                  placeholder="Sistólica"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">SaO2 (%)</label>
+                <input
+                  type="number"
+                  value={patientInfo.restingSaO2 || ''}
+                  onChange={(e) => updatePatientInfo({ restingSaO2: e.target.value })}
+                  className="w-full p-4 bg-slate-800 border-none rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 ring-indigo-500"
+                  placeholder="Saturação"
+                />
+              </div>
             </div>
           </div>
         </div>
