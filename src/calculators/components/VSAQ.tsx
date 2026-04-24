@@ -1,214 +1,117 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  CheckCircle2, 
-  Save, 
-  Heart, 
-  Info, 
-  BookOpen, 
-  Activity as ActivityIcon,
-  LayoutDashboard,
-  RotateCcw
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
+import { Activity, Save, CheckCircle2, LayoutDashboard } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { logActivity } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
-interface VSAQItem {
-  score: number;
-  label: string;
-  description: string;
-}
-
-const VSAQ_ITEMS: VSAQItem[] = [
-  { score: 1, label: "1 MET", description: "Comer, vestir-se ou trabalhar em mesa." },
-  { score: 2, label: "2 METs", description: "Caminhar em terreno plano a 3,2 km/h." },
-  { score: 3, label: "3 METs", description: "Caminhar em terreno plano a 4,0 km/h ou tarefas domésticas leves." },
-  { score: 4, label: "4 METs", description: "Caminhar em terreno plano a 4,8 km/h ou jardinagem leve." },
-  { score: 5, label: "5 METs", description: "Caminhar em terreno plano a 5,6 km/h ou tarefas domésticas pesadas." },
-  { score: 6, label: "6 METs", description: "Caminhar em terreno plano a 6,4 km/h ou pedalar a 16 km/h." },
-  { score: 7, label: "7 METs", description: "Trote leve a 8,0 km/h ou jardinagem pesada." },
-  { score: 8, label: "8 METs", description: "Correr a 8,8 km/h ou pedalar a 19 km/h." },
-  { score: 9, label: "9 METs", description: "Correr a 9,6 km/h ou trabalho braçal pesado." },
-  { score: 10, label: "10 METs", description: "Correr a 11,2 km/h ou praticar natação." },
-  { score: 11, label: "11 METs", description: "Correr a 12,8 km/h." },
-  { score: 12, label: "12 METs", description: "Correr a 14,4 km/h." },
-  { score: 13, label: "13 METs", description: "Correr a 16,0 km/h." },
+// Definição das atividades VSAQ com seus respectivos valores de METs
+const VSAQ_ACTIVITIES = [
+  { met: 1, label: "Sentar-se ou realizar atividades sedentárias" },
+  { met: 2, label: "Caminhar dentro de casa" },
+  { met: 3, label: "Caminhar 2 quarteirões no plano" },
+  { met: 5, label: "Atividades domésticas moderadas ou golfe" },
+  { met: 7, label: "Subir um lance de escadas" },
+  { met: 9, label: "Trabalho manual pesado ou levantamento de peso" },
+  { met: 11, label: "Correr ou jogging recreativo" },
 ];
 
 export const VSAQ: React.FC = () => {
-  const { patientInfo, updateTestResults } = usePatient();
-  const { user } = useAuth();
+  const { updateTestResults } = usePatient();
   const navigate = useNavigate();
-  
-  const [selectedScore, setSelectedScore] = useState<number | null>(null);
+  const [selectedMet, setSelectedMet] = useState<number>(1);
   const [isSaved, setIsSaved] = useState(false);
 
-  const { estimatedMETs, predictedMETs, percentage, cbdf, imc } = useMemo(() => {
-    const age = parseInt(patientInfo?.age?.toString() || '65');
-    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
-    const height = parseFloat(patientInfo?.height?.toString() || '170') / 100;
-    const feve = Number(patientInfo?.ejectionFraction) || 60;
-    const calculatedImc = (weight > 0 && height > 0) ? weight / (height * height) : 25;
-
-    const currentEstimated = (selectedScore !== null && age > 0) 
-      ? 4.7 + (0.97 * selectedScore) - (0.06 * age) - (calculatedImc > 25 ? (0.02 * (calculatedImc - 25)) : 0)
-      : 0;
-
-    const currentPredicted = age > 0 ? 14.7 - (0.11 * age) : 10;
-    const currentPercentage = currentPredicted > 0 ? (currentEstimated / currentPredicted) * 100 : 0;
-
-    // Definição de critérios de classificação
-    let classification = { qualifier: 0, severity: "Sem Deficiência", color: "#059669" };
-    if (currentPercentage < 25 || feve < 30) classification = { qualifier: 4, severity: "Deficiência Completa", color: "#ef4444" };
-    else if (currentPercentage < 50 || feve < 40) classification = { qualifier: 3, severity: "Deficiência Grave", color: "#f97316" };
-    else if (currentPercentage < 75) classification = { qualifier: 2, severity: "Deficiência Moderada", color: "#eab308" };
-    else if (currentPercentage < 95) classification = { qualifier: 1, severity: "Deficiência Leve", color: "#10b981" };
-
-    return { 
-      estimatedMETs: Math.max(0, currentEstimated), 
-      predictedMETs: currentPredicted, 
-      percentage: currentPercentage, 
-      cbdf: classification,
-      imc: calculatedImc
-    };
-  }, [selectedScore, patientInfo]);
-
-  const handleReset = () => {
-    setSelectedScore(null);
-    setIsSaved(false);
+  // Função de interpretação dinâmica baseada no MET selecionado
+  const interpretation = (met: number): InterpretationResult[] => {
+    return [
+      {
+        label: met < 5 ? "Capacidade Funcional Reduzida" : met < 8 ? "Capacidade Funcional Moderada" : "Boa Capacidade Funcional",
+        color: met < 5 ? "red" : met < 8 ? "yellow" : "green",
+        description: `Capacidade estimada em ${met} METs. ${
+          met < 5 ? "Atenção ao risco cardiovascular." : "Nível de esforço dentro da normalidade."
+        }`
+      }
+    ];
   };
 
-  const handleSave = async () => {
-    if (selectedScore === null) {
-      toast.error("Selecione uma atividade limitante antes de salvar.");
-      return;
-    }
-    
-    updateTestResults('aerobic',  {
+  const handleGlobalSave = () => {
+    const resultData = interpretation(selectedMet)[0];
+
+    // Atualização alinhada com a interface VSAQResult (types.ts)
+    updateTestResults('aerobic', {
       vsaq: {
-        score: selectedScore,
-        estimatedMETs,
-        predictedMETs,
-        percentage,
-        interpretation: cbdf.severity,
-        cif: { qualifier: cbdf.qualifier, interpretation: cbdf.severity }
+        met: selectedMet, // Corrigido para 'met'
+        interpretation: resultData.label,
+        description: resultData.description
       }
     });
 
-    if (user) await logActivity(user.id, 'Finalizou VSAQ');
     setIsSaved(true);
     toast.success("VSAQ gravado com sucesso!");
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6 pb-64 relative">
-      <header className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">VSAQ</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Veterans Specific Activity Questionnaire</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-50 px-4 py-2 rounded-2xl flex items-center gap-2">
-            <Heart className="text-indigo-600" size={18} />
-            <span className="text-sm font-black text-indigo-700 uppercase">{patientInfo?.ejectionFraction || 0}% FEVE</span>
-          </div>
-          <button 
-            onClick={handleReset}
-            className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition-all"
-            title="Limpar formulário"
-          >
-            <RotateCcw size={20} />
-          </button>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-amber-50 p-5 rounded-2xl flex gap-3 border border-amber-100 mb-4">
-            <Info className="w-5 h-5 shrink-0 text-amber-600" />
-            <p className="text-amber-900 text-[11px] leading-tight font-bold uppercase">
-              Qual atividade causaria fadiga ou falta de ar se realizada hoje?
+    <div className="max-w-4xl mx-auto pb-60 relative">
+      <TimedTestTemplate
+        title="VSAQ"
+        description="Questionário de Atividade Física (Estimativa de METs)"
+        timerDuration={0}
+        hasCounter={false}
+        predictedValue={null}
+        interpretation={() => interpretation(selectedMet)}
+        onSave={handleGlobalSave}
+      >
+        <div className="space-y-6 px-4">
+          <div className="bg-indigo-50 p-5 rounded-3xl border border-indigo-100">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-700 mb-2">Instrução</h3>
+            <p className="text-[11px] text-indigo-900 leading-relaxed font-medium">
+              Selecione a atividade **mais extenuante** que o paciente consegue realizar sem apresentar sintomas limitantes.
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 gap-2">
-            {VSAQ_ITEMS.map((item) => (
-              <button 
-                key={item.score}
-                onClick={() => { setSelectedScore(item.score); setIsSaved(false); }}
-                className={`w-full p-5 rounded-2xl border-2 transition-all flex items-center justify-between text-left group ${
-                  selectedScore === item.score 
-                    ? 'border-indigo-600 bg-indigo-50 shadow-md' 
-                    : 'border-slate-50 bg-white hover:border-slate-200'
-                }`}
-              >
-                <p className={`text-xs font-black tracking-tight ${selectedScore === item.score ? 'text-indigo-900' : 'text-slate-600'}`}>
-                  {item.description}
-                </p>
-                <div className={`px-4 py-2 rounded-xl text-[10px] font-black transition-colors shrink-0 ml-4 ${
-                  selectedScore === item.score ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
-                }`}>
-                  {item.label}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
 
-        <aside className="space-y-4">
-          <div className="sticky top-6 space-y-4">
-            <div className="bg-slate-900 text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
-              <div className="relative z-10 space-y-8">
-                <div className="text-center">
-                  <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Capacidade Estimada</p>
-                  <p className="text-7xl font-black text-emerald-400 italic">
-                    {selectedScore ? estimatedMETs.toFixed(1) : '--'}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">Predito: {predictedMETs.toFixed(1)} METs</p>
-                </div>
-
-                {selectedScore !== null && (
-                  <div className="bg-white/5 border-l-4 p-5 rounded-r-2xl space-y-1" style={{ borderColor: cbdf.color }}>
-                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Diagnóstico (CBDF)</p>
-                    <p className="text-xl font-black text-white leading-tight">Q{cbdf.qualifier} — {cbdf.severity}</p>
-                    <p className="text-[11px] text-slate-500 font-bold uppercase">{percentage.toFixed(0)}% do esperado</p>
-                  </div>
-                )}
-
-                <div className="pt-6 border-t border-white/5 space-y-2">
-                  <div className="flex items-center gap-1 text-slate-500 mb-1">
-                    <BookOpen size={12} />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Padrão Ouro</span>
-                  </div>
-                  <p className="text-[9px] text-slate-500 leading-tight italic">
-                    Ajuste por IMC ({imc.toFixed(1)} kg/m²) e idade conforme Myers (2017).
-                  </p>
-                </div>
-              </div>
-              <ActivityIcon size={150} className="absolute -bottom-10 -right-10 text-white/[0.02] rotate-12" />
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Atividades Estimadas</label>
+            <div className="grid gap-2">
+              {VSAQ_ACTIVITIES.map((activity) => (
+                <button
+                  key={activity.met}
+                  type="button"
+                  onClick={() => { setSelectedMet(activity.met); setIsSaved(false); }}
+                  className={`w-full p-5 rounded-2xl flex items-center justify-between border-2 transition-all text-left ${
+                    selectedMet === activity.met 
+                      ? 'bg-slate-900 border-slate-900 text-white shadow-lg' 
+                      : 'bg-white border-slate-100 text-slate-600 hover:border-indigo-200'
+                  }`}
+                >
+                  <span className="font-medium text-sm">{activity.label}</span>
+                  <span className={`font-black text-xs px-3 py-1 rounded-full ${
+                    selectedMet === activity.met ? 'bg-white/20' : 'bg-slate-100'
+                  }`}>
+                    {activity.met} METs
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
-        </aside>
-      </div>
+        </div>
+      </TimedTestTemplate>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] space-y-3">
+      {/* Botões de Ação */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
         <button
-          onClick={handleSave}
-          className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 ${
-            isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
-          }`}
+          onClick={handleGlobalSave}
+          className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white'}`}
         >
-          {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} className="text-emerald-400" />}
-          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'VSAQ SALVO' : 'GRAVAR CAPACIDADE METABÓLICA'}</span>
+          {isSaved ? <CheckCircle2 className="w-6 h-6" /> : <Save className="w-6 h-6 text-emerald-400" />}
+          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'SALVO' : 'GRAVAR RESULTADO'}</span>
         </button>
-        
+
         <button
-          onClick={() => navigate('/dashboard')} 
-          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+          onClick={() => navigate('/dashboard')}
+          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
         >
-          <LayoutDashboard size={18} /> PAINEL DE MÓDULOS
+          <LayoutDashboard size={16} /> Voltar ao Painel
         </button>
       </div>
     </div>

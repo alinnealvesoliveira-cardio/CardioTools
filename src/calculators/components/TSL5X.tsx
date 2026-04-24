@@ -4,6 +4,7 @@ import { Activity, Save, CheckCircle2, LayoutDashboard, BookOpen, RotateCcw } fr
 import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { FunctionalTestResult, CIFData } from '../../types';
 
 export const TSL5X: React.FC = () => {
   const { testResults, updateTestResults } = usePatient();
@@ -16,8 +17,7 @@ export const TSL5X: React.FC = () => {
 
   const predictedValue = 9.0; 
 
-  const interpretation = (_time: number): InterpretationResult[] => {
-    const time = parseFloat(observedTime) || _time;
+  const interpretation = (time: number): InterpretationResult[] => {
     if (time === 0) return [
       { label: "Aguardando", color: "slate", description: "Inicie o teste para avaliar a potência de MMII." }
     ];
@@ -46,7 +46,6 @@ export const TSL5X: React.FC = () => {
       return;
     }
 
-    // Lógica de eficiência baseada em tempos de corte clínicos
     let efficiency = 100;
     if (finalTime > 15) efficiency = 20;      
     else if (finalTime > 12) efficiency = 45; 
@@ -59,37 +58,37 @@ export const TSL5X: React.FC = () => {
     };
 
     const currentSymptoms = testResults?.symptoms || {
-      claudication: false,
       angina: { type: 'none', description: '' }
     };
 
+    // Atualização tipada para FunctionalTestResult
     updateTestResults('aerobic', {
       sitToStandTest: {
         time: finalTime,
         predicted: predictedValue,
         efficiency: efficiency,
-        interpretation: interpretation(finalTime)[0].label,
-        restingHR: testResults?.aerobic.sitToStandTest?.restingHR || 0,
-        peakHR: testResults?.aerobic.sitToStandTest?.peakHR || 0
-      },
-      });
-      updateTestResults('fatigability', {
-          ...currentScales,
-        exercise: { 
-          ...currentScales.exercise, 
-          fatigue: postFadiga || 0 
-        }
-      });
-      updateTestResults('symptoms', {  
-          ...currentSymptoms,
-        angina: {
-          type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
-        }
-      });
+        interpretation: interpretation(finalTime)[0].label
+      } as FunctionalTestResult
+    });
+
+    updateTestResults('fatigability', {
+      ...currentScales,
+      exercise: { 
+        ...currentScales.exercise, 
+        fatigue: postFadiga || 0 
+      }
+    });
+
+    updateTestResults('symptoms', {  
+      ...currentSymptoms,
+      angina: {
+        type: postAngina && postAngina > 0 ? 'stable' : 'none',
+        description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
+      }
+    });
 
     setIsSaved(true);
-    toast.success("Dados salvos com sucesso!");
+    toast.success("TSL 5x gravado com sucesso!");
   };
 
   return (
@@ -101,9 +100,8 @@ export const TSL5X: React.FC = () => {
         predictedValue={predictedValue}
         observedValueOverride={parseFloat(observedTime) || 0}
         invertCIFRatio={true}
-        onSave={handleGlobalSave}
-        reference="Fuentes-Abolafio IJ, et al. J Clin Med. 2022." 
-        timerDuration={0}
+        onSave={handleGlobalSave} // Garantindo compatibilidade com o template
+               timerDuration={0}
       >
         <div className="space-y-6 px-4">
           <div className="bg-indigo-50 border border-indigo-100 p-5 rounded-3xl">

@@ -4,6 +4,7 @@ import { Activity, ShieldCheck, Save, CheckCircle2, LayoutDashboard, RotateCcw }
 import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { FunctionalTestResult } from '../../types';
 
 export const TUG: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
@@ -14,18 +15,21 @@ export const TUG: React.FC = () => {
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // Otimização: Cálculos reativos
+  const age = parseInt(patientInfo?.age?.toString() || '0');
+  const height = parseFloat(patientInfo?.height?.toString() || '0');
+  const weight = parseFloat(patientInfo?.weight?.toString() || '0');
+  const isDataValid = age > 0 && height > 0 && weight > 0;
+
   const { predictedFurlanetto } = useMemo(() => {
-    const age = parseInt(patientInfo?.age?.toString() || '65');
-    const height = parseFloat(patientInfo?.height?.toString() || '170');
-    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
+    if (!isDataValid) return { predictedFurlanetto: 0 };
+
     const s = (patientInfo?.sex as string || '').toUpperCase();
-    const sexVal = (s === 'FEMALE' || s === 'F') ? 0 : 1; // Ajustado para a lógica da fórmula: M=1, F=0
+    const sexVal = (s === 'FEMALE' || s === 'F') ? 0 : 1; 
     
     const pred = 11.5 - (0.04 * height) + (0.02 * weight) + (0.04 * age) - (0.6 * sexVal);
     
     return { predictedFurlanetto: pred > 0 ? pred : 9.5 };
-  }, [patientInfo]);
+  }, [patientInfo, age, height, weight, isDataValid]);
 
   const handleResetSintomas = () => {
     setPostFadiga(null);
@@ -65,33 +69,49 @@ export const TUG: React.FC = () => {
       exercise: { dyspnea: 0, fatigue: 0 } 
     };
 
-    updateTestResults('aerobic',  {
+    const currentSymptoms = testResults?.symptoms || {
+      claudication: false,
+      angina: { type: 'none', description: '' }
+    };
+
+    // Atualização com tipagem forçada
+    updateTestResults('aerobic', {
       tug: {
         time: finalTime,
         predicted: predictedFurlanetto,
         efficiency: efficiency,
         interpretation: interpretation(finalTime)[0].label,
-        hr: { pre: 0, post: 0 } 
-      },
-      });
-      updateTestResults('fatigability', {
-          ...currentScales,
-        exercise: { 
-          ...currentScales.exercise, 
-          fatigue: postFadiga || 0 
-        }
-      });
-      updateTestResults('symptoms', {  
-                angina: {
-          type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
-        }
-      });
+      } as FunctionalTestResult
+    });
 
+    updateTestResults('fatigability', {
+      ...currentScales,
+      exercise: { 
+        ...currentScales.exercise, 
+        fatigue: postFadiga || 0 
+      }
+    });
+
+    updateTestResults('symptoms', {  
+      ...currentSymptoms,
+      angina: {
+        type: postAngina && postAngina > 0 ? 'stable' : 'none',
+        description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TUG` : 'Sem sintomas anginosos'
+      }
+    });
 
     setIsSaved(true);
     toast.success("TUG gravado com sucesso!");
   };
+
+  if (!isDataValid) {
+    return (
+      <div className="p-8 bg-amber-50 border border-amber-200 rounded-3xl text-amber-800 text-center">
+        <h3 className="font-bold text-lg mb-2">Dados antropométricos necessários</h3>
+        <p>Preencha idade, peso e altura no cadastro para calcular o predito do TUG.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto pb-60 relative"> 
@@ -104,9 +124,12 @@ export const TUG: React.FC = () => {
         invertCIFRatio={true} 
         timerDuration={0}
         onSave={handleGlobalSave}
-        reference="Furlanetto KC, et al. 2022; Kamiya K, et al. 2016."
       >
         <div className="space-y-6 px-4">
+          <p className="text-[9px] text-slate-400 uppercase tracking-widest text-center mt-2">
+            Ref: Furlanetto KC, et al. 2022; Kamiya K, et al. 2016.
+          </p>
+          
           <div className="bg-indigo-50 border-l-4 border-indigo-500 p-5 rounded-r-[24px]">
             <p className="text-[11px] text-indigo-700 leading-relaxed font-medium">
               Levantar da cadeira, caminhar 3 metros, girar e sentar novamente. 

@@ -4,6 +4,7 @@ import { Activity, LayoutDashboard, RotateCcw } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { FunctionalTestResult, CIFData } from '../../types';
 
 export const TSL1M: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
@@ -12,27 +13,27 @@ export const TSL1M: React.FC = () => {
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // Otimização: Cálculos reativos dependentes dos dados do paciente
+  const age = parseInt(patientInfo?.age?.toString() || '0');
+  const height = parseFloat(patientInfo?.height?.toString() || '0');
+  const weight = parseFloat(patientInfo?.weight?.toString() || '0');
+  const isDataValid = age > 0 && height > 0 && weight > 0;
+
   const { predictedFurlanetto, bmi } = useMemo(() => {
-    const age = parseInt(patientInfo?.age?.toString() || '60');
-    const height = parseFloat(patientInfo?.height?.toString() || '170');
-    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
-    
-    // Normalização robusta para o sexo
+    if (!isDataValid) return { predictedFurlanetto: 0, bmi: 0 };
+
     const sex = (patientInfo?.sex as string || '').toUpperCase();
     const isFemale = sex === 'FEMALE' || sex === 'F';
     const sexVal = isFemale ? 1 : 0;
     
     const bmiVal = height > 0 ? weight / ((height / 100) ** 2) : 24.2;
 
-    // Equação Furlanetto KC, et al. (2022)
     const pred = 60.6 - (0.36 * age) - (2.8 * sexVal) - (0.31 * bmiVal);
     
     return { 
       predictedFurlanetto: pred > 0 ? pred : 15, 
       bmi: bmiVal 
     };
-  }, [patientInfo]);
+  }, [patientInfo, age, height, weight, isDataValid]);
 
   const handleResetSintomas = () => {
     setPostFadiga(null);
@@ -55,7 +56,14 @@ export const TSL1M: React.FC = () => {
     }];
   };
 
-  const handleGlobalSave = (data: { count: number; hr?: { pre: number; post: number } }) => {
+  // Ajustado para aceitar a estrutura esperada pelo Template e mapear para FunctionalTestResult
+  const handleGlobalSave = (data: { 
+    time: number; 
+    count: number; 
+    results: InterpretationResult[]; 
+    cif: CIFData | null; 
+    hr: { pre: number; post: number }; 
+  }) => {
     const efficiency = predictedFurlanetto > 0 ? (data.count / predictedFurlanetto) * 100 : 0;
 
     const currentScales = testResults?.fatigability || { 
@@ -64,7 +72,6 @@ export const TSL1M: React.FC = () => {
     };
 
     const currentSymptoms = testResults?.symptoms || {
-      claudication: false,
       angina: { type: 'none', description: '' }
     };
 
@@ -73,26 +80,39 @@ export const TSL1M: React.FC = () => {
         count: data.count,
         predicted: predictedFurlanetto,
         efficiency: efficiency,
-        interpretation: interpretation(60, data.count)[0].label,
-        hr: data.hr
-      },
-      });
-      updateTestResults('fatigability', {
-          ...currentScales,
-        exercise: { 
-          ...currentScales.exercise, 
-          fatigue: postFadiga || 0 
-        }
-      });
-      updateTestResults('symptoms', {  
-          ...currentSymptoms,
-        angina: {
-          type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
-        }
-      });
+        interpretation: data.results[0]?.label || "Realizado",
+        hr: data.hr,
+        cif: data.cif ?? undefined
+      } as FunctionalTestResult
+    });
+
+    updateTestResults('fatigability', {
+      ...currentScales,
+      exercise: { 
+        ...currentScales.exercise, 
+        fatigue: postFadiga || 0 
+      }
+    });
+
+    updateTestResults('symptoms', {  
+      ...currentSymptoms,
+      angina: {
+        type: postAngina && postAngina > 0 ? 'stable' : 'none',
+        description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL1M` : 'Sem sintomas anginosos'
+      }
+    });
+      
     toast.success("TSL 1 Minuto gravado!");
   };
+
+  if (!isDataValid) {
+    return (
+      <div className="p-8 bg-amber-50 border border-amber-200 rounded-3xl text-amber-800 text-center">
+        <h3 className="font-bold text-lg mb-2">Dados antropométricos necessários</h3>
+        <p>Preencha idade, peso e altura no cadastro para calcular o predito do TSL 1 Minuto.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto pb-60 relative"> 
@@ -105,7 +125,6 @@ export const TSL1M: React.FC = () => {
         interpretation={interpretation}
         predictedValue={predictedFurlanetto}
         onSave={handleGlobalSave}
-        reference="Furlanetto KC, et al. Braz J Phys Ther. 2022."
       >
         <div className="space-y-6 px-4">
           <div className="grid grid-cols-2 gap-4">

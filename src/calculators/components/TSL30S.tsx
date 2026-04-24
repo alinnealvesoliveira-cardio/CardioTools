@@ -4,6 +4,7 @@ import { Info, ShieldAlert, Award, Activity, Save, CheckCircle2, LayoutDashboard
 import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { FunctionalTestResult, CIFData } from '../../types';
 
 export const TSL30S: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
@@ -13,7 +14,6 @@ export const TSL30S: React.FC = () => {
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // Otimização: Cálculo reativo do sexo com robustez
   const sex = useMemo(() => {
     const s = (patientInfo?.sex as string || '').toUpperCase();
     return (s === 'FEMALE' || s === 'F') ? 'F' : 'M';
@@ -45,7 +45,13 @@ export const TSL30S: React.FC = () => {
     }];
   };
 
-  const handleGlobalSave = (data: { count: number; hr?: { pre: number; post: number } }) => {
+  const handleGlobalSave = (data: { 
+    time: number; 
+    count: number; 
+    results: InterpretationResult[]; 
+    cif: CIFData | null; 
+    hr: { pre: number; post: number }; 
+  }) => {
     const efficiency = predictedValue > 0 ? (data.count / predictedValue) * 100 : 0;
 
     const currentScales = testResults?.fatigability || { 
@@ -53,29 +59,37 @@ export const TSL30S: React.FC = () => {
       exercise: { dyspnea: 0, fatigue: 0 } 
     };
 
-    updateTestResults('aerobic',  {
+    const currentSymptoms = testResults?.symptoms || {
+      claudication: false,
+      angina: { type: 'none', description: '' }
+    };
+
+    updateTestResults('aerobic', {
       tsl30s: {
         count: data.count,
         predicted: predictedValue,
         efficiency: efficiency,
-        interpretation: interpretation(30, data.count)[0].label,
-        hr: data.hr
-      },
-      });
-      updateTestResults('fatigability', {
-          ...currentScales,
-        exercise: { 
-          ...currentScales.exercise, 
-          fatigue: postFadiga || 0 
-        }
-      });
-      updateTestResults('symptoms', {  
-                  angina: {
-          type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
-        }
-      });
+        interpretation: data.results[0]?.label || "Realizado",
+        hr: data.hr,
+        cif: data.cif ?? undefined
+      } as FunctionalTestResult
+    });
 
+    updateTestResults('fatigability', {
+      ...currentScales,
+      exercise: { 
+        ...currentScales.exercise, 
+        fatigue: postFadiga || 0 
+      }
+    });
+
+    updateTestResults('symptoms', {  
+      ...currentSymptoms,
+      angina: {
+        type: postAngina && postAngina > 0 ? 'stable' : 'none',
+        description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL30S` : 'Sem sintomas anginosos'
+      }
+    });
 
     setIsSaved(true);
     toast.success("TSL 30s gravado com sucesso!");
@@ -92,8 +106,7 @@ export const TSL30S: React.FC = () => {
         interpretation={interpretation}
         predictedValue={predictedValue}
         onSave={handleGlobalSave}
-        reference="Furlanetto KC, et al. 2022."
-      >
+              >
         <div className="space-y-6 px-4">
           <div className="bg-amber-50 p-5 rounded-3xl border border-amber-100 flex gap-3 items-start shadow-sm">
             <ShieldAlert className="text-amber-600 shrink-0 mt-1" size={20} />
@@ -168,14 +181,7 @@ export const TSL30S: React.FC = () => {
       </TimedTestTemplate>
 
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
-        <button
-          onClick={() => (document.querySelector('button[type="submit"]') as HTMLButtonElement)?.click()} 
-          className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-        >
-          {isSaved ? <CheckCircle2 className="w-6 h-6" /> : <Save className="w-6 h-6 text-emerald-400" />}
-          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'DADOS GRAVADOS' : 'GRAVAR RESULTADO'}</span>
-        </button>
-        
+        {/* O template gerencia o salvamento; mantive o botão abaixo apenas para navegação */}
         <button
           onClick={() => navigate('/dashboard')} 
           className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest active:scale-95 transition-all"

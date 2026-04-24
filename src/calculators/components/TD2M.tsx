@@ -4,6 +4,7 @@ import { Activity, LayoutDashboard, RotateCcw } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { FunctionalTestResult, CIFData } from '../../types';
 
 export const TD2M: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
@@ -12,22 +13,18 @@ export const TD2M: React.FC = () => {
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // Otimização: Cálculos reativos com normalização de sexo
-  const { 
-    predictedRikli, 
-    lin, 
-    normativeRange 
-  } = useMemo(() => {
-    const age = parseInt(patientInfo?.age?.toString() || '65');
-    const height = parseFloat(patientInfo?.height?.toString() || '170');
-    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
-    
-    // Normalização robusta para evitar erro de tipagem
+  const age = parseInt(patientInfo?.age?.toString() || '0');
+  const height = parseFloat(patientInfo?.height?.toString() || '0');
+  const weight = parseFloat(patientInfo?.weight?.toString() || '0');
+  const isDataValid = age > 0 && height > 0 && weight > 0;
+
+  const { predictedRikli, lin, normativeRange } = useMemo(() => {
+    if (!isDataValid) return { predictedRikli: 0, lin: 0, normativeRange: null };
+
     const sex = (patientInfo?.sex as string);
     const isFemale = sex === 'female' || sex === 'F';
     const bmi = height > 0 ? weight / ((height / 100) ** 2) : 24.5;
 
-    // Cálculo Rikli & Jones
     const pRikli = !isFemale 
       ? 143.297 - (1.157 * age) - (0.334 * bmi) 
       : 118.773 - (0.832 * age) - (0.472 * bmi);
@@ -35,7 +32,6 @@ export const TD2M: React.FC = () => {
     const epe = 6;
     const pLin = pRikli - (epe * 1.645);
 
-    // Ranges Normativos
     const getRange = (a: number, female: boolean): [number, number] | null => {
       if (a < 60) return null;
       if (a <= 64) return !female ? [87, 115] : [75, 107];
@@ -48,12 +44,8 @@ export const TD2M: React.FC = () => {
       return null;
     };
 
-    return { 
-      predictedRikli: pRikli, 
-      lin: pLin, 
-      normativeRange: getRange(age, isFemale) 
-    };
-  }, [patientInfo]);
+    return { predictedRikli: pRikli, lin: pLin, normativeRange: getRange(age, isFemale) };
+  }, [patientInfo, age, height, weight, isDataValid]);
 
   const handleResetSintomas = () => {
     setPostFadiga(null);
@@ -76,7 +68,13 @@ export const TD2M: React.FC = () => {
     }];
   };
 
-  const handleGlobalSave = (data: { count: number; hr?: { pre: number; post: number } }) => {
+  const handleGlobalSave = (data: { 
+    time: number; 
+    count: number; 
+    results: InterpretationResult[]; 
+    cif: CIFData | null; 
+    hr: { pre: number; post: number }; 
+  }) => {
     const efficiency = predictedRikli > 0 ? (data.count / predictedRikli) * 100 : 0;
 
     const currentScales = testResults?.fatigability || { 
@@ -85,36 +83,50 @@ export const TD2M: React.FC = () => {
     };
 
     const currentSymptoms = testResults?.symptoms || {
-      claudication: false,
       angina: { type: 'none', description: '' }
     };
 
+    // Salva o teste no aeróbico
     updateTestResults('aerobic', {
       td2m: {
         count: data.count,
         predicted: predictedRikli,
         efficiency: efficiency,
-        interpretation: interpretation(120, data.count)[0].label,
-        hr: data.hr
-      },
-      });
-      updateTestResults('fatigability', {
-          ...currentScales,
-        exercise: { 
-          ...currentScales.exercise, 
-          fatigue: postFadiga || 0 
-        }
-      });
-      updateTestResults('symptoms', {  
-          ...currentSymptoms,
-        angina: {
-          type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
-        }
-      });
+        interpretation: data.results[0]?.label || "Realizado",
+        hr: data.hr,
+        cif: data.cif ?? undefined
+      } as FunctionalTestResult
+    });
+
+    // Salva fadiga
+    updateTestResults('fatigability', {
+      ...currentScales,
+      exercise: { 
+        ...currentScales.exercise, 
+        fatigue: postFadiga || 0 
+      }
+    });
+
+    // Salva sintomas
+    updateTestResults('symptoms', {  
+      ...currentSymptoms,
+      angina: {
+        type: postAngina && postAngina > 0 ? 'stable' : 'none',
+        description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TD2M` : 'Sem sintomas anginosos'
+      }
+    });
       
     toast.success("Teste de Marcha gravado!");
   };
+
+  if (!isDataValid) {
+    return (
+      <div className="p-8 bg-amber-50 border border-amber-200 rounded-3xl text-amber-800 text-center">
+        <h3 className="font-bold text-lg mb-2">Dados antropométricos necessários</h3>
+        <p>Preencha idade, peso e altura no cadastro para calcular o predito do 2MST.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto pb-60 relative"> 
@@ -127,7 +139,6 @@ export const TD2M: React.FC = () => {
         interpretation={interpretation}
         predictedValue={predictedRikli}
         onSave={handleGlobalSave}
-        reference="Rikli RE, Jones CJ. Senior Fitness Test Manual. 2nd ed, 2013."
       >
         <div className="space-y-6 px-4">
           <div className="grid grid-cols-2 gap-4">

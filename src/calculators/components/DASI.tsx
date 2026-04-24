@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Info, CheckCircle2, Save, 
+  Info, CheckCircle2, Save, AlertCircle,
   Activity as ActivityIcon, LayoutDashboard, RotateCcw
 } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
@@ -31,14 +31,18 @@ export const DASI: React.FC = () => {
   const [answers, setAnswers] = useState<Record<number, boolean>>({});
   const [isSaved, setIsSaved] = useState(false);
 
-  const { score, mets, predictedMETs, percentage, cbdf } = useMemo(() => {
-    const age = parseInt(patientInfo?.age?.toString() || '65');
-    const feve = Number(patientInfo?.ejectionFraction) || 60;
+  // Validação de dados (Idade é crucial para o cálculo do predito do DASI)
+  const age = parseInt(patientInfo?.age?.toString() || '0');
+  const isDataValid = age > 0;
 
+  const { score, mets, predictedMETs, percentage, cbdf } = useMemo(() => {
+    if (!isDataValid) return { score: 0, mets: 0, predictedMETs: 0, percentage: 0, cbdf: null };
+
+    const feve = Number(patientInfo?.ejectionFraction) || 60;
     const currentScore = DASI_QUESTIONS.reduce((acc, q) => acc + (answers[q.id] ? q.weight : 0), 0);
     const vo2 = (0.43 * currentScore) + 9.6;
     const currentMets = vo2 / 3.5;
-    const currentPredicted = age > 0 ? (14.7 - (0.11 * age)) : 10;
+    const currentPredicted = 14.7 - (0.11 * age);
     const currentPercentage = currentPredicted > 0 ? (currentMets / currentPredicted) * 100 : 0;
 
     let classification = { qualifier: 0, severity: "Sem Deficiência", range: "0-4%", color: "#059669" };
@@ -55,7 +59,7 @@ export const DASI: React.FC = () => {
       percentage: Math.min(100, currentPercentage), 
       cbdf: classification 
     };
-  }, [answers, patientInfo?.age, patientInfo?.ejectionFraction]);
+  }, [answers, patientInfo?.age, patientInfo?.ejectionFraction, age, isDataValid]);
 
   const handleReset = () => {
     setAnswers({});
@@ -63,8 +67,8 @@ export const DASI: React.FC = () => {
   };
 
   const handleSave = async () => {
-    // CORREÇÃO: Passando 'aerobic' como primeiro argumento (categoria)
-    // e o objeto com as atualizações como segundo argumento
+    if (!cbdf) return;
+
     updateTestResults('aerobic', {
       dasi: {
         score,
@@ -81,18 +85,27 @@ export const DASI: React.FC = () => {
     toast.success("Capacidade funcional gravada!");
   };
 
+  if (!isDataValid) {
+    return (
+      <div className="max-w-md mx-auto mt-20 p-8 bg-amber-50 border border-amber-200 rounded-3xl text-amber-900 text-center">
+        <AlertCircle className="mx-auto mb-4 text-amber-600" size={48} />
+        <h3 className="font-bold text-lg mb-2">Dados do paciente pendentes</h3>
+        <p className="text-sm">Para calcular o DASI, preencha a idade do paciente no cadastro.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6 pb-64 relative">
       <div className="bg-white rounded-[40px] shadow-sm overflow-hidden border border-slate-100">
         <div className="bg-slate-900 p-8 flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-black white tracking-tighter italic flex items-center gap-3 text-white">DASI</h2>
+            <h2 className="text-3xl font-black text-white tracking-tighter italic flex items-center gap-3">DASI</h2>
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Duke Activity Status Index</p>
           </div>
           <button 
             onClick={handleReset}
             className="p-3 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-all"
-            title="Limpar formulário"
           >
             <RotateCcw size={20} />
           </button>
@@ -131,31 +144,33 @@ export const DASI: React.FC = () => {
 
           <div className="space-y-6">
             <div className="sticky top-6 space-y-4">
-              <div className="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl space-y-8 relative overflow-hidden">
-                <div className="grid grid-cols-2 gap-6 relative z-10">
-                  <div className="text-center">
-                    <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">METs Estimados</p>
-                    <p className="text-5xl font-black text-emerald-400 italic">{mets.toFixed(1)}</p>
+              {cbdf && (
+                <div className="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl space-y-8 relative overflow-hidden">
+                  <div className="grid grid-cols-2 gap-6 relative z-10">
+                    <div className="text-center">
+                      <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">METs Estimados</p>
+                      <p className="text-5xl font-black text-emerald-400 italic">{mets.toFixed(1)}</p>
+                    </div>
+                    <div className="text-center border-l border-white/10">
+                      <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">% do Predito</p>
+                      <p className="text-5xl font-black text-emerald-400">{percentage.toFixed(0)}<span className="text-xl">%</span></p>
+                    </div>
                   </div>
-                  <div className="text-center border-l border-white/10">
-                    <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">% do Predito</p>
-                    <p className="text-5xl font-black text-emerald-400">{percentage.toFixed(0)}<span className="text-xl">%</span></p>
-                  </div>
-                </div>
 
-                <div className="bg-white/5 border-l-4 p-6 rounded-r-2xl space-y-1 relative z-10" style={{ borderColor: cbdf.color }}>
-                  <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Status Funcional (CBDF)</p>
-                  <p className="text-xl font-black text-white leading-tight">Q{cbdf.qualifier} — {cbdf.severity}</p>
-                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tighter">Impacto Funcional de {cbdf.range}</p>
+                  <div className="bg-white/5 border-l-4 p-6 rounded-r-2xl space-y-1 relative z-10" style={{ borderColor: cbdf.color }}>
+                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Status Funcional (CBDF)</p>
+                    <p className="text-xl font-black text-white leading-tight">Q{cbdf.qualifier} — {cbdf.severity}</p>
+                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tighter">Impacto Funcional de {cbdf.range}</p>
+                  </div>
+                  
+                  <ActivityIcon size={140} className="absolute -bottom-10 -right-10 text-white/[0.03] rotate-12" />
                 </div>
-                
-                <ActivityIcon size={140} className="absolute -bottom-10 -right-10 text-white/[0.03] rotate-12" />
-              </div>
+              )}
 
               <div className="px-6 py-4 bg-slate-50 rounded-[24px] border border-slate-100">
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Fórmulas Clínicas</p>
                 <p className="text-[9px] text-slate-500 leading-tight italic">
-                  VO2 = (0.43 x Score) + 9.6. MET = VO2 / 3.5. Predito ajustado por idade.
+                  VO2 = (0.43 x Score) + 9.6. MET = VO2 / 3.5. Predito ajustado por idade conforme Hlatky et al.
                 </p>
               </div>
             </div>
