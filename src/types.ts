@@ -1,41 +1,74 @@
-import React from 'react';
-
 // ==========================================
 // 1. TIPOS DE NAVEGAÇÃO E CATEGORIAS
 // ==========================================
-
-export type CategoryName = 
-  | 'Home'
+export type NavId = 
+  | 'Home' 
   | 'Cadastro' 
   | 'Avaliação Autonômica' 
   | 'Vascular' 
   | 'Capacidade Aeróbica' 
   | 'Avaliação de Sintomas' 
-  | 'DASI'
   | 'Relatório Final';
-
-export interface Category {
-  id: CategoryName; // Unificado: usando o tipo de string restrito
-  name: string;
-  icon: React.ElementType;
-}
+  
+export type CategoryName = 
+  | 'cadastro' 
+  | 'aerobic' 
+  | 'autonomic' 
+  | 'vascular' 
+  | 'symptoms' 
+  | 'fatigability'
+  | 'cadastro'
+  | 'final-report';
 
 export interface Calculator {
   id: string;
   name: string;
   description: string;
-  category: string; // Pode ser CategoryName se desejar maior rigor
+  category: CategoryName;
   component: React.ComponentType<any>;
 }
 
 // ==========================================
-// 2. TEMPLATES DE PONTUAÇÃO
+// 2. TIPOS DE DADOS COMUNS E FUNCIONAIS
+// ==========================================
+
+export interface CIFData {
+  qualifier: number;
+  interpretation?: string; 
+  severity?: string;
+}
+
+export interface FunctionalTestResult {
+  score?: number;
+  distance?: number;
+  count?: number;
+  time?: number;
+  predicted?: number;
+  efficiency?: number;
+  interpretation?: string;
+  estimatedMETs?: number;
+  restingHR?: number;
+  peakHR?: number;
+  hr?: { pre: number; post: number };
+  cif?: CIFData;
+}
+
+export interface QuestionnaireResult {
+  score: number;
+  estimatedMETs: number;
+  predictedMETs: number;
+  percentage: number;
+  interpretation: string;
+  cif?: CIFData;
+}
+
+// ==========================================
+// 3. ESTRUTURAS DE SCORE (PARA TEMPLATES)
 // ==========================================
 
 export interface ScoreOption {
   label: string;
   score: number;
-  description?: string;
 }
 
 export interface ScoreItem {
@@ -50,49 +83,12 @@ export interface ScoreGroup {
 }
 
 // ==========================================
-// 3. INTERFACES DE RESULTADOS E DADOS
+// 4. ESTRUTURAS POR CATEGORIA (Resultados)
 // ==========================================
 
-export interface CIFData {
-  qualifier: number;
-  interpretation?: string; 
-  severity?: string;
-}
-
-export interface FunctionalTestResult {
-  distance?: number;
-  count?: number;
-  time?: number;
-  predicted?: number;
-  efficiency?: number;
-  interpretation?: string;
-  estimatedMETs?: number;
-  restingHR?: number;
-  peakHR?: number;
-  hr?: {
-    pre: number;
-    post: number;
-  };
-  cif?: CIFData;
-}
-
-export interface QuestionnaireResult {
-  score: number;
-  estimatedMETs: number;
-  predictedMETs: number;
-  percentage: number;
-  interpretation: string;
-  cif?: CIFData;
-}
-
-// ==========================================
-// 4. INTERFACE PRINCIPAL DE TESTES (TEST RESULTS)
-// ==========================================
-
-export interface TestResults {
+export interface AerobicResults {
   vsaq?: QuestionnaireResult | null;
   dasi?: QuestionnaireResult | null;
-
   sixMinuteWalkTest?: FunctionalTestResult | null;
   stepTest?: FunctionalTestResult | null;
   tug?: FunctionalTestResult | null;
@@ -100,84 +96,72 @@ export interface TestResults {
   tsl1m?: FunctionalTestResult | null;
   tsl30s?: FunctionalTestResult | null;
   tsl5x?: FunctionalTestResult | null;
-  sitToStandTest?: FunctionalTestResult | null; 
+  sitToStandTest?: FunctionalTestResult | null;
+}
 
-  hrr?: {
-    peakHR: number;
-    recoveryHR: number;
-    delta: number;
-    interpretation: string;
-  } | null;
-
+export interface AutonomicResults {
+  hrr?: { peakHR: number; recoveryHR: number; delta: number; interpretation: string } | null;
   orthostaticDrop?: {
     supine: { pas: number; pad: number };
     standing: { pas: number; pad: number };
     delta: { deltaPAS: number; deltaPAD: number };
     interpretation: string;
   } | null;
-  
-  vfc?: {
-    sdnn?: number;
-    rmssd?: number; 
-    interpretation?: string;
-  } | null;
+  rmssd?: number | null;
+  hrvInterpretation?: string | null;
+}
 
-  rmssd?: number; 
-
-  claudication?: boolean | {
-    score: number;
-    interpretation: string;
-    timestamp: string;
-  };
-
-  symptoms?: {
-    claudication?: boolean | {
-      score: number;
-      interpretation: string;
-      timestamp: string;
-    };
-    claudicationDetails?: { 
-      title: string;
-      description: string;
-    };
-    angina: {
-      type: string; 
-      description: string;
-      ccsGrade?: number | undefined;
-    };
-  };
-
-  fatigabilityScales?: {
-    rest: { dyspnea: number; fatigue: number };
-    exercise: { dyspnea: number; fatigue: number };
-  } | null;
-
-  abi?: number;            
-  abiAnkleBP?: number;     
-  abiArmBP?: number;       
-
+export interface VascularResults {
+  abi?: number;
+  abiAnkleBP?: number;
+  abiArmBP?: number;
   vascularAssessment?: {
-    arterial: { 
-      pulse: string; 
-      temp: string; 
-      capillaryRefill: string; 
-      itb?: number;
-      cif?: CIFData; 
-    };
-    venous: { 
-      ceap?: string[]; 
-      godet: string; 
-      cif?: CIFData; 
-    };
-    lymphatic: { 
-      stemmer: string; 
-      cif?: CIFData; 
-    };
+    arterial: { pulse: string; temp: string; capillaryRefill: string; itb?: number; cif?: CIFData };
+    venese: { ceap?: string[]; godet: string; cif?: CIFData };
+    lymphatic: { stemmer: string; cif?: CIFData };
   } | null;
 }
 
+export interface SymptomsResults {
+  claudication?: { score: number; interpretation: string; timestamp: string };
+  claudicationDetails?: { title: string; description: string };
+  angina: { type: string; description: string; ccsGrade?: number };
+}
+
+export interface FatigabilityResults {
+  rest: { dyspnea: number; fatigue: number };
+  exercise: { dyspnea: number; fatigue: number };
+}
+
+// Estruturas adicionadas para as novas categorias
+export interface CadastroResults {
+  patientInfo: PatientInfo | null;
+  medications: Medications | null;
+}
+
+export interface FinalReportResults {
+  summary: string;
+  recommendations: string[];
+  generatedAt: string;
+  cifGlobal?: CIFData;
+}
+
 // ==========================================
-// 5. PERFIL E FARMACOLOGIA
+// 5. INTERFACE PRINCIPAL (TEST RESULTS)
+// ==========================================
+
+export interface TestResults {
+  aerobic: AerobicResults;
+  autonomic: AutonomicResults;
+  vascular: VascularResults;
+  symptoms: SymptomsResults;
+  fatigability: FatigabilityResults | null;
+  cadastro: CadastroResults | null;
+  'final-report': FinalReportResults | null;
+}
+
+// ==========================================
+// 6. PERFIL E FARMACOLOGIA
 // ==========================================
 
 export interface PatientInfo {
@@ -198,7 +182,8 @@ export interface PatientInfo {
 
 export interface Medications {
   betablockers: boolean;
-  bcc: boolean; 
+  bcc_dhp: boolean; 
+  bcc_non_dhp: boolean; 
   digitalis: boolean; 
   nitrates: boolean;
   antihypertensives: boolean;

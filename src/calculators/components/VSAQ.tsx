@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   CheckCircle2, 
   Save, 
@@ -6,9 +6,10 @@ import {
   Info, 
   BookOpen, 
   Activity as ActivityIcon,
-  LayoutDashboard
+  LayoutDashboard,
+  RotateCcw
 } from 'lucide-react';
-import { usePatient } from '../../context/PatientContext';
+import { usePatient } from '../../context/PatientProvider';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { logActivity } from '../../lib/supabase';
@@ -40,41 +41,52 @@ export const VSAQ: React.FC = () => {
   const { patientInfo, updateTestResults } = usePatient();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
   const [selectedScore, setSelectedScore] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState(false);
 
-  // --- SAFEGUARDS ---
-  const weight = parseFloat(patientInfo?.weight?.toString() || '0');
-  const height = parseFloat(patientInfo?.height?.toString() || '0') / 100;
-  const age = parseInt(patientInfo?.age?.toString() || '0');
-  const imc = weight > 0 && height > 0 ? weight / (height * height) : 0;
-  const feve = Number(patientInfo?.ejectionFraction) || 60;
+  const { estimatedMETs, predictedMETs, percentage, cbdf, imc } = useMemo(() => {
+    const age = parseInt(patientInfo?.age?.toString() || '65');
+    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
+    const height = parseFloat(patientInfo?.height?.toString() || '170') / 100;
+    const feve = Number(patientInfo?.ejectionFraction) || 60;
+    const calculatedImc = (weight > 0 && height > 0) ? weight / (height * height) : 25;
 
-  // Cálculo Nomograma do VSAQ (Myers et al.)
-  const estimatedMETs = (selectedScore !== null && age > 0) 
-    ? 4.7 + (0.97 * selectedScore) - (0.06 * age) - (imc > 25 ? (0.02 * (imc - 25)) : 0)
-    : 0;
+    const currentEstimated = (selectedScore !== null && age > 0) 
+      ? 4.7 + (0.97 * selectedScore) - (0.06 * age) - (calculatedImc > 25 ? (0.02 * (calculatedImc - 25)) : 0)
+      : 0;
 
-  const predictedMETs = age > 0 ? 14.7 - (0.11 * age) : 10;
-  const percentage = predictedMETs > 0 ? (estimatedMETs / predictedMETs) * 100 : 0;
+    const currentPredicted = age > 0 ? 14.7 - (0.11 * age) : 10;
+    const currentPercentage = currentPredicted > 0 ? (currentEstimated / currentPredicted) * 100 : 0;
 
-  const getCBDF = () => {
-    if (percentage < 25 || feve < 30) return { qualifier: 4, severity: "Deficiência Completa", color: "#ef4444" };
-    if (percentage < 50 || feve < 40) return { qualifier: 3, severity: "Deficiência Grave", color: "#f97316" };
-    if (percentage < 75) return { qualifier: 2, severity: "Deficiência Moderada", color: "#eab308" };
-    if (percentage < 95) return { qualifier: 1, severity: "Deficiência Leve", color: "#10b981" };
-    return { qualifier: 0, severity: "Sem Deficiência", color: "#059669" };
+    // Definição de critérios de classificação
+    let classification = { qualifier: 0, severity: "Sem Deficiência", color: "#059669" };
+    if (currentPercentage < 25 || feve < 30) classification = { qualifier: 4, severity: "Deficiência Completa", color: "#ef4444" };
+    else if (currentPercentage < 50 || feve < 40) classification = { qualifier: 3, severity: "Deficiência Grave", color: "#f97316" };
+    else if (currentPercentage < 75) classification = { qualifier: 2, severity: "Deficiência Moderada", color: "#eab308" };
+    else if (currentPercentage < 95) classification = { qualifier: 1, severity: "Deficiência Leve", color: "#10b981" };
+
+    return { 
+      estimatedMETs: Math.max(0, currentEstimated), 
+      predictedMETs: currentPredicted, 
+      percentage: currentPercentage, 
+      cbdf: classification,
+      imc: calculatedImc
+    };
+  }, [selectedScore, patientInfo]);
+
+  const handleReset = () => {
+    setSelectedScore(null);
+    setIsSaved(false);
   };
-
-  const cbdf = getCBDF();
 
   const handleSave = async () => {
     if (selectedScore === null) {
-      toast.error("Selecione uma atividade limitante");
+      toast.error("Selecione uma atividade limitante antes de salvar.");
       return;
     }
     
-    updateTestResults({
+    updateTestResults('aerobic',  {
       vsaq: {
         score: selectedScore,
         estimatedMETs,
@@ -95,13 +107,20 @@ export const VSAQ: React.FC = () => {
       <header className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight italic">VSAQ</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">
-            Veterans Specific Activity Questionnaire
-          </p>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Veterans Specific Activity Questionnaire</p>
         </div>
-        <div className="bg-indigo-50 px-4 py-2 rounded-2xl flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="bg-indigo-50 px-4 py-2 rounded-2xl flex items-center gap-2">
             <Heart className="text-indigo-600" size={18} />
-            <span className="text-sm font-black text-indigo-700 uppercase">{feve}% FEVE</span>
+            <span className="text-sm font-black text-indigo-700 uppercase">{patientInfo?.ejectionFraction || 0}% FEVE</span>
+          </div>
+          <button 
+            onClick={handleReset}
+            className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition-all"
+            title="Limpar formulário"
+          >
+            <RotateCcw size={20} />
+          </button>
         </div>
       </header>
 
@@ -150,10 +169,10 @@ export const VSAQ: React.FC = () => {
                   <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">Predito: {predictedMETs.toFixed(1)} METs</p>
                 </div>
 
-                {selectedScore && (
+                {selectedScore !== null && (
                   <div className="bg-white/5 border-l-4 p-5 rounded-r-2xl space-y-1" style={{ borderColor: cbdf.color }}>
                     <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Diagnóstico (CBDF)</p>
-                    <p className="text-xl font-black text-white leading-tight">.{cbdf.qualifier} — {cbdf.severity}</p>
+                    <p className="text-xl font-black text-white leading-tight">Q{cbdf.qualifier} — {cbdf.severity}</p>
                     <p className="text-[11px] text-slate-500 font-bold uppercase">{percentage.toFixed(0)}% do esperado</p>
                   </div>
                 )}

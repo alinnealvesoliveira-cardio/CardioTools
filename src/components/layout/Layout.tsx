@@ -2,11 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CategoryName } from '../../types';
+import { CategoryName, NavId } from '../../types';
+
+// 1. Tradução: UI (NavId) -> Dados (CategoryName)
+// Todos os NavId devem estar aqui
+const navToCategoryMap: Record<NavId, CategoryName | 'Home'> = {
+  'Home': 'Home',
+  'Cadastro': 'cadastro',
+  'Avaliação Autonômica': 'autonomic',
+  'Vascular': 'vascular',
+  'Capacidade Aeróbica': 'aerobic',
+  'Avaliação de Sintomas': 'symptoms',
+  'Relatório Final': 'final-report',
+  'Fatigabilidade': 'fatigability',
+};
+
+// 2. Tradução: Dados (CategoryName) -> UI (NavId)
+// Todos os CategoryName devem estar aqui
+const categoryToNavMap: Record<CategoryName | 'Home', NavId> = {
+  'Home': 'Home',
+  'cadastro': 'Cadastro',
+  'autonomic': 'Avaliação Autonômica',
+  'vascular': 'Vascular',
+  'aerobic': 'Capacidade Aeróbica',
+  'symptoms': 'Avaliação de Sintomas',
+  'final-report': 'Relatório Final',
+  'fatigability': 'Fatigabilidade',
+};
 
 interface LayoutProps {
   children: React.ReactNode;
-  selectedCategory: CategoryName | 'Home' | null;
+  selectedCategory: CategoryName | 'Home';
   onSelectCategory: (category: CategoryName | 'Home') => void;
 }
 
@@ -21,7 +47,6 @@ export const Layout: React.FC<LayoutProps> = ({
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  // Fecha a sidebar automaticamente se a tela for redimensionada para desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) closeSidebar();
@@ -30,30 +55,30 @@ export const Layout: React.FC<LayoutProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const handleMenuSelect = (id: NavId) => {
+    // Usamos o mapa para converter o ID clicado na categoria de dados
+    const mappedCategory = navToCategoryMap[id];
+    onSelectCategory(mappedCategory);
+    closeSidebar();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
-      {/* Sidebar - Fixa ou Drawer dependendo do viewport */}
       <Sidebar 
-  isOpen={isSidebarOpen}
-  onToggle={toggleSidebar}
-  // Use o operador ?? (nullish coalescing) para definir um padrão
-  selectedCategory={selectedCategory ?? ''} 
-  onSelectCategory={(cat) => {
-    onSelectCategory:(cat);
-    closeSidebar();
-  }}
-/>
+        isOpen={isSidebarOpen}
+        onToggle={toggleSidebar}
+        // Usamos o mapa inverso para garantir que a Sidebar receba um NavId válido
+        selectedCategory={categoryToNavMap[selectedCategory]} 
+        onSelectCategory={handleMenuSelect}
+      />
       
-      {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 h-screen relative">
-        {/* Header - Sempre visível no topo */}
         <Header onMenuClick={toggleSidebar} />
         
-        {/* Área de Scroll do Conteúdo */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth relative">
           <AnimatePresence mode="wait">
             <motion.div
-              key={String(selectedCategory || 'home')}
+              key={selectedCategory}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -64,7 +89,6 @@ export const Layout: React.FC<LayoutProps> = ({
             </motion.div>
           </AnimatePresence>
           
-          {/* Footer discreto dentro do scroll */}
           <footer className="mt-auto py-8 text-center border-t border-slate-200/60 mx-10">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
               Sistema de Apoio à Decisão Clínica em Fisioterapia Cardiovascular

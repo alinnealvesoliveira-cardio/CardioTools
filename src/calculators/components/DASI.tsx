@@ -1,13 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  Info, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Save, 
-  Activity as ActivityIcon,
-  LayoutDashboard
+  Info, CheckCircle2, Save, 
+  Activity as ActivityIcon, LayoutDashboard, RotateCcw
 } from 'lucide-react';
-import { usePatient } from '../../context/PatientContext';
+import { usePatient } from '../../context/PatientProvider';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { logActivity } from '../../lib/supabase';
@@ -31,46 +27,52 @@ export const DASI: React.FC = () => {
   const { patientInfo, updateTestResults } = usePatient();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
   const [answers, setAnswers] = useState<Record<number, boolean>>({});
   const [isSaved, setIsSaved] = useState(false);
 
-  // --- SAFEGUARDS ---
-  const age = parseInt(patientInfo?.age?.toString() || '65');
-  const feve = Number(patientInfo?.ejectionFraction) || 60;
+  const { score, mets, predictedMETs, percentage, cbdf } = useMemo(() => {
+    const age = parseInt(patientInfo?.age?.toString() || '65');
+    const feve = Number(patientInfo?.ejectionFraction) || 60;
 
-  const calculateResults = () => {
-    const score = DASI_QUESTIONS.reduce((acc, q) => acc + (answers[q.id] ? q.weight : 0), 0);
-    const vo2 = (0.43 * score) + 9.6;
-    const mets = vo2 / 3.5;
-    return { score, vo2, mets };
+    const currentScore = DASI_QUESTIONS.reduce((acc, q) => acc + (answers[q.id] ? q.weight : 0), 0);
+    const vo2 = (0.43 * currentScore) + 9.6;
+    const currentMets = vo2 / 3.5;
+    const currentPredicted = age > 0 ? (14.7 - (0.11 * age)) : 10;
+    const currentPercentage = currentPredicted > 0 ? (currentMets / currentPredicted) * 100 : 0;
+
+    let classification = { qualifier: 0, severity: "Sem Deficiência", range: "0-4%", color: "#059669" };
+    
+    if (currentPercentage < 25 || feve < 30) classification = { qualifier: 4, severity: "Deficiência Completa", range: "96-100%", color: "#ef4444" };
+    else if (currentPercentage < 50 || feve < 40) classification = { qualifier: 3, severity: "Deficiência Grave", range: "50-95%", color: "#f97316" };
+    else if (currentPercentage < 75) classification = { qualifier: 2, severity: "Deficiência Moderada", range: "25-49%", color: "#eab308" };
+    else if (currentPercentage < 95) classification = { qualifier: 1, severity: "Deficiência Leve", range: "5-24%", color: "#10b981" };
+
+    return { 
+      score: currentScore, 
+      mets: currentMets, 
+      predictedMETs: currentPredicted, 
+      percentage: Math.min(100, currentPercentage), 
+      cbdf: classification 
+    };
+  }, [answers, patientInfo?.age, patientInfo?.ejectionFraction]);
+
+  const handleReset = () => {
+    setAnswers({});
+    setIsSaved(false);
   };
-
-  const { score, vo2, mets } = calculateResults();
-  
-  const predictedMETs = age > 0 ? (14.7 - (0.11 * age)) : 10;
-  const percentage = predictedMETs > 0 ? (mets / predictedMETs) * 100 : 0;
-
-  const getCBDF = () => {
-    if (percentage < 25 || feve < 30) return { qualifier: 4, severity: "Deficiência Completa", range: "96-100%", color: "#ef4444" };
-    if (percentage < 50 || feve < 40) return { qualifier: 3, severity: "Deficiência Grave", range: "50-95%", color: "#f97316" };
-    if (percentage < 75) return { qualifier: 2, severity: "Deficiência Moderada", range: "25-49%", color: "#eab308" };
-    if (percentage < 95) return { qualifier: 1, severity: "Deficiência Leve", range: "5-24%", color: "#10b981" };
-    return { qualifier: 0, severity: "Sem Deficiência", range: "0-4%", color: "#059669" };
-  };
-
-  const cbdf = getCBDF();
-  // Sanitização centralizada para uso no componente
-  const cleanSeverity = cbdf.severity.replace(/^Q/, '').trim();
 
   const handleSave = async () => {
-    updateTestResults({
+    // CORREÇÃO: Passando 'aerobic' como primeiro argumento (categoria)
+    // e o objeto com as atualizações como segundo argumento
+    updateTestResults('aerobic', {
       dasi: {
         score,
         estimatedMETs: mets,
-        predictedMETs: predictedMETs,
-        percentage: percentage,
-        interpretation: cleanSeverity,
-        cif: { qualifier: cbdf.qualifier, severity: cleanSeverity }
+        predictedMETs,
+        percentage,
+        interpretation: cbdf.severity,
+        cif: { qualifier: cbdf.qualifier, severity: cbdf.severity }
       }
     });
 
@@ -84,20 +86,19 @@ export const DASI: React.FC = () => {
       <div className="bg-white rounded-[40px] shadow-sm overflow-hidden border border-slate-100">
         <div className="bg-slate-900 p-8 flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-black text-white tracking-tighter italic flex items-center gap-3">
-              DASI
-            </h2>
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">
-              Duke Activity Status Index
-            </p>
+            <h2 className="text-3xl font-black white tracking-tighter italic flex items-center gap-3 text-white">DASI</h2>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Duke Activity Status Index</p>
           </div>
-          <div className="bg-emerald-500/10 px-4 py-2 rounded-2xl border border-emerald-500/20">
-             <span className="text-emerald-400 font-black text-xs uppercase tracking-widest">Capacidade Funcional</span>
-          </div>
+          <button 
+            onClick={handleReset}
+            className="p-3 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-all"
+            title="Limpar formulário"
+          >
+            <RotateCcw size={20} />
+          </button>
         </div>
 
         <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Listagem de Atividades */}
           <div className="space-y-6">
             <div className="bg-indigo-50 p-5 rounded-3xl flex gap-3 border border-indigo-100">
               <Info className="w-5 h-5 shrink-0 text-indigo-500" />
@@ -112,9 +113,7 @@ export const DASI: React.FC = () => {
                   key={q.id}
                   onClick={() => { setAnswers(prev => ({ ...prev, [q.id]: !prev[q.id] })); setIsSaved(false); }}
                   className={`w-full flex items-center justify-between p-5 rounded-[24px] border-2 transition-all active:scale-[0.98] ${
-                    answers[q.id] 
-                      ? 'border-indigo-600 bg-indigo-50 shadow-sm' 
-                      : 'border-slate-50 bg-slate-50/50 hover:border-slate-200'
+                    answers[q.id] ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-slate-50 bg-slate-50/50 hover:border-slate-200'
                   }`}
                 >
                   <span className={`text-left text-xs font-black tracking-tight leading-tight pr-4 ${answers[q.id] ? 'text-indigo-900' : 'text-slate-600'}`}>
@@ -130,7 +129,6 @@ export const DASI: React.FC = () => {
             </div>
           </div>
 
-          {/* Resultados */}
           <div className="space-y-6">
             <div className="sticky top-6 space-y-4">
               <div className="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl space-y-8 relative overflow-hidden">
@@ -147,23 +145,8 @@ export const DASI: React.FC = () => {
 
                 <div className="bg-white/5 border-l-4 p-6 rounded-r-2xl space-y-1 relative z-10" style={{ borderColor: cbdf.color }}>
                   <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Status Funcional (CBDF)</p>
-                  <p className="text-xl font-black text-white leading-tight">.{cbdf.qualifier} — {cleanSeverity}</p>
+                  <p className="text-xl font-black text-white leading-tight">Q{cbdf.qualifier} — {cbdf.severity}</p>
                   <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tighter">Impacto Funcional de {cbdf.range}</p>
-                </div>
-
-                <div className="space-y-3 relative z-10">
-                  {mets < 4 && (
-                    <div className="flex items-start gap-3 text-[10px] text-orange-200 bg-orange-500/10 p-4 rounded-2xl border border-orange-500/20 font-bold uppercase">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-orange-400" /> 
-                      Risco Perioperatório Elevado (&lt; 4 METs)
-                    </div>
-                  )}
-                  {score <= 23 && (
-                    <div className="flex items-start gap-3 text-[10px] text-red-200 bg-red-500/10 p-4 rounded-2xl border border-red-500/20 font-bold uppercase">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" /> 
-                      Prognóstico Reservado (Score &le; 23)
-                    </div>
-                  )}
                 </div>
                 
                 <ActivityIcon size={140} className="absolute -bottom-10 -right-10 text-white/[0.03] rotate-12" />

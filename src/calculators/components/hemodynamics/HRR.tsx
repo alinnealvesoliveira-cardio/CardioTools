@@ -5,7 +5,7 @@ import {
   Heart, ArrowDownCircle, InfoIcon, Zap
 } from 'lucide-react';
 
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { useAuth } from '../../../context/AuthContext';
 import { logActivity } from '../../../lib/supabase';
 import { MedicationAlert } from '../../../components/shared/MedicationAlert';
@@ -56,7 +56,7 @@ export const HRR: React.FC = () => {
     const interpretation = getInterpretation(hrr);
     
     // Sincroniza com o Contexto do Paciente
-    updateTestResults({
+    updateTestResults('autonomic', {
       hrr: {
         peakHR: parseInt(peakHR),
         recoveryHR: parseInt(recoveryHR),

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FileText, Copy, Check, Heart, Droplets, ClipboardList, Share2 } from 'lucide-react';
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { toast } from 'react-hot-toast';
 
 type Severity = 'Leve' | 'Moderada' | 'Grave' | 'Completa';
@@ -14,15 +14,16 @@ export const FunctionalDiagnosis: React.FC = () => {
   const [vesselSeverity, setVesselSeverity] = useState<Severity>('Leve');
   const [fatigueState, setFatigueState] = useState<'Repouso' | 'Esforço'>('Repouso');
   const [hrMedication, setHrMedication] = useState<boolean>(
-    !!(medications.betablockers || medications.antihypertensives)
+    !!(medications?.betablockers || medications?.antihypertensives)
   );
   const [copied, setCopied] = useState(false);
 
-  // 1. Lógica de Intensidade de Fadiga (Maior valor de Borg registrado)
-  const maxFatigueScore = Math.max(
-    testResults?.fatigabilityScales?.exercise?.fatigue ?? 0,
-    testResults?.fatigabilityScales?.exercise?.dyspnea ?? 0
-  );
+  // 1. Cálculo seguro da fadiga
+  const maxFatigueScore = useMemo(() => {
+    const fatigue = testResults?.fatigability?.exercise?.fatigue ?? 0;
+    const dyspnea = testResults?.fatigability?.exercise?.dyspnea ?? 0;
+    return Math.max(fatigue, dyspnea);
+  }, [testResults]);
   
   const getFatigueLabel = (score: number) => {
     if (score >= 10) return 'EXAUSTIVA';
@@ -32,44 +33,39 @@ export const FunctionalDiagnosis: React.FC = () => {
     return 'NENHUMA';
   };
 
-  // 2. Agregador Universal de Testes
+  // 2. Sincronização de dados (Segura e sem efeitos colaterais infinitos)
   useEffect(() => {
     // Capacidade Aeróbica
-    if (testResults?.sixMinuteWalkTest) {
-      const eff = testResults.sixMinuteWalkTest.efficiency ?? 0;
+    if (testResults?.aerobic.sixMinuteWalkTest) {
+      const eff = testResults.aerobic.sixMinuteWalkTest.efficiency ?? 0;
       if (eff < 5) setAerobicCapacity('0-4');
       else if (eff < 25) setAerobicCapacity('5-24');
       else if (eff < 50) setAerobicCapacity('25-49');
       else setAerobicCapacity('50-95');
-    } else if (testResults?.td2m?.cif?.qualifier) {
-      const mapping: Record<number, string> = { 4: '0-4', 3: '5-24', 2: '25-49', 1: '50-95' };
-      setAerobicCapacity(mapping[testResults.td2m.cif.qualifier] ?? '50-95');
-    } else if (testResults?.tsl1m?.cif?.qualifier) {
-      const mapping: Record<number, string> = { 4: '0-4', 3: '5-24', 2: '25-49', 1: '50-95' };
-      setAerobicCapacity(mapping[testResults.tsl1m.cif.qualifier] ?? '50-95');
     }
 
-    // Sincronização Vascular
-    const vasc = testResults?.vascularAssessment;
-    if (vasc) {
+    // Vascular
+    if (testResults?.vascular.vascularAssessment) {
+      const vasc = testResults.vascular.vascularAssessment;
       const severityMap: Record<number, Severity> = { 1: 'Leve', 2: 'Moderada', 3: 'Grave', 4: 'Completa' };
       
       if (vasc.arterial?.cif && vasc.arterial.cif.qualifier !== 4) {
         setVesselType('Arterial');
         setVesselSeverity(severityMap[vasc.arterial.cif.qualifier] ?? 'Leve');
-      } else if (vasc.venous?.cif && vasc.venous.cif.qualifier !== 4) {
+      } else if (vasc.venese?.cif && vasc.venese.cif.qualifier !== 4) {
         setVesselType('Venosa');
-        setVesselSeverity(severityMap[vasc.venous.cif.qualifier] ?? 'Leve');
+        setVesselSeverity(severityMap[vasc.venese.cif.qualifier] ?? 'Leve');
       }
     }
 
-    if (testResults?.sixMinuteWalkTest || testResults?.td2m || testResults?.stepTest) {
+    // Estado de fadiga
+    if (testResults?.aerobic.sixMinuteWalkTest || testResults?.aerobic.td2m || testResults?.aerobic.stepTest) {
       setFatigueState('Esforço');
     }
   }, [testResults]);
 
   const generateDiagnosis = () => {
-    const struct = patientInfo.structureAlteration ? 'COM' : 'SEM';
+    const struct = patientInfo?.structureAlteration ? 'COM' : 'SEM';
     const capLevel = 
       aerobicCapacity === '0-4' ? 'COMPLETA' : 
       aerobicCapacity === '5-24' ? 'GRAVE' : 
@@ -85,17 +81,14 @@ export const FunctionalDiagnosis: React.FC = () => {
     text += ` | FADIGA ${getFatigueLabel(maxFatigueScore)} AO ${fatigueState.toUpperCase()}.`;
     text += ` | RESPOSTA CRONOTRÓPICA: ${hrMedication ? 'INFLUENCIADA POR FÁRMACOS' : 'FISIOLÓGICA'}.`;
 
-    const testsPerformed: string[] = [];
-    if (testResults?.sixMinuteWalkTest) testsPerformed.push(`TC6M: ${testResults.sixMinuteWalkTest.distance}M (${testResults.sixMinuteWalkTest.efficiency?.toFixed(1)}%)`);
-    if (testResults?.td2m) testsPerformed.push(`TD2M: ${testResults.td2m.count} DEGRAUS`);
-    if (testResults?.tsl1m) testsPerformed.push(`TSL1M: ${testResults.tsl1m.count} REPETIÇÕES`);
-    if (testResults?.tsl5x) testsPerformed.push(`TSL5X: ${testResults.tsl5x.time}S`);
-    if (testResults?.tug) testsPerformed.push(`TUG: ${testResults.tug.time}S`);
-    if (testResults?.stepTest) testsPerformed.push(`STEP TEST: ${testResults.stepTest.time}S`);
-
-    if (testsPerformed.length > 0) {
-      text += `\n\n[SUMÁRIO DE TESTES: ${testsPerformed.join(' | ')}]`;
-    }
+    const tests: string[] = [];
+    if (testResults.aerobic.sixMinuteWalkTest) tests.push(`TC6M: ${testResults.aerobic.sixMinuteWalkTest.distance}M (${testResults.aerobic.sixMinuteWalkTest.efficiency?.toFixed(1)}%)`);
+    if (testResults.aerobic.td2m) tests.push(`TD2M: ${testResults.aerobic.td2m.count} DEGRAUS`);
+    if (testResults.aerobic.tsl1m) tests.push(`TSL1M: ${testResults.aerobic.tsl1m.count} REPETIÇÕES`);
+    if (testResults.aerobic.tsl5x) tests.push(`TSL5X: ${testResults.aerobic.tsl5x.time}S`);
+    if (testResults.aerobic.tug) tests.push(`TUG: ${testResults.aerobic.tug.time}S`);
+    
+    if (tests.length > 0) text += `\n\n[SUMÁRIO DE TESTES: ${tests.join(' | ')}]`;
 
     return text.toUpperCase();
   };
@@ -109,7 +102,6 @@ export const FunctionalDiagnosis: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-8 pb-32">
-      {/* ... (Header e seções mantêm o mesmo visual, mas agora com estados seguros) */}
       <header className="px-2">
         <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase flex items-center gap-3">
           <FileText className="text-indigo-600" size={32} /> Laudo Final
@@ -120,13 +112,12 @@ export const FunctionalDiagnosis: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-6">
           <section className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 space-y-8">
-            {/* ... (Conteúdo interno das seções segue igual, apenas garantindo que os selects usem os estados tipados) */}
             <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
               <div className="p-3 bg-red-50 text-red-500 rounded-2xl"><Heart size={24} /></div>
               <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Capacidade Aeróbica</h2>
             </div>
-            {/* ... restante do JSX ... */}
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Alteração de Estrutura</label>
                 <div className="flex bg-slate-100 p-1 rounded-2xl">
@@ -135,7 +126,7 @@ export const FunctionalDiagnosis: React.FC = () => {
                       key={val ? 'sim' : 'nao'}
                       onClick={() => updatePatientInfo({ structureAlteration: val })}
                       className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${
-                        patientInfo.structureAlteration === val ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'
+                        patientInfo?.structureAlteration === val ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'
                       }`}
                     >
                       {val ? 'Com Alteração' : 'Sem Alteração'}
@@ -182,7 +173,7 @@ export const FunctionalDiagnosis: React.FC = () => {
                   ))}
                 </div>
               </div>
-              {/* ... (restante dos inputs mantêm a mesma lógica) ... */}
+
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Uso de Beta-bloqueador</label>
                 <button
@@ -199,7 +190,6 @@ export const FunctionalDiagnosis: React.FC = () => {
           </section>
         </div>
 
-        {/* ... (Coluna do laudo permanece igual) ... */}
         <div className="lg:col-span-5">
            <div className="sticky top-6">
              <div className="bg-slate-900 rounded-[44px] p-10 text-white shadow-2xl space-y-8">

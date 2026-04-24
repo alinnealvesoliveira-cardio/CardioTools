@@ -4,7 +4,7 @@ import {
   Activity as ActivityIcon, CheckCircle2, Thermometer, 
   Droplets, Fingerprint, Layers, Save, AlertTriangle, Zap 
 } from 'lucide-react';
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { toast } from 'react-hot-toast';
 
 type System = 'Arterial' | 'Venoso' | 'Linfático';
@@ -34,7 +34,7 @@ export const VascularPhysicalExam: React.FC = () => {
     const venQual = godet !== null ? (godet > 2 ? 3 : godet) : 0;
     const linQual = stemmer ? 2 : 0;
 
-    updateTestResults({
+    updateTestResults('vascular',  {
       vascularAssessment: {
         arterial: { 
           pulse: PULSE_SCALE.find(p => p.val === pulse)?.label || '0', 
@@ -45,7 +45,7 @@ export const VascularPhysicalExam: React.FC = () => {
             interpretation: artQual === 0 ? 'Normal' : 'Disfunção de Perfusão Arterial'
           }
         },
-        venous: { 
+        venese: { 
           godet: godet !== null ? `${godet}+` : '0', 
           cif: {
             qualifier: venQual,

@@ -1,49 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Activity, Save, CheckCircle2, LayoutDashboard } from 'lucide-react';
-import { usePatient } from '../../context/PatientContext';
+import { Activity, LayoutDashboard, RotateCcw } from 'lucide-react';
+import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export const TD2M: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
   const navigate = useNavigate();
-  const [isSaved, setIsSaved] = useState(false);
 
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // --- PROTEÇÃO DE DADOS PARA EVITAR TELA BRANCA ---
-  const age = parseInt(patientInfo?.age as string) || 65;
-  const sex = (patientInfo as any)?.sex === 'female' || (patientInfo as any)?.sex === 'F' ? 'F' : 'M';
-  const height = parseFloat(patientInfo?.height as string) || 170;
-  const weight = parseFloat(patientInfo?.weight as string) || 70;
-  
-  // Cálculo do IMC com proteção contra divisão por zero
-  const bmi = height > 0 ? weight / ((height / 100) ** 2) : 24.5;
+  // Otimização: Cálculos reativos com normalização de sexo
+  const { 
+    predictedRikli, 
+    lin, 
+    normativeRange 
+  } = useMemo(() => {
+    const age = parseInt(patientInfo?.age?.toString() || '65');
+    const height = parseFloat(patientInfo?.height?.toString() || '170');
+    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
+    
+    // Normalização robusta para evitar erro de tipagem
+    const sex = (patientInfo?.sex as string);
+    const isFemale = sex === 'female' || sex === 'F';
+    const bmi = height > 0 ? weight / ((height / 100) ** 2) : 24.5;
 
-  const calculatePredictedRikli = () => {
-    if (sex === 'M') return 143.297 - (1.157 * age) - (0.334 * bmi);
-    return 118.773 - (0.832 * age) - (0.472 * bmi);
+    // Cálculo Rikli & Jones
+    const pRikli = !isFemale 
+      ? 143.297 - (1.157 * age) - (0.334 * bmi) 
+      : 118.773 - (0.832 * age) - (0.472 * bmi);
+    
+    const epe = 6;
+    const pLin = pRikli - (epe * 1.645);
+
+    // Ranges Normativos
+    const getRange = (a: number, female: boolean): [number, number] | null => {
+      if (a < 60) return null;
+      if (a <= 64) return !female ? [87, 115] : [75, 107];
+      if (a <= 69) return !female ? [86, 116] : [73, 107];
+      if (a <= 74) return !female ? [80, 110] : [68, 101];
+      if (a <= 79) return !female ? [73, 109] : [68, 100];
+      if (a <= 84) return !female ? [71, 103] : [60, 90];
+      if (a <= 89) return !female ? [59, 91] : [55, 85];
+      if (a <= 94) return !female ? [52, 86] : [44, 72];
+      return null;
+    };
+
+    return { 
+      predictedRikli: pRikli, 
+      lin: pLin, 
+      normativeRange: getRange(age, isFemale) 
+    };
+  }, [patientInfo]);
+
+  const handleResetSintomas = () => {
+    setPostFadiga(null);
+    setPostAngina(null);
   };
-
-  const predictedRikli = calculatePredictedRikli();
-  const epe = 6; 
-  const lin = predictedRikli - (epe * 1.645); 
-
-  const getNormativeRange = (age: number, sex: 'M' | 'F'): [number, number] | null => {
-    if (age < 60) return null;
-    if (age <= 64) return sex === 'M' ? [87, 115] : [75, 107];
-    if (age <= 69) return sex === 'M' ? [86, 116] : [73, 107];
-    if (age <= 74) return sex === 'M' ? [80, 110] : [68, 101];
-    if (age <= 79) return sex === 'M' ? [73, 109] : [68, 100];
-    if (age <= 84) return sex === 'M' ? [71, 103] : [60, 90];
-    if (age <= 89) return sex === 'M' ? [59, 91] : [55, 85];
-    if (age <= 94) return sex === 'M' ? [52, 86] : [44, 72];
-    return null;
-  };
-
-  const normativeRange = getNormativeRange(age, sex);
 
   const interpretation = (_time: number, count: number): InterpretationResult[] => {
     if (count === 0) return [{ label: "Aguardando", color: "slate", description: "Inicie o teste." }];
@@ -55,14 +70,16 @@ export const TD2M: React.FC = () => {
     return [{
       label: count < lin ? "Abaixo do LIN" : normative,
       color: count < lin ? "red" : (normative === "Normal" || normative === "Acima do Normal" ? "green" : "yellow"),
-      description: count < lin ? `Abaixo do Limite Inferior (${lin.toFixed(0)} passos).` : `Resultado ${normative.toLowerCase()}.`
+      description: count < lin 
+        ? `Abaixo do Limite Inferior (${lin.toFixed(0)} passos).` 
+        : `Resultado ${normative.toLowerCase()}.`
     }];
   };
 
-  const handleGlobalSave = (data: any) => {
+  const handleGlobalSave = (data: { count: number; hr?: { pre: number; post: number } }) => {
     const efficiency = predictedRikli > 0 ? (data.count / predictedRikli) * 100 : 0;
 
-    const currentScales = testResults?.fatigabilityScales || { 
+    const currentScales = testResults?.fatigability || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
       exercise: { dyspnea: 0, fatigue: 0 } 
     };
@@ -72,7 +89,7 @@ export const TD2M: React.FC = () => {
       angina: { type: 'none', description: '' }
     };
 
-    updateTestResults({
+    updateTestResults('aerobic', {
       td2m: {
         count: data.count,
         predicted: predictedRikli,
@@ -80,23 +97,22 @@ export const TD2M: React.FC = () => {
         interpretation: interpretation(120, data.count)[0].label,
         hr: data.hr
       },
-      fatigabilityScales: {
-        ...currentScales,
+      });
+      updateTestResults('fatigability', {
+          ...currentScales,
         exercise: { 
           ...currentScales.exercise, 
           fatigue: postFadiga || 0 
         }
-      },
-      symptoms: {
-        ...currentSymptoms,
+      });
+      updateTestResults('symptoms', {  
+          ...currentSymptoms,
         angina: {
           type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina ? `Angina Grau ${postAngina} no 2MST` : 'Sem dor precordial'
+          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
         }
-      }
-    });
-
-    setIsSaved(true);
+      });
+      
     toast.success("Teste de Marcha gravado!");
   };
 
@@ -126,8 +142,16 @@ export const TD2M: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest border-b pb-3">
-              <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
+                <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
+              </div>
+              <button 
+                onClick={handleResetSintomas}
+                className="text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center gap-1"
+              >
+                <RotateCcw size={12}/> Limpar
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -137,7 +161,7 @@ export const TD2M: React.FC = () => {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => { setPostFadiga(n); setIsSaved(false); }}
+                    onClick={() => setPostFadiga(n)}
                     className={`py-4 rounded-2xl font-black transition-all ${postFadiga === n ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n}
@@ -153,7 +177,7 @@ export const TD2M: React.FC = () => {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => { setPostAngina(n); setIsSaved(false); }}
+                    onClick={() => setPostAngina(n)}
                     className={`py-4 rounded-2xl font-black transition-all ${postAngina === n ? 'bg-rose-500 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n === 0 ? 'Não' : n}
@@ -165,7 +189,7 @@ export const TD2M: React.FC = () => {
         </div>
       </TimedTestTemplate>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999]">
         <button
           onClick={() => navigate('/dashboard')} 
           className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest"

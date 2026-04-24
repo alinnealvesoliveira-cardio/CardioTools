@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Info, CheckCircle2, Save, AlertTriangle, Zap } from 'lucide-react';
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { toast } from 'react-hot-toast';
 
 export const ClaudicationScale: React.FC = () => {
@@ -44,7 +44,7 @@ export const ClaudicationScale: React.FC = () => {
   const handleSave = () => {
     if (selectedScore === null) return;
     
-    updateTestResults({
+    updateTestResults ('symptoms', {
       claudication: {
         score: selectedScore,
         interpretation: getInterpretation(selectedScore).label,

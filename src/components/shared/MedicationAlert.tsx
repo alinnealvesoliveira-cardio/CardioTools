@@ -1,9 +1,10 @@
 import React from 'react';
-import { AlertTriangle, Info, Zap } from 'lucide-react';
+import { AlertTriangle, Info, Zap, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Agora o tipo suporta a diferenciação clínica dos BCCs
 interface MedicationAlertProps {
-  type: 'betablockers' | 'bcc' | 'digitalis';
+  type: 'betablockers' | 'bcc-dhp' | 'bcc-non-dhp' | 'digitalis';
   active: boolean;
 }
 
@@ -14,20 +15,27 @@ export const MedicationAlert: React.FC<MedicationAlertProps> = ({ type, active }
     betablockers: {
       title: 'Uso de Betabloqueador Detectado',
       content: 'O cronotropismo cardíaco está farmacologicamente limitado. A FC não é um indicador fidedigno de esforço.',
-      instruction: 'Desconsidere FC Máxima (220-idade). Use obrigatoriamente a Escala de Borg (Percepção de Esforço).',
+      instruction: 'Desconsidere FC Máxima (220-idade). Use obrigatoriamente a Escala de Borg.',
       icon: <Zap size={18} />,
       color: 'rose'
     },
-    bcc: {
-      title: 'Uso de BCC (Bloqueador de Canal de Cálcio)',
-      content: 'Risco aumentado de hipotensão ortostática e edema periférico por vasodilatação pré-capilar.',
-      instruction: 'Cuidado em testes de transição (TUG/Sit-to-Stand). Monitore estabilidade pressórica.',
+    'bcc-dhp': {
+      title: 'BCC Dihidropiridínico (ex: Anlodipino)',
+      content: 'Potente vasodilatação periférica. Risco elevado de hipotensão pós-exercício e edema de MMII.',
+      instruction: 'Monitore PA com rigor. Evite mudanças bruscas de posição após o exercício.',
       icon: <AlertTriangle size={18} />,
       color: 'amber'
     },
+    'bcc-non-dhp': {
+      title: 'BCC Não-Dihidropiridínico (ex: Diltiazem)',
+      content: 'Efeito inotrópico e cronotrópico negativo. Pode mascarar a resposta da FC ao esforço.',
+      instruction: 'Trate como Betabloqueador: Use Escala de Borg. Atenção a sinais de bradicardia.',
+      icon: <ShieldAlert size={18} />,
+      color: 'rose'
+    },
     digitalis: {
       title: 'Uso de Digitálicos (Inotrópicos)',
-      content: 'Risco de "Efeito Digitálico" (ST em colher) e intoxicação (bradicardia/náuseas).',
+      content: 'Risco de "Efeito Digitálico" (alteração no ECG) e sinais de toxicidade (bradicardia/náuseas).',
       instruction: 'Monitore sinais de toxicidade e bradicardia acentuada durante o esforço.',
       icon: <Info size={18} />,
       color: 'indigo'
@@ -36,7 +44,6 @@ export const MedicationAlert: React.FC<MedicationAlertProps> = ({ type, active }
 
   const alert = alerts[type];
 
-  // Mapeamento de cores baseado no novo design system
   const colors = {
     rose: "bg-rose-50 border-rose-200 text-rose-700 shadow-rose-500/5",
     amber: "bg-amber-50 border-amber-200 text-amber-700 shadow-amber-500/5",

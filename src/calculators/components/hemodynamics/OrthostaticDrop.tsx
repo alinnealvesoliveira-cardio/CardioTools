@@ -5,7 +5,7 @@ import {
   ArrowDown, ArrowUp, AlertTriangle, Zap 
 } from 'lucide-react';
 
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { MedicationAlert } from '../../../components/shared/MedicationAlert';
 import { toast } from 'react-hot-toast';
 
@@ -62,7 +62,7 @@ export const OrthostaticDrop: React.FC = () => {
     if (delta === null) return;
     const interpretation = getInterpretation(delta.deltaPAS, delta.deltaPAD);
     
-    updateTestResults({
+    updateTestResults('autonomic',  {
       orthostaticDrop: {
         supine: { pas: parseInt(supinePAS), pad: parseInt(supinePAD) },
         standing: { pas: parseInt(standingPAS), pad: parseInt(standingPAD) },
@@ -85,7 +85,8 @@ export const OrthostaticDrop: React.FC = () => {
       </header>
 
       <div className="px-2">
-        <MedicationAlert type="bcc" active={medications.bcc} />
+        <MedicationAlert type="bcc-dhp" active={medications.bcc_dhp} /> 
+        <MedicationAlert type="bcc-non-dhp" active={medications.bcc_non_dhp} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

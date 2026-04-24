@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Info, ShieldAlert, Award, Activity, Save, CheckCircle2, LayoutDashboard } from 'lucide-react';
-import { usePatient } from '../../context/PatientContext';
+import { Info, ShieldAlert, Award, Activity, Save, CheckCircle2, LayoutDashboard, RotateCcw } from 'lucide-react';
+import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
@@ -13,10 +13,19 @@ export const TSL30S: React.FC = () => {
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // --- SAFEGUARDS CONTRA TELA BRANCA ---
-  const age = parseInt(patientInfo?.age as string) || 65;
-  const sex = (patientInfo as any)?.sex === 'female' || (patientInfo as any)?.sex === 'F' ? 'F' : 'M';
-  const predictedValue = 18; 
+  // Otimização: Cálculo reativo do sexo com robustez
+  const sex = useMemo(() => {
+    const s = (patientInfo?.sex as string || '').toUpperCase();
+    return (s === 'FEMALE' || s === 'F') ? 'F' : 'M';
+  }, [patientInfo]);
+
+  const predictedValue = 18;
+
+  const handleResetSintomas = () => {
+    setPostFadiga(null);
+    setPostAngina(null);
+    setIsSaved(false);
+  };
 
   const interpretation = (_time: number, count: number): InterpretationResult[] => {
     if (count === 0) return [{ 
@@ -27,26 +36,24 @@ export const TSL30S: React.FC = () => {
     
     const cutoff = sex === 'M' ? 12 : 11;
     
-    return [
-      {
-        label: count < cutoff ? "Risco Aumentado" : "Baixo Risco",
-        color: count < cutoff ? "red" : "green",
-        description: count < cutoff 
-          ? `Abaixo do ponto de corte brasileiro (< ${cutoff} rep).` 
-          : `Força funcional preservada para a idade.`
-      }
-    ];
+    return [{
+      label: count < cutoff ? "Risco Aumentado" : "Baixo Risco",
+      color: count < cutoff ? "red" : "green",
+      description: count < cutoff 
+        ? `Abaixo do ponto de corte brasileiro (< ${cutoff} rep).` 
+        : `Força funcional preservada para a idade.`
+    }];
   };
 
-  const handleGlobalSave = (data: any) => {
-    const efficiency = (data.count / predictedValue) * 100;
+  const handleGlobalSave = (data: { count: number; hr?: { pre: number; post: number } }) => {
+    const efficiency = predictedValue > 0 ? (data.count / predictedValue) * 100 : 0;
 
-    const currentScales = testResults?.fatigabilityScales || { 
+    const currentScales = testResults?.fatigability || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
       exercise: { dyspnea: 0, fatigue: 0 } 
     };
 
-    updateTestResults({
+    updateTestResults('aerobic',  {
       tsl30s: {
         count: data.count,
         predicted: predictedValue,
@@ -54,21 +61,21 @@ export const TSL30S: React.FC = () => {
         interpretation: interpretation(30, data.count)[0].label,
         hr: data.hr
       },
-      fatigabilityScales: {
-        ...currentScales,
+      });
+      updateTestResults('fatigability', {
+          ...currentScales,
         exercise: { 
           ...currentScales.exercise, 
           fatigue: postFadiga || 0 
         }
-      },
-      symptoms: {
-        ...testResults?.symptoms,
-        angina: {
+      });
+      updateTestResults('symptoms', {  
+                  angina: {
           type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina ? `Angina Grau ${postAngina} no TSL30S` : 'Sem dor precordial'
+          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
         }
-      }
-    });
+      });
+
 
     setIsSaved(true);
     toast.success("TSL 30s gravado com sucesso!");
@@ -113,8 +120,16 @@ export const TSL30S: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest border-b pb-3">
-              <Activity className="text-indigo-500" size={18}/> Sintomas
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
+                <Activity className="text-indigo-500" size={18}/> Sintomas
+              </div>
+              <button 
+                onClick={handleResetSintomas}
+                className="text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center gap-1"
+              >
+                <RotateCcw size={12}/> Limpar
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -128,6 +143,22 @@ export const TSL30S: React.FC = () => {
                     className={`py-4 rounded-2xl font-black transition-all ${postFadiga === n ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Angina (CCS 0-4)</label>
+              <div className="grid grid-cols-5 gap-2">
+                {[0, 1, 2, 3, 4].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => { setPostAngina(n); setIsSaved(false); }}
+                    className={`py-4 rounded-2xl font-black text-xs transition-all ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                  >
+                    {n === 0 ? 'Não' : n}
                   </button>
                 ))}
               </div>

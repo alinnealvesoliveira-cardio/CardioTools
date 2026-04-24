@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Info, AlertCircle, CheckCircle2, ChevronRight, RefreshCcw, ShieldAlert, LayoutDashboard } from 'lucide-react';
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
@@ -64,17 +64,19 @@ export const AnginaAlgorithm: React.FC = () => {
 
   const saveData = (finalAnswers: Record<number, boolean>, grade?: number) => {
     const result = getFinalResult(finalAnswers, grade);
-    updateTestResults({
-      symptoms: {
-        claudication: finalAnswers[7],
-        angina: { type: result.type, description: result.title, ...(grade && { ccsGrade: grade }) }
-      }
-    });
-    setStep(9);
-    if (grade) setCcsGrade(grade);
-    toast.success("Sintomas registrados!");
-  };
-
+    updateTestResults('symptoms', {
+  claudication: {
+    score: 0, // Ajuste para o score real, se houver
+    interpretation: "Sintoma ausente", // Ajuste para o texto adequado
+    timestamp: new Date().toISOString()
+  },
+      angina: { 
+    type: result.type, 
+    description: result.title, 
+    ...(grade && { ccsGrade: grade }) 
+  }
+});
+};
   const handleAnswer = (val: boolean) => {
     const newAnswers = { ...answers, [step]: val };
     setAnswers(newAnswers);
@@ -108,4 +110,4 @@ export const AnginaAlgorithm: React.FC = () => {
        {/* ... */}
     </div>
   );
-};
+}

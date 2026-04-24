@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Activity, Save, CheckCircle2, LayoutDashboard, BookOpen } from 'lucide-react';
-import { usePatient } from '../../context/PatientContext';
+import { Activity, Save, CheckCircle2, LayoutDashboard, BookOpen, RotateCcw } from 'lucide-react';
+import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export const TSL5X: React.FC = () => {
   const { testResults, updateTestResults } = usePatient();
   const navigate = useNavigate();
+  
   const [isSaved, setIsSaved] = useState(false);
   const [observedTime, setObservedTime] = useState<string>('');
-
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
@@ -33,6 +33,11 @@ export const TSL5X: React.FC = () => {
     ];
   };
 
+  const handleResetSintomas = () => {
+    setPostFadiga(null);
+    setPostAngina(null);
+  };
+
   const handleGlobalSave = () => {
     const finalTime = parseFloat(observedTime);
     
@@ -48,35 +53,40 @@ export const TSL5X: React.FC = () => {
     else if (finalTime > 9) efficiency = 70;  
     else if (finalTime > 0) efficiency = 95;  
 
-    const currentScales = testResults?.fatigabilityScales || { 
+    const currentScales = testResults?.fatigability || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
       exercise: { dyspnea: 0, fatigue: 0 } 
     };
 
-    updateTestResults({
+    const currentSymptoms = testResults?.symptoms || {
+      claudication: false,
+      angina: { type: 'none', description: '' }
+    };
+
+    updateTestResults('aerobic', {
       sitToStandTest: {
         time: finalTime,
         predicted: predictedValue,
         efficiency: efficiency,
         interpretation: interpretation(finalTime)[0].label,
-        restingHR: testResults?.sitToStandTest?.restingHR || 0,
-        peakHR: testResults?.sitToStandTest?.peakHR || 0
+        restingHR: testResults?.aerobic.sitToStandTest?.restingHR || 0,
+        peakHR: testResults?.aerobic.sitToStandTest?.peakHR || 0
       },
-      fatigabilityScales: {
-        ...currentScales,
+      });
+      updateTestResults('fatigability', {
+          ...currentScales,
         exercise: { 
           ...currentScales.exercise, 
           fatigue: postFadiga || 0 
         }
-      },
-      symptoms: {
-        ...testResults?.symptoms,
+      });
+      updateTestResults('symptoms', {  
+          ...currentSymptoms,
         angina: {
           type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina ? `Angina Grau ${postAngina} durante TSL5X` : 'Sem sintomas anginosos'
+          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
         }
-      }
-    });
+      });
 
     setIsSaved(true);
     toast.success("Dados salvos com sucesso!");
@@ -90,9 +100,10 @@ export const TSL5X: React.FC = () => {
         interpretation={interpretation}
         predictedValue={predictedValue}
         observedValueOverride={parseFloat(observedTime) || 0}
-        invertCIFRatio={true} 
+        invertCIFRatio={true}
         onSave={handleGlobalSave}
-        reference="Fuentes-Abolafio IJ, et al. J Clin Med. 2022."
+        reference="Fuentes-Abolafio IJ, et al. J Clin Med. 2022." 
+        timerDuration={0}
       >
         <div className="space-y-6 px-4">
           <div className="bg-indigo-50 border border-indigo-100 p-5 rounded-3xl">
@@ -121,8 +132,16 @@ export const TSL5X: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest border-b pb-3">
-              <Activity className="text-indigo-500" size={16}/> Sintomas
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
+                <Activity className="text-indigo-500" size={16}/> Sintomas
+              </div>
+              <button 
+                onClick={handleResetSintomas}
+                className="text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center gap-1"
+              >
+                <RotateCcw size={12}/> Limpar
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -136,6 +155,22 @@ export const TSL5X: React.FC = () => {
                     className={`py-4 rounded-2xl font-black text-xs transition-all ${postFadiga === n ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Angina (CCS 0-4)</label>
+              <div className="grid grid-cols-5 gap-2">
+                {[0, 1, 2, 3, 4].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => { setPostAngina(n); setIsSaved(false); }}
+                    className={`py-4 rounded-2xl font-black text-xs transition-all ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                  >
+                    {n === 0 ? 'Não' : n}
                   </button>
                 ))}
               </div>

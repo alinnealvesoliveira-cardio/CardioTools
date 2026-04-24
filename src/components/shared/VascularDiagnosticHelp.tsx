@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Info, AlertCircle } from 'lucide-react';
 
@@ -8,39 +8,27 @@ interface VascularDiagnosticHelpProps {
 }
 
 export const VascularDiagnosticHelp: React.FC<VascularDiagnosticHelpProps> = ({ isOpen, onClose }) => {
+  // Adiciona suporte para fechar o modal com a tecla Esc
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const tableData = [
-    {
-      sinal: 'Pulsos',
-      arterial: 'Diminuídos ou Ausentes',
-      venosa: 'Normais',
-      linfatica: 'Normais'
-    },
-    {
-      sinal: 'Edema',
-      arterial: 'Ausente ou Leve',
-      venosa: 'Melhora com Elevação',
-      linfatica: 'Fixo (Não melhora)'
-    },
-    {
-      sinal: 'Cor da Pele',
-      arterial: 'Pálida / Cianótica',
-      venosa: 'Ocre / Dermatite',
-      linfatica: 'Espessada / Verrucosa'
-    },
-    {
-      sinal: 'Temperatura',
-      arterial: 'Fria (Isquemia)',
-      venosa: 'Quente ou Normal',
-      linfatica: 'Normal'
-    },
-    {
-      sinal: 'Dor',
-      arterial: 'Melhora no Repouso',
-      venosa: 'Melhora em Movimento',
-      linfatica: 'Peso / Desconforto'
-    }
+    { sinal: 'Pulsos', arterial: 'Diminuídos ou Ausentes', venosa: 'Normais', linfatica: 'Normais' },
+    { sinal: 'Edema', arterial: 'Ausente ou Leve', venosa: 'Melhora com Elevação', linfatica: 'Fixo (Não melhora)' },
+    { sinal: 'Cor da Pele', arterial: 'Pálida / Cianótica', venosa: 'Ocre / Dermatite', linfatica: 'Espessada / Verrucosa' },
+    { sinal: 'Temperatura', arterial: 'Fria (Isquemia)', venosa: 'Quente ou Normal', linfatica: 'Normal' },
+    { sinal: 'Dor', arterial: 'Melhora no Repouso', venosa: 'Melhora em Movimento', linfatica: 'Peso / Desconforto' }
   ];
 
   return (

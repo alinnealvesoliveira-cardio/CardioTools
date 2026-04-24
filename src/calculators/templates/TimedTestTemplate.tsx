@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Play, Square, RotateCcw, 
-  BookOpen, Save, CheckCircle2, Heart, Activity 
+  Save, CheckCircle2, Heart, Activity 
 } from 'lucide-react';
 
 import { getCIFClassification } from '../../utils/cif';
-import { usePatient } from '../../context/PatientContext';
+import { usePatient } from '../../context/PatientProvider';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../lib/supabase';
 import { MedicationAlert } from '../../components/shared/MedicationAlert';
@@ -22,23 +22,21 @@ export interface InterpretationResult {
 interface TimedTestTemplateProps {
   title: string;
   description: string;
-  timerDuration?: number; 
+  timerDuration: number;
   hasCounter?: boolean;
   counterLabel?: string;
   interpretation: (time: number, count: number) => InterpretationResult | InterpretationResult[];
-  pearls?: string[];
-  pitfalls?: string[];
   reference?: string;
   children?: React.ReactNode;
   predictedValue?: number | null;
   observedValueOverride?: number | null;
-  invertCIFRatio?: boolean; 
-  onSave?: (data: { 
-    time: number; 
-    count: number; 
-    results: InterpretationResult[]; 
-    cif: CIFData | null; 
-    hr?: { pre: number; post: number } 
+  invertCIFRatio?: boolean;
+  onSave?: (data: {
+    time: number;
+    count: number;
+    results: InterpretationResult[];
+    cif: CIFData | null;
+    hr?: { pre: number; post: number };
   }) => void;
 }
 
@@ -49,7 +47,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
   hasCounter,
   counterLabel = "Repetições",
   interpretation,
-  reference,
   children,
   predictedValue,
   observedValueOverride,
@@ -63,8 +60,9 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
   const [postHR, setPostHR] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   
-  // Ref para o intervalo
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { medications } = usePatient();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (isActive) {
@@ -135,9 +133,6 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
     ? (invertCIFRatio ? (pred / observedValue) : (observedValue / pred)) * 100
     : 0;
 
-  const { medications } = usePatient();
-  const { user } = useAuth();
-
   const handleSave = async () => {
     if (onSave) {
       onSave({ 
@@ -178,7 +173,13 @@ export const TimedTestTemplate: React.FC<TimedTestTemplateProps> = ({
         </button>
       </header>
 
-      <MedicationAlert type="betablockers" active={medications.betablockers} />
+      {/* Alertas Dinâmicos de Medicação */}
+      <div className="space-y-4">
+        <MedicationAlert type="betablockers" active={medications?.betablockers ?? false} />
+        <MedicationAlert type="bcc-dhp" active={medications?.bcc_dhp ?? false} />
+        <MedicationAlert type="bcc-non-dhp" active={medications?.bcc_non_dhp ?? false} />
+        <MedicationAlert type="digitalis" active={medications?.digitalis ?? false} />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">

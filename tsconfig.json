@@ -23,8 +23,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": [
-    "src",
-    "src/vite-env.d.ts"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/vite-env.d.ts"]
 }

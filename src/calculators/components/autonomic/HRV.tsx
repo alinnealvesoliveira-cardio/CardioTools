@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Activity, Info, AlertCircle, Heart, Save, CheckCircle2 } from 'lucide-react';
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 
 export const HRV: React.FC = () => {
   const { updateTestResults } = usePatient();
@@ -35,10 +35,11 @@ export const HRV: React.FC = () => {
   const handleSave = () => {
     if (isNaN(rmssdNum)) return;
     const interpretation = getInterpretation(rmssdNum);
-    updateTestResults({
+    updateTestResults('autonomic', {
       rmssd: rmssdNum,
       hrvInterpretation: interpretation.label
-    } as any);
+    });
+    
     setIsSaved(true);
   };
 

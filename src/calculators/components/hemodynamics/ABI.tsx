@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Info, CheckCircle2, HelpCircle, Save, ChevronLeft, Gauge } from 'lucide-react';
 import { VascularDiagnosticHelp } from '../../../components/shared/VascularDiagnosticHelp';
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { useAuth } from '../../../context/AuthContext';
 import { logActivity } from '../../../lib/supabase';
 import { toast } from 'react-hot-toast';
@@ -72,7 +72,7 @@ export const ABI: React.FC = () => {
     if (abi === null) return;
     const interpretation = getInterpretation(abi);
     
-    updateTestResults({
+    updateTestResults('vascular', {
       abi: abi,
       abiAnkleBP: parseFloat(ankleBP),
       abiArmBP: parseFloat(armBP)

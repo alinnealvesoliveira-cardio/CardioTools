@@ -1,37 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Activity, ShieldCheck, Save, CheckCircle2, LayoutDashboard } from 'lucide-react';
-import { usePatient } from '../../context/PatientContext';
+import { Activity, ShieldCheck, Save, CheckCircle2, LayoutDashboard, RotateCcw } from 'lucide-react';
+import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export const TUG: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
   const navigate = useNavigate();
+  
   const [isSaved, setIsSaved] = useState(false);
   const [observedTime, setObservedTime] = useState<string>('');
-
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // --- SAFEGUARDS CONTRA TELA BRANCA ---
-  const age = parseInt(patientInfo?.age as string) || 65;
-  const sex = (patientInfo as any)?.sex === 'female' || (patientInfo as any)?.sex === 'F' ? 'F' : 'M';
-  const height = parseFloat(patientInfo?.height as string) || 170;
-  const weight = parseFloat(patientInfo?.weight as string) || 70;
+  // Otimização: Cálculos reativos
+  const { predictedFurlanetto } = useMemo(() => {
+    const age = parseInt(patientInfo?.age?.toString() || '65');
+    const height = parseFloat(patientInfo?.height?.toString() || '170');
+    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
+    const s = (patientInfo?.sex as string || '').toUpperCase();
+    const sexVal = (s === 'FEMALE' || s === 'F') ? 0 : 1; // Ajustado para a lógica da fórmula: M=1, F=0
+    
+    const pred = 11.5 - (0.04 * height) + (0.02 * weight) + (0.04 * age) - (0.6 * sexVal);
+    
+    return { predictedFurlanetto: pred > 0 ? pred : 9.5 };
+  }, [patientInfo]);
 
-  // Equação de Predição Brasileira (Furlanetto et al. 2022)
-  const calculatePredictedFurlanetto = () => {
-    const sexVal = sex === 'M' ? 1 : 0;
-    const predicted = 11.5 - (0.04 * height) + (0.02 * weight) + (0.04 * age) - (0.6 * sexVal);
-    return predicted > 0 ? predicted : 9.5; // Fallback seguro
+  const handleResetSintomas = () => {
+    setPostFadiga(null);
+    setPostAngina(null);
+    setIsSaved(false);
   };
 
-  const predictedFurlanetto = calculatePredictedFurlanetto();
-
   const interpretation = (_time: number): InterpretationResult[] => {
-    const time = parseFloat(observedTime) || _time;
-    if (!time || time === 0) return [
+    const time = parseFloat(observedTime) || 0;
+    if (time === 0) return [
       { label: "Aguardando", color: "slate", description: "Insira o tempo final para análise." }
     ];
     
@@ -46,45 +50,44 @@ export const TUG: React.FC = () => {
     ];
   };
 
-  const handleGlobalSave = (data: any) => {
-    const finalTime = parseFloat(observedTime) || data.time;
+  const handleGlobalSave = () => {
+    const finalTime = parseFloat(observedTime);
     
-    if (!finalTime || finalTime <= 0) {
-      toast.error("Registre o tempo do teste");
+    if (isNaN(finalTime) || finalTime <= 0) {
+      toast.error("Por favor, insira um tempo válido.");
       return;
     }
 
-    // Eficiência para TUG: (Predito / Alcançado) * 100
-    const efficiency = (predictedFurlanetto / finalTime) * 100;
+    const efficiency = finalTime > 0 ? (predictedFurlanetto / finalTime) * 100 : 0;
 
-    const currentScales = testResults?.fatigabilityScales || { 
+    const currentScales = testResults?.fatigability || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
       exercise: { dyspnea: 0, fatigue: 0 } 
     };
 
-    updateTestResults({
+    updateTestResults('aerobic',  {
       tug: {
         time: finalTime,
         predicted: predictedFurlanetto,
         efficiency: efficiency,
         interpretation: interpretation(finalTime)[0].label,
-        hr: data.hr || 0
+        hr: { pre: 0, post: 0 } 
       },
-      fatigabilityScales: {
-        ...currentScales,
+      });
+      updateTestResults('fatigability', {
+          ...currentScales,
         exercise: { 
           ...currentScales.exercise, 
           fatigue: postFadiga || 0 
         }
-      },
-      symptoms: {
-        ...testResults?.symptoms,
-        angina: {
+      });
+      updateTestResults('symptoms', {  
+                angina: {
           type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina ? `Angina Grau ${postAngina} no TUG` : 'Sem dor precordial'
+          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
         }
-      }
-    });
+      });
+
 
     setIsSaved(true);
     toast.success("TUG gravado com sucesso!");
@@ -99,6 +102,7 @@ export const TUG: React.FC = () => {
         predictedValue={predictedFurlanetto}
         observedValueOverride={parseFloat(observedTime) || 0}
         invertCIFRatio={true} 
+        timerDuration={0}
         onSave={handleGlobalSave}
         reference="Furlanetto KC, et al. 2022; Kamiya K, et al. 2016."
       >
@@ -137,8 +141,16 @@ export const TUG: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest border-b pb-3">
-              <Activity className="text-indigo-500" size={18}/> Sintomas
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
+                <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
+              </div>
+              <button 
+                onClick={handleResetSintomas}
+                className="text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center gap-1"
+              >
+                <RotateCcw size={12}/> Limpar
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -152,6 +164,22 @@ export const TUG: React.FC = () => {
                     className={`py-4 rounded-2xl font-black transition-all ${postFadiga === n ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Angina (CCS 0-4)</label>
+              <div className="grid grid-cols-5 gap-2">
+                {[0, 1, 2, 3, 4].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => { setPostAngina(n); setIsSaved(false); }}
+                    className={`py-4 rounded-2xl font-black text-xs transition-all ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                  >
+                    {n === 0 ? 'Não' : n}
                   </button>
                 ))}
               </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Info, AlertCircle, CheckCircle2, ChevronRight, RefreshCcw, Save, ShieldAlert } from 'lucide-react';
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { toast } from 'react-hot-toast';
 
 export const ClaudicationAlgorithm: React.FC = () => {
@@ -91,22 +91,21 @@ export const ClaudicationAlgorithm: React.FC = () => {
 
   const handleSave = () => {
     if (!result) return;
-    updateTestResults({
-      symptoms: {
-        claudication: answers[1],
-        claudicationDetails: {
-          title: result.title,
-          description: result.desc
-        },
-        angina: {
-          type: "none",
-          description: "Not evaluated in this assessment"
-        }
-      }
-    });
-    setIsSaved(true);
-    toast.success("Avaliação vascular gravada!");
-  };
+    updateTestResults('symptoms', {
+    claudication: {
+    score: answers[1] ? 1 : 0, // Ajuste esse 1 ou 0 conforme sua regra de cálculo
+    interpretation: answers[1] ? "Presença de claudicação" : "Ausência de claudicação",
+    timestamp: new Date().toISOString()
+    },
+      angina: {
+      type: "none",
+      description: "Not evaluated in this assessment"
+    }
+  });
+
+  setIsSaved(true);
+  toast.success("Avaliação vascular gravada!");
+};
 
   const reset = () => {
     setStep(1);

@@ -32,7 +32,7 @@ import { VascularPhysicalExam } from '../calculators/components/vascular/Vascula
 import { HRV } from '../calculators/components/autonomic/HRV';
 import { AnginaAlgorithm } from '../calculators/components/diagnosis/AnginaAlgorithm';
 import { ClaudicationAlgorithm } from '../calculators/components/diagnosis/ClaudicationAlgorithm';
-import { FatigabilityScales } from '../calculators/components/diagnosis/FatigabilityScales';
+import { FatigabilityScales } from '../calculators/components/diagnosis/Fatigability';
 
 // ==========================================
 // 2. REGISTRO DE CALCULADORAS
@@ -42,126 +42,119 @@ export const CALCULATORS: Calculator[] = [
     id: 'patient-registration',
     name: 'Cadastro / Anamnese Rápida',
     description: 'Perfil antropométrico, farmacológico e clínico basal.',
-    category: 'Cadastro',
+    category: 'symptoms',
     component: PatientRegistration
   },
   {
     id: 'tc6m',
     name: 'Caminhada de 6 Minutos (TC6M)',
     description: 'Avaliação da capacidade aeróbica e tolerância ao esforço.',
-    category: 'Capacidade Aeróbica',
+    category: 'aerobic',
     component: TC6M
   },
   {
     id: 'td2m',
     name: 'Teste de Degrau / Marcha (2 min)',
     description: 'Alternativa funcional para avaliação cardiovascular.',
-    category: 'Capacidade Aeróbica',
+    category: 'aerobic',
     component: TD2M
   },
   {
     id: 'tsl-1m',
     name: 'Sentar-Levantar (1 min)',
     description: 'Avaliação da resistência muscular de membros inferiores.',
-    category: 'Capacidade Aeróbica',
+    category: 'aerobic',
     component: TSL1M
   },
   {
     id: 'tsl-30s',
     name: 'Sentar-Levantar (30 seg)',
     description: 'Teste de força e potência funcional.',
-    category: 'Capacidade Aeróbica',
+    category: 'aerobic',
     component: TSL30S
   },
   {
     id: 'tsl-5x',
     name: 'Sentar-Levantar (5 vezes)',
     description: 'Avaliação de mobilidade e risco de quedas.',
-    category: 'Capacidade Aeróbica',
+    category: 'aerobic',
     component: TSL5X
   },
   {
     id: 'tug',
     name: 'Timed Up and Go (TUG)',
     description: 'Equilíbrio dinâmico e agilidade funcional.',
-    category: 'Capacidade Aeróbica',
+    category: 'aerobic',
     component: TUG
-  },
-  {
-    id: 'vsaq',
-    name: 'Protocolo VSAQ',
-    description: 'Questionário de Atividade Física de Veteranos.',
-    category: 'Capacidade Aeróbica',
-    component: VSAQ
   },
   {
     id: 'dasi',
     name: 'Protocolo DASI',
     description: 'duke activity status index',
-    category: 'Capacidade Aeróbica',
+    category: 'aerobic',
     component: DASI
   },
   {
     id: 'hrv',
     name: 'Variabilidade da FC (VFC)',
     description: 'Análise do balanço autonômico via RMSSD e SDNN.',
-    category: 'Avaliação Autonômica',
+    category: 'autonomic',
     component: HRV
   },
   {
     id: 'orthostatic',
     name: 'Hipotensão Ortostática',
     description: 'Resposta pressórica à mudança de decúbito.',
-    category: 'Avaliação Autonômica',
+    category: 'autonomic',
     component: OrthostaticDrop
   },
   {
     id: 'hrr',
     name: 'Recuperação da FC (HRR)',
     description: 'Análise da reativação vagal pós-esforço.',
-    category: 'Avaliação Autonômica',
+    category: 'autonomic',
     component: HRR
   },
   {
     id: 'angina-algorithm',
     name: 'Algoritmo de Angina',
     description: 'Triagem e classificação de dor precordial.',
-    category: 'Avaliação de Sintomas',
+    category: 'symptoms',
     component: AnginaAlgorithm
   },
   {
     id: 'claudication',
     name: 'Algoritmo de Claudicação',
     description: 'Avaliação de dor em membros inferiores.',
-    category: 'Avaliação de Sintomas',
+    category: 'symptoms',
     component: ClaudicationAlgorithm
   },
   {
     id: 'fatigability',
     name: 'Escalas de Fadigabilidade',
     description: 'Monitoramento de Borg e percepção de esforço.',
-    category: 'Avaliação de Sintomas',
+    category: 'symptoms',
     component: FatigabilityScales
   },
   {
     id: 'vascular-exam',
     name: 'Exame Físico Vascular',
     description: 'Avaliação de pulsos, edema e sinais tróficos.',
-    category: 'Vascular',
+    category: 'vascular',
     component: VascularPhysicalExam
   },
   {
     id: 'abi',
     name: 'Índice Tornozelo-Braquial (ITB)',
     description: 'Rastreio de doença arterial periférica.',
-    category: 'Vascular',
+    category: 'vascular',
     component: ABI
   },
   {
     id: 'final-report',
     name: 'Relatório Final',
     description: 'Consolidação de todos os achados clínicos.',
-    category: 'Relatório Final',
+    category: 'final-report',
     component: FinalReport
   }
 ];

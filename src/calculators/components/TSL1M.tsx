@@ -1,35 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Activity, Save, CheckCircle2, LayoutDashboard } from 'lucide-react';
-import { usePatient } from '../../context/PatientContext';
+import { Activity, LayoutDashboard, RotateCcw } from 'lucide-react';
+import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 export const TSL1M: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
   const navigate = useNavigate();
-  const [isSaved, setIsSaved] = useState(false);
 
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
-  // --- SAFEGUARDS CONTRA TELA BRANCA ---
-  const age = parseInt(patientInfo?.age as string) || 60;
-  const sex = (patientInfo as any)?.sex === 'female' || (patientInfo as any)?.sex === 'F' ? 'F' : 'M';
-  const height = parseFloat(patientInfo?.height as string) || 170;
-  const weight = parseFloat(patientInfo?.weight as string) || 70;
-  
-  // Proteção contra divisão por zero no IMC
-  const bmi = height > 0 ? weight / ((height / 100) ** 2) : 24.2;
+  // Otimização: Cálculos reativos dependentes dos dados do paciente
+  const { predictedFurlanetto, bmi } = useMemo(() => {
+    const age = parseInt(patientInfo?.age?.toString() || '60');
+    const height = parseFloat(patientInfo?.height?.toString() || '170');
+    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
+    
+    // Normalização robusta para o sexo
+    const sex = (patientInfo?.sex as string || '').toUpperCase();
+    const isFemale = sex === 'FEMALE' || sex === 'F';
+    const sexVal = isFemale ? 1 : 0;
+    
+    const bmiVal = height > 0 ? weight / ((height / 100) ** 2) : 24.2;
 
-  // CÁLCULO DO PREDITO - EQUAÇÃO BRASILEIRA (Furlanetto KC, et al. 2022)
-  const calculatePredictedFurlanetto = (): number => {
-    const sexVal = sex === 'F' ? 1 : 0;
-    const predicted = 60.6 - (0.36 * age) - (2.8 * sexVal) - (0.31 * bmi);
-    return predicted > 0 ? predicted : 15; // Fallback seguro para 15 repetições
+    // Equação Furlanetto KC, et al. (2022)
+    const pred = 60.6 - (0.36 * age) - (2.8 * sexVal) - (0.31 * bmiVal);
+    
+    return { 
+      predictedFurlanetto: pred > 0 ? pred : 15, 
+      bmi: bmiVal 
+    };
+  }, [patientInfo]);
+
+  const handleResetSintomas = () => {
+    setPostFadiga(null);
+    setPostAngina(null);
   };
-
-  const predictedFurlanetto = calculatePredictedFurlanetto();
 
   const interpretation = (_time: number, count: number): InterpretationResult[] => {
     if (count === 0) return [{ 
@@ -38,21 +46,19 @@ export const TSL1M: React.FC = () => {
       description: "Inicie o teste e registre as repetições." 
     }];
     
-    const efficiency = (count / predictedFurlanetto) * 100;
+    const efficiency = predictedFurlanetto > 0 ? (count / predictedFurlanetto) * 100 : 0;
 
-    return [
-      {
-        label: efficiency < 80 ? "Reduzida" : "Preservada",
-        color: efficiency < 80 ? "red" : "green",
-        description: `Desempenho de ${efficiency.toFixed(0)}% do predito.`
-      }
-    ];
+    return [{
+      label: efficiency < 80 ? "Reduzida" : "Preservada",
+      color: efficiency < 80 ? "red" : "green",
+      description: `Desempenho de ${efficiency.toFixed(0)}% do predito.`
+    }];
   };
 
-  const handleGlobalSave = (data: any) => {
+  const handleGlobalSave = (data: { count: number; hr?: { pre: number; post: number } }) => {
     const efficiency = predictedFurlanetto > 0 ? (data.count / predictedFurlanetto) * 100 : 0;
 
-    const currentScales = testResults?.fatigabilityScales || { 
+    const currentScales = testResults?.fatigability || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
       exercise: { dyspnea: 0, fatigue: 0 } 
     };
@@ -62,7 +68,7 @@ export const TSL1M: React.FC = () => {
       angina: { type: 'none', description: '' }
     };
 
-    updateTestResults({
+    updateTestResults('aerobic', {
       tsl1m: {
         count: data.count,
         predicted: predictedFurlanetto,
@@ -70,23 +76,21 @@ export const TSL1M: React.FC = () => {
         interpretation: interpretation(60, data.count)[0].label,
         hr: data.hr
       },
-      fatigabilityScales: {
-        ...currentScales,
+      });
+      updateTestResults('fatigability', {
+          ...currentScales,
         exercise: { 
           ...currentScales.exercise, 
           fatigue: postFadiga || 0 
         }
-      },
-      symptoms: {
-        ...currentSymptoms,
+      });
+      updateTestResults('symptoms', {  
+          ...currentSymptoms,
         angina: {
           type: postAngina && postAngina > 0 ? 'stable' : 'none',
-          description: postAngina ? `Angina Grau ${postAngina} no TSL1M` : 'Sem dor precordial'
+          description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TSL5X` : 'Sem sintomas anginosos'
         }
-      }
-    });
-
-    setIsSaved(true);
+      });
     toast.success("TSL 1 Minuto gravado!");
   };
 
@@ -116,8 +120,16 @@ export const TSL1M: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest border-b pb-3">
-              <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
+                <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
+              </div>
+              <button 
+                onClick={handleResetSintomas}
+                className="text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center gap-1"
+              >
+                <RotateCcw size={12}/> Limpar
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -127,7 +139,7 @@ export const TSL1M: React.FC = () => {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => { setPostFadiga(n); setIsSaved(false); }}
+                    onClick={() => setPostFadiga(n)}
                     className={`py-4 rounded-2xl font-black transition-all ${postFadiga === n ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n}
@@ -143,7 +155,7 @@ export const TSL1M: React.FC = () => {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => { setPostAngina(n); setIsSaved(false); }}
+                    onClick={() => setPostAngina(n)}
                     className={`py-4 rounded-2xl font-black transition-all ${postAngina === n ? 'bg-rose-500 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
                   >
                     {n === 0 ? 'Não' : n}
@@ -155,7 +167,7 @@ export const TSL1M: React.FC = () => {
         </div>
       </TimedTestTemplate>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999]">
         <button
           onClick={() => navigate('/dashboard')} 
           className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest"

@@ -1,30 +1,30 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Activity,
-  ChevronLeft, 
-  Home, 
-  Settings, 
-  Heart,
-  Search,
-  FolderHeart,
-  UserPlus,
-  FileBarChart,
-  LogOut,
-  Sparkles,
-  ClipboardCheck
+  Activity, ChevronLeft, Home, Settings, Heart, Search, 
+  FolderHeart, UserPlus, FileBarChart, LogOut, Sparkles, LucideIcon 
 } from 'lucide-react';
-// Importação correta do tipo unificado
-import { CategoryName } from '../../types'; 
 import { useAuth } from '../../context/AuthContext';
+import { NavId } from '../../types'; // Importação correta no topo
 
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-   selectedCategory: string; // CategoryName | 'Home' | null;
-  onSelectCategory: (category: string) => void; // (category: CategoryName | 'Home') => void;
+  selectedCategory: NavId; 
+  onSelectCategory: (category: NavId) => void; 
 }
+
+// Configuração dos itens fora do componente para evitar re-renderizações desnecessárias
+const MENU_ITEMS: { id: NavId; label: string; icon: LucideIcon }[] = [
+  { id: 'Home', label: 'Dashboard Principal', icon: Home },
+  { id: 'Cadastro', label: 'Anamnese e Perfil', icon: UserPlus },
+  { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart },
+  { id: 'Vascular', label: 'Integridade Vascular', icon: FolderHeart },
+  { id: 'Capacidade Aeróbica', label: 'Capacidade Aeróbica', icon: Activity },
+  { id: 'Avaliação de Sintomas', label: 'Sinais e Sintomas', icon: Search },
+  { id: 'Relatório Final', label: 'Relatório Final (CBDF)', icon: FileBarChart },
+];
 
 export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }: SidebarProps) => {
   const { logout } = useAuth();
@@ -39,17 +39,6 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
       window.location.href = '/login';
     }
   };
-
-  const menuItems: { id: CategoryName | 'Home'; label: string; icon: any }[] = [
-    { id: 'Home', label: 'Dashboard Principal', icon: Home },
-    { id: 'Cadastro', label: 'Anamnese e Perfil', icon: UserPlus },
-    { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart },
-    { id: 'Vascular', label: 'Integridade Vascular', icon: FolderHeart },
-    { id: 'Capacidade Aeróbica', label: 'Capacidade Aeróbica', icon: Activity },
-    { id: 'Avaliação de Sintomas', label: 'Sinais e Sintomas', icon: Search },
-    { id: 'DASI', label: 'DASI / Questionários', icon: ClipboardCheck },
-    { id: 'Relatório Final', label: 'Relatório Final (CBDF)', icon: FileBarChart },
-  ];
 
   return (
     <>
@@ -101,8 +90,10 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
             <nav className="flex-1 py-8 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
               <p className="px-4 text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Protocolos Clínicos</p>
               
-              {menuItems.map((item) => {
+              {MENU_ITEMS.map((item) => {
                 const isActive = selectedCategory === item.id;
+                const Icon = item.icon; // Componente de ícone
+                
                 return (
                   <button
                     key={item.id}
@@ -123,7 +114,7 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
                       />
                     )}
 
-                    <item.icon size={20} className={`${isActive ? 'text-emerald-400' : 'text-slate-600 group-hover:text-slate-400'}`} />
+                    <Icon size={20} className={`${isActive ? 'text-emerald-400' : 'text-slate-600 group-hover:text-slate-400'}`} />
                     
                     <span className={`text-[13px] tracking-tight ${isActive ? 'font-bold' : 'font-semibold'}`}>
                       {item.label}

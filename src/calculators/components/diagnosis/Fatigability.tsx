@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Wind, BarChart3, Clock, Zap, Save, ChevronLeft, CheckCircle2 } from 'lucide-react';
-import { usePatient } from '../../../context/PatientContext';
+import { usePatient } from '../../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
@@ -83,19 +83,18 @@ export const FatigabilityScales: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
 
   const handleUpdateScale = (id: ScaleID, value: number) => {
-    const currentScales: FatigabilityState = testResults.fatigabilityScales || {
+    const currentScales: FatigabilityState = testResults.fatigability || {
       rest: { dyspnea: 0, fatigue: 0 },
       exercise: { dyspnea: 0, fatigue: 0 }
     };
 
-    updateTestResults({
-      fatigabilityScales: {
-        ...currentScales,
+    updateTestResults('fatigability', {
+              ...currentScales,
         [mode]: {
           ...currentScales[mode],
           [id]: value
         }
-      }
+      
     });
     setIsSaved(false);
   };
@@ -149,13 +148,13 @@ export const FatigabilityScales: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-5xl font-black italic text-slate-900">
-                  {testResults.fatigabilityScales?.[mode]?.[scale.id] ?? 0}
+                  {testResults.fatigability?.[mode]?.[scale.id] ?? 0}
                 </div>
               </div>
 
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
                 {scale.levels.map((level) => {
-                  const currentValue = testResults.fatigabilityScales?.[mode]?.[scale.id] ?? 0;
+                  const currentValue = testResults.fatigability?.[mode]?.[scale.id] ?? 0;
                   const isSelected = currentValue === level.value;
                   return (
                     <button

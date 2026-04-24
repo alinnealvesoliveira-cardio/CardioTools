@@ -1,32 +1,34 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { usePatient } from '../../context/PatientContext';
+import { usePatient } from '../../context/PatientProvider';
 
 export const TC6M: React.FC = () => {
   const { patientInfo } = usePatient();
 
-  // Cálculo do predito baseado em Britto et al. (2013) - Referência Brasileira
-  const calculatePredicted = (): number => {
-    // Garantindo que os valores sejam números para evitar erros de build
-    const age = parseInt(patientInfo?.age as any) || 0;
-    const height = 170; // Idealmente buscar do perfil do paciente
-    const weight = 70;  // Idealmente buscar do perfil do paciente
-    const isMale = (patientInfo as any)?.sex === 'M';
+  // Otimização: Recalcula apenas se as informações do paciente mudarem
+  const predictedValue = useMemo(() => {
+    const age = parseInt(patientInfo?.age?.toString() || '65');
+    const height = parseFloat(patientInfo?.height?.toString() || '170');
+    const weight = parseFloat(patientInfo?.weight?.toString() || '70');
+    
+    // Convertemos para 'string' (as string) para ignorar o erro de tipagem que 
+    // impede a comparação com 'F' caso o tipo estrito não o permita
+    const sex = (patientInfo?.sex as string);
+    const isFemale = sex === 'female' || sex === 'F';
 
-    if (isMale) {
+    if (!isFemale) {
       // Equação Britto (Homens): 894,21 – (5,07 × idade) + (1,2 × altura) – (1,2 × peso)
       return 894.21 - (5.07 * age) + (1.2 * height) - (1.2 * weight);
+    } else {
+      // Equação Britto (Mulheres): 614,08 – (4,48 × idade) + (1,1 × altura) – (2,5 × IMC)
+      const imc = weight / ((height / 100) ** 2);
+      return 614.08 - (4.48 * age) + (1.1 * height) - (2.5 * imc);
     }
-    // Equação Britto (Mulheres): 614,08 – (4,48 × idade) + (1,1 × altura) – (2,5 × IMC)
-    // Usando peso simplificado aqui, mas o ideal é calcular o IMC (Peso/Alt²)
-    const imc = weight / ((height / 100) ** 2);
-    return 614.08 - (4.48 * age) + (1.1 * height) - (2.5 * imc);
-  };
+  }, [patientInfo]);
 
   const interpretation = (time: number, count: number): InterpretationResult[] => {
     const dist = count; 
-    const pred = calculatePredicted();
-    const perc = pred > 0 ? (dist / pred) * 100 : 0;
+    const perc = predictedValue > 0 ? (dist / predictedValue) * 100 : 0;
 
     const results: InterpretationResult[] = [];
 
@@ -34,7 +36,7 @@ export const TC6M: React.FC = () => {
       results.push({ 
         label: 'Normal', 
         color: 'green', 
-        description: `Desempenho de ${perc.toFixed(1)}% do predito (Britto, 2013).` 
+        description: `Desempenho de ${perc.toFixed(1)}% do predito (Britto et al., 2013).` 
       });
     } else if (perc >= 50) {
       results.push({ 
@@ -60,9 +62,9 @@ export const TC6M: React.FC = () => {
       timerDuration={360} 
       hasCounter={true}
       counterLabel="Distância Total (Metros)"
-      predictedValue={calculatePredicted()}
+      predictedValue={predictedValue}
       interpretation={interpretation}
-      reference="Britto RR, et al. Reference equations for the six-minute walk test based on representative sample of Brazilian adults. Revision. 2013."
+      reference="Britto RR, et al. Reference equations for the six-minute walk test based on representative sample of Brazilian adults. 2013."
     />
   );
 };
