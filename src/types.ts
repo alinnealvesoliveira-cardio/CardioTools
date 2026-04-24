@@ -8,6 +8,7 @@ export type NavId =
   | 'Vascular' 
   | 'Capacidade Aeróbica' 
   | 'Avaliação de Sintomas' 
+  | 'Fatigabilidade'
   | 'Relatório Final';
   
 export type CategoryName = 
