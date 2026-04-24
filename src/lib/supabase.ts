@@ -1,5 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
+// --- Sobrescrita de tipos para evitar erro no import.meta.env ---
+interface ImportMetaEnv {
+  readonly VITE_SUPABASE_URL: string;
+  readonly VITE_SUPABASE_ANON_KEY: string;
+  [key: string]: string | undefined;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+// -------------------------------------------------------------
+
 // Lê as variáveis do arquivo .env (ou variáveis de ambiente do Vercel)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -13,7 +25,7 @@ export const isSupabaseConfigured =
   !supabaseUrl.includes('xyz.supabase.co'); // Proteção contra configuração padrão
 
 // Instância do Cliente (Singleton)
-// Se não estiver configurado, criamos um cliente vazio ou tratamos o erro
+// Se não estiver configurado, criamos um cliente com placeholders para evitar crash
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co', 
   supabaseAnonKey || 'placeholder-key'

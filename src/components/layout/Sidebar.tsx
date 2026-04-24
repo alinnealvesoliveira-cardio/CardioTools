@@ -1,12 +1,12 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   Activity, ChevronLeft, Home, Settings, Heart, Search, 
-  FolderHeart, UserPlus, FileBarChart, LogOut, Sparkles, LucideIcon 
+  FolderHeart, UserPlus, FileBarChart, LogOut, Sparkles, LucideIcon, FileText 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { NavId } from '../../types'; // Importação correta no topo
+import { NavId } from '../../types';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,10 +15,11 @@ interface SidebarProps {
   onSelectCategory: (category: NavId) => void; 
 }
 
-// Configuração dos itens fora do componente para evitar re-renderizações desnecessárias
+// Configuração dos itens de navegação
 const MENU_ITEMS: { id: NavId; label: string; icon: LucideIcon }[] = [
   { id: 'Home', label: 'Dashboard Principal', icon: Home },
   { id: 'Cadastro', label: 'Anamnese e Perfil', icon: UserPlus },
+  { id: 'Anamnese', label: 'Anamnese Detalhada', icon: FileText },
   { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart },
   { id: 'Vascular', label: 'Integridade Vascular', icon: FolderHeart },
   { id: 'Capacidade Aeróbica', label: 'Capacidade Aeróbica', icon: Activity },
@@ -92,7 +93,7 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
               
               {MENU_ITEMS.map((item) => {
                 const isActive = selectedCategory === item.id;
-                const Icon = item.icon; // Componente de ícone
+                const Icon = item.icon;
                 
                 return (
                   <button

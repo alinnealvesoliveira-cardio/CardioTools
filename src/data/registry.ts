@@ -42,7 +42,7 @@ export const CALCULATORS: Calculator[] = [
     id: 'patient-registration',
     name: 'Cadastro / Anamnese Rápida',
     description: 'Perfil antropométrico, farmacológico e clínico basal.',
-    category: 'symptoms',
+    category: 'anamnese',
     component: PatientRegistration
   },
   {

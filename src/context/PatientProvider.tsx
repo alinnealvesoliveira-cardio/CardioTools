@@ -7,8 +7,8 @@ interface PatientContextType {
   medications: Medications;
   setMedications: React.Dispatch<React.SetStateAction<Medications>>;
   testResults: TestResults;
-  // A tipagem da atualização agora força a categoria a ser uma das válidas
-  updateTestResults: <K extends CategoryName>(category: K, updates: Partial<NonNullable<TestResults[K]>>) => void;
+  // A correção está aqui: usamos keyof TestResults para garantir segurança de tipos
+  updateTestResults: <K extends keyof TestResults>(category: K, updates: Partial<NonNullable<TestResults[K]>>) => void;
   resetData: () => void;
   currentStep: number;
   setCurrentStep: (step: number) => void;
@@ -66,18 +66,19 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPatientInfo(prev => ({ ...prev, ...updates }));
   }, []);
 
-  // CORREÇÃO: Tratamento de Nulos na atualização
-  const updateTestResults = useCallback(<K extends CategoryName>(category: K, updates: Partial<NonNullable<TestResults[K]>>) => {
-    setTestResults(prev => {
-      const currentCategoryData = prev[category] || {}; // Se for null, vira objeto vazio
-      return {
-        ...prev,
-        [category]: {
-          ...(currentCategoryData as object),
-          ...updates
-        }
-      };
-    });
+  // Implementação corrigida usando keyof TestResults
+  const updateTestResults = useCallback(<K extends keyof TestResults>(
+    category: K, 
+    updates: Partial<NonNullable<TestResults[K]>>
+  ) => {
+    setTestResults(prev => ({
+      ...prev,
+      [category]: {
+        // Usamos 'as any' ou checagem de nulidade para garantir que o spread não quebre
+        ...(prev[category] as any || {}),
+        ...updates
+      }
+    }));
   }, []);
 
   const nextStep = useCallback(() => setCurrentStep(prev => prev + 1), []);

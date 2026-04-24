@@ -1,9 +1,11 @@
 // ==========================================
 // 1. TIPOS DE NAVEGAÇÃO E CATEGORIAS
 // ==========================================
+// 1. IDs da UI (Title Case para exibição)
 export type NavId = 
   | 'Home' 
   | 'Cadastro' 
+  | 'Anamnese' // Ajustado para 'Anamnese' para seguir o padrão do menu
   | 'Avaliação Autonômica' 
   | 'Vascular' 
   | 'Capacidade Aeróbica' 
@@ -11,14 +13,15 @@ export type NavId =
   | 'Fatigabilidade'
   | 'Relatório Final';
   
+// 2. Chaves de Lógica (Lowercase para dados)
 export type CategoryName = 
   | 'cadastro' 
-  | 'aerobic' 
+  | 'anamnese' // Mantido em lowercase para lógica interna
   | 'autonomic' 
   | 'vascular' 
+  | 'aerobic' 
   | 'symptoms' 
   | 'fatigability'
-  | 'cadastro'
   | 'final-report';
 
 export interface Calculator {

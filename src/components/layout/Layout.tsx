@@ -5,10 +5,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { CategoryName, NavId } from '../../types';
 
 // 1. Tradução: UI (NavId) -> Dados (CategoryName)
-// Todos os NavId devem estar aqui
 const navToCategoryMap: Record<NavId, CategoryName | 'Home'> = {
   'Home': 'Home',
   'Cadastro': 'cadastro',
+  'Anamnese': 'anamnese', // Adicionado aqui
   'Avaliação Autonômica': 'autonomic',
   'Vascular': 'vascular',
   'Capacidade Aeróbica': 'aerobic',
@@ -18,16 +18,20 @@ const navToCategoryMap: Record<NavId, CategoryName | 'Home'> = {
 };
 
 // 2. Tradução: Dados (CategoryName) -> UI (NavId)
-// Todos os CategoryName devem estar aqui
 const categoryToNavMap: Record<CategoryName | 'Home', NavId> = {
   'Home': 'Home',
   'cadastro': 'Cadastro',
+  'anamnese': 'Anamnese', // Adicionado aqui
   'autonomic': 'Avaliação Autonômica',
   'vascular': 'Vascular',
   'aerobic': 'Capacidade Aeróbica',
   'symptoms': 'Avaliação de Sintomas',
   'final-report': 'Relatório Final',
   'fatigability': 'Fatigabilidade',
+};
+
+const getNavIdFromCategory = (category: CategoryName | 'Home'): NavId => {
+  return categoryToNavMap[category] || 'Home';
 };
 
 interface LayoutProps {
@@ -68,7 +72,7 @@ export const Layout: React.FC<LayoutProps> = ({
         isOpen={isSidebarOpen}
         onToggle={toggleSidebar}
         // Usamos o mapa inverso para garantir que a Sidebar receba um NavId válido
-        selectedCategory={categoryToNavMap[selectedCategory]} 
+        selectedCategory={categoryToNavMap[selectedCategory] || 'Home'} 
         onSelectCategory={handleMenuSelect}
       />
       
