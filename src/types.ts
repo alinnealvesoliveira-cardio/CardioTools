@@ -54,6 +54,9 @@ export interface CIFClassification {
   performanceRange: string;
   color: string;
   bgClass: string;
+  // Campos adicionados para corrigir o erro no TimedTestTemplate
+  description?: string;
+  interpretation?: string;
 }
 
 export interface CBDFResult {

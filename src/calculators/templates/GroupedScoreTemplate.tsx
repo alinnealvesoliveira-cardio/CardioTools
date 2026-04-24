@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCcw } from 'lucide-react';
-// Certifique-se de que estas interfaces existam no seu arquivo types.ts
+// Importações tipadas do seu arquivo types.ts
 import { ScoreGroup, ScoreOption, ScoreItem } from '../../types';
 
 // ==========================================
@@ -89,7 +89,6 @@ const ScoreItemCard = ({
 export const GroupedScoreTemplate: React.FC<GroupedScoreTemplateProps> = ({ title, groups, interpretation, initialScores = {}, onScoreChange }) => {
   const [scores, setScores] = useState<Record<string, number>>(initialScores);
 
-  // Calcula total de itens de forma segura
   const totalItems = useMemo(() => groups.reduce((acc, g) => acc + g.items.length, 0), [groups]);
   
   const totalScore = useMemo(() => Object.values(scores).reduce((acc, curr) => acc + curr, 0), [scores]);
@@ -112,13 +111,15 @@ export const GroupedScoreTemplate: React.FC<GroupedScoreTemplateProps> = ({ titl
           {groups.map((group, gIdx) => (
             <section key={gIdx} className="space-y-6">
               <div className="flex items-center gap-3">
-                <div className={`px-2 py-0.5 rounded italic text-[10px] font-black ${group.items.every(i => scores[i.id] !== undefined) ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'}`}>
+                {/* Tipagem explícita i: ScoreItem */}
+                <div className={`px-2 py-0.5 rounded italic text-[10px] font-black ${group.items.every((i: ScoreItem) => scores[i.id] !== undefined) ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'}`}>
                   G{gIdx + 1}
                 </div>
                 <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">{group.title}</h2>
               </div>
               <div className="space-y-4">
-                {group.items.map((item) => (
+                {/* Tipagem explícita item: ScoreItem */}
+                {group.items.map((item: ScoreItem) => (
                   <ScoreItemCard 
                     key={item.id} 
                     item={item} 
