@@ -5,19 +5,13 @@ import {
   FileBarChart, Search, Zap, ArrowLeft, ArrowRight, User 
 } from 'lucide-react';
 
-// Contexto e Componentes
 import { Layout } from './components/layout/Layout';
 import { Login } from './components/Login';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PatientProvider, usePatient } from './context/PatientProvider';
-
-// Dados e Tipos
 import { CALCULATORS } from './data/registry';
-import { Calculator, CategoryName } from './types';
+import { CategoryName } from './types';
 
-// ==========================================
-// MÓDULOS DE NAVEGAÇÃO
-// ==========================================
 interface ClinicalModule {
   id: string;
   name: string;
@@ -42,7 +36,8 @@ function AppContent() {
   const { currentStep, nextStep, prevStep, patient } = usePatient();
   const [selectedCalcId, setSelectedCalcId] = useState<string | null>(null);
   
-  const currentModule = useMemo(() => CLINICAL_MODULES[currentStep - 1], [currentStep]);
+  // Segurança: Garante que currentModule nunca seja undefined
+  const currentModule = useMemo(() => CLINICAL_MODULES[currentStep - 1] || CLINICAL_MODULES[0], [currentStep]);
 
   useEffect(() => {
     setSelectedCalcId(null);
@@ -50,7 +45,10 @@ function AppContent() {
 
   if (!isAuthenticated) return <Login />;
 
-  const filteredCalculators = CALCULATORS.filter(calc => calc.category === currentModule?.category);
+  // Filtro com segurança: compara o trim e lowercase para evitar erro de digitação (ex: 'Autonomic' vs 'autonomic')
+  const filteredCalculators = CALCULATORS.filter(calc => 
+    calc.category?.toLowerCase() === currentModule.category?.toLowerCase()
+  );
 
   const ActiveCalcComponent = useMemo(() => {
     if (!selectedCalcId) return null;
@@ -59,12 +57,8 @@ function AppContent() {
   }, [selectedCalcId]);
 
   return (
-    <Layout 
-      selectedCategory={currentModule?.category || 'cadastro'} 
-      onSelectCategory={() => {}} 
-    >
+    <Layout selectedCategory={currentModule.category} onSelectCategory={() => {}}>
       <div className="max-w-5xl mx-auto py-8">
-        
         <div className="bg-slate-800 text-white p-4 rounded-xl mb-6 flex justify-between items-center shadow-lg">
           <h1 className="font-bold">Paciente: {patient?.name || "Nenhum selecionado"}</h1>
           <span className="text-sm opacity-70">Idade: {patient?.age || "--"}</span>
@@ -75,7 +69,7 @@ function AppContent() {
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
                 Passo {currentStep} de {CLINICAL_MODULES.length}
             </p>
-            <h2 className="text-3xl font-black text-slate-900 italic uppercase">{currentModule?.name}</h2>
+            <h2 className="text-3xl font-black text-slate-900 italic uppercase">{currentModule.name}</h2>
           </div>
           {currentStep > 1 && !selectedCalcId && (
             <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition-colors">
@@ -85,44 +79,38 @@ function AppContent() {
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div 
-            key={selectedCalcId || currentStep} 
-            initial={{ opacity: 0, y: 10 }} 
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-          >
-            
+          <motion.div key={selectedCalcId || currentStep} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {selectedCalcId ? (
               <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                <button 
-                    onClick={() => setSelectedCalcId(null)} 
-                    className="mb-6 flex items-center gap-2 text-indigo-600 font-bold hover:underline"
-                >
-                    <ArrowLeft size={18} /> Voltar para lista
+                <button onClick={() => setSelectedCalcId(null)} className="mb-6 flex items-center gap-2 text-indigo-600 font-bold hover:underline">
+                  <ArrowLeft size={18} /> Voltar para lista
                 </button>
-                {ActiveCalcComponent ? <ActiveCalcComponent /> : <div className="text-center py-10">Erro ao carregar módulo.</div>}
+                {ActiveCalcComponent ? <ActiveCalcComponent /> : <div className="p-4 text-red-500 font-bold">Erro: Componente não encontrado.</div>}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                {filteredCalculators.map((calc) => (
-                  <button 
-                    key={calc.id} 
-                    onClick={() => setSelectedCalcId(calc.id)}
-                    className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm hover:border-emerald-500 transition-all text-left"
-                  >
-                    <h3 className="font-bold text-lg">{calc.name}</h3>
-                    <p className="text-sm text-slate-500">{calc.description}</p>
-                  </button>
-                ))}
-              </div>
+              <>
+                {filteredCalculators.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                    {filteredCalculators.map((calc) => (
+                      <button key={calc.id} onClick={() => setSelectedCalcId(calc.id)} className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm hover:border-emerald-500 transition-all text-left">
+                        <h3 className="font-bold text-lg">{calc.name}</h3>
+                        <p className="text-sm text-slate-500">{calc.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 bg-amber-50 rounded-2xl border border-amber-200 text-amber-800">
+                    <h3 className="font-bold">Atenção: Nenhuma calculadora encontrada.</h3>
+                    <p>O sistema tentou buscar pela categoria: <strong>"{currentModule.category}"</strong></p>
+                    <p className="text-xs mt-2 italic">Verifique o arquivo <code>registry.ts</code>. As categorias das calculadoras devem ser idênticas a este nome.</p>
+                  </div>
+                )}
+              </>
             )}
 
             {!selectedCalcId && currentStep < CLINICAL_MODULES.length && (
               <div className="flex justify-end pt-8 border-t border-slate-200">
-                <button 
-                  onClick={nextStep}
-                  className="px-8 py-4 bg-slate-900 text-white rounded-full font-bold flex items-center gap-2 hover:bg-emerald-600 transition-all"
-                >
+                <button onClick={nextStep} className="px-8 py-4 bg-slate-900 text-white rounded-full font-bold flex items-center gap-2 hover:bg-emerald-600 transition-all">
                   Continuar para {CLINICAL_MODULES[currentStep]?.name || 'Finalizar'} <ArrowRight size={20} />
                 </button>
               </div>
@@ -136,10 +124,6 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <PatientProvider>
-        <AppContent />
-      </PatientProvider>
-    </AuthProvider>
+    <AuthProvider><PatientProvider><AppContent /></PatientProvider></AuthProvider>
   );
 }
