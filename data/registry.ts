@@ -4,7 +4,7 @@ import { Calculator } from '../types';
 // 1. IMPORTAÇÃO DOS COMPONENTES
 // ==========================================
 import { PatientRegistration } from '../calculators/components/PatientRegistration';
-// Nota: Certifique-se de ter um componente de Anamnese criado
+// Nota: Quando criar o componente de Anamnese, substitua o placeholder abaixo
 // import { Anamnese } from '../calculators/components/Anamnese'; 
 
 import { TC6M } from '../calculators/components/TC6M';
@@ -27,7 +27,7 @@ import { ClaudicationAlgorithm } from '../calculators/components/diagnosis/Claud
 import { FatigabilityScales } from '../calculators/components/diagnosis/Fatigability';
 
 // ==========================================
-// 2. REGISTRO DE CALCULADORAS (Fluxo Atualizado)
+// 2. REGISTRO DE CALCULADORAS
 // ==========================================
 export const CALCULATORS: Calculator[] = [
   // --- PASSO 1: CADASTRO ---
@@ -40,13 +40,12 @@ export const CALCULATORS: Calculator[] = [
   },
 
   // --- PASSO 2: ANAMNESE ---
-  // Substitua 'PatientRegistration' pelo seu componente de Anamnese real
   {
     id: 'anamnese-main',
     name: 'Anamnese Clínica',
     description: 'Histórico médico detalhado.',
     category: 'anamnese',
-    component: PatientRegistration 
+    component: PatientRegistration // Substitua por 'Anamnese' quando criar o arquivo
   },
 
   // --- PASSO 3: AUTONÔMICA ---
