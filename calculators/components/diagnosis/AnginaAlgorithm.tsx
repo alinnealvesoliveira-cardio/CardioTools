@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Info, AlertCircle, CheckCircle2, ChevronRight, RefreshCcw, ShieldAlert, LayoutDashboard } from 'lucide-react';
+import { Activity, CheckCircle2, ShieldAlert, ChevronRight, RefreshCcw, AlertCircle } from 'lucide-react';
 import { usePatient } from '../../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
 
-// Tipos definidos para maior robustez
 type AnginaType = 'Típica' | 'Atípica' | 'Não-Cardíaca' | 'Instável';
 
 interface Question {
@@ -21,7 +19,7 @@ interface CcsOption {
 }
 
 export const AnginaAlgorithm: React.FC = () => {
-  const { updateTestResults } = usePatient();
+  const { testResults, updateTestResults } = usePatient();
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1);
@@ -45,12 +43,6 @@ export const AnginaAlgorithm: React.FC = () => {
     { grade: 4, label: "Classe IV", text: "Incapacidade; angina em repouso." }
   ];
 
-  const reset = () => {
-    setAnswers({});
-    setCcsGrade(null);
-    setStep(1); // Resetar passo por último garante a fluidez da animação
-  };
-
   const getFinalResult = (currentAnswers: Record<number, boolean>, grade?: number) => {
     if (currentAnswers[6]) return { title: "Angina Instável", type: "Instável" as AnginaType, color: "text-rose-600", bg: "bg-rose-50", icon: <ShieldAlert className="w-12 h-12" />, alert: "Encaminhar para Emergência imediatamente." };
 
@@ -64,26 +56,27 @@ export const AnginaAlgorithm: React.FC = () => {
 
   const saveData = (finalAnswers: Record<number, boolean>, grade?: number) => {
     const result = getFinalResult(finalAnswers, grade);
+    
+    // Preserva dados de claudicação existentes antes de atualizar angina
+    const prevSymptoms = testResults.symptoms || {};
+
     updateTestResults('symptoms', {
-  claudication: {
-    score: 0, // Ajuste para o score real, se houver
-    interpretation: "Sintoma ausente", // Ajuste para o texto adequado
-    timestamp: new Date().toISOString()
-  },
-      angina: { 
-    type: result.type, 
-    description: result.title, 
-    ...(grade && { ccsGrade: grade }) 
-  }
-});
-};
+      ...prevSymptoms,
+      angina: {
+        type: result.type,
+        description: result.alert,
+        ccsGrade: grade || 0
+      }
+    });
+  };
+
   const handleAnswer = (val: boolean) => {
     const newAnswers = { ...answers, [step]: val };
     setAnswers(newAnswers);
     
-    // Se for o passo 6 e a resposta for SIM, encerra na angina instável
     if (step === 6 && val) {
       saveData(newAnswers);
+      setStep(9); // Resultado final
       return;
     }
 
@@ -91,9 +84,12 @@ export const AnginaAlgorithm: React.FC = () => {
       setStep(step + 1);
     } else {
       const result = getFinalResult(newAnswers);
-      // Se típica, pede CCS (Passo 8), senão finaliza
-      if (result.type === "Típica") setStep(8);
-      else saveData(newAnswers);
+      if (result.type === "Típica") {
+        setStep(8);
+      } else {
+        saveData(newAnswers);
+        setStep(9);
+      }
     }
   };
 
@@ -101,13 +97,45 @@ export const AnginaAlgorithm: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6 pb-32">
-       {/* ... restante do JSX permanece igual, garantindo tipagem nos mapas ... */}
-       {step <= 7 && (
-         <motion.div key="q" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10">
-            {/* ... seu código original aqui ... */}
-         </motion.div>
-       )}
-       {/* ... */}
+      <AnimatePresence mode="wait">
+        {step <= 7 && (
+          <motion.div key="q" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10">
+            <div className="text-center space-y-4">
+              <h2 className="text-2xl font-bold text-slate-900">{questions[step - 1].text}</h2>
+              <p className="text-slate-500">{questions[step - 1].desc}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => handleAnswer(true)} className="p-6 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-colors">Sim</button>
+              <button onClick={() => handleAnswer(false)} className="p-6 bg-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-300 transition-colors">Não</button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 8 && (
+          <motion.div key="ccs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <h2 className="text-2xl font-bold">Classificação CCS</h2>
+            <div className="grid gap-3">
+              {ccsOptions.map((opt) => (
+                <button key={opt.grade} onClick={() => { setCcsGrade(opt.grade); saveData(answers, opt.grade); setStep(9); }} className="p-4 border border-slate-200 rounded-xl text-left hover:border-emerald-500 transition-all">
+                  <div className="font-bold text-emerald-600">{opt.label}</div>
+                  <div className="text-sm text-slate-600">{opt.text}</div>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {step === 9 && (
+          <motion.div key="res" initial={{ scale: 0.9 }} animate={{ scale: 1 }} className={`p-8 rounded-3xl ${currentResult.bg} border border-slate-100 text-center space-y-6`}>
+            <div className={`flex justify-center ${currentResult.color}`}>{currentResult.icon}</div>
+            <h2 className={`text-3xl font-black ${currentResult.color}`}>{currentResult.title}</h2>
+            <p className="text-slate-700">{currentResult.alert}</p>
+            <button onClick={() => { setStep(1); setAnswers({}); }} className="flex items-center gap-2 mx-auto bg-slate-900 text-white px-6 py-3 rounded-full">
+              <RefreshCcw size={18} /> Refazer Avaliação
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
+};

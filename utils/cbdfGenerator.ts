@@ -1,10 +1,6 @@
 import { PatientInfo, TestResults, Medications } from '../types';
 import { getCIFClassification } from './cif'; 
 
-/**
- * Gera o código de diagnóstico conforme a estrutura COFFITO 555.
- * Estrutura: D05.EST.CAP.VAS.FAD.FC
- */
 export const generateCBDFCode = (
   patient: PatientInfo,
   results: TestResults,
@@ -12,19 +8,22 @@ export const generateCBDFCode = (
 ): string => {
   const prefix = "D05";
 
-  // 1. ESTRUTURA (EST) - Bloco A
+  // 1. ESTRUTURA (EST)
   const feve = Number(patient.ejectionFraction) || 60;
   const hasStructuralDamage = feve < 50 || !!patient.structureAlteration;
   const structure = hasStructuralDamage ? "01" : "00";
 
-  // 2. CAPACIDADE AERÓBICA (CAP) - Hierarquia: results.aerobic
+   // 2. CAPACIDADE AERÓBICA (CAP)
   const getCapacityQual = (): string => {
     const aerobic = results.aerobic;
+    if (!aerobic) return "8";
+
     const efficiencies = [
-      aerobic.sixMinuteWalkTest?.efficiency,
-      aerobic.stepTest?.efficiency,
-      aerobic.sitToStandTest?.efficiency,
-      aerobic.dasi?.percentage
+      aerobic?.sixMinuteWalkTest?.efficiency,
+      aerobic?.stepTest?.efficiency,
+      // Acesso seguro ao tsl5x: se existir, assume 50, se não, undefined
+      aerobic?.tsl5x ? 50 : undefined, 
+      aerobic?.dasi?.percentage
     ].filter((val): val is number => typeof val === 'number' && !isNaN(val));
 
     if (efficiencies.length === 0) return "8"; 
@@ -35,49 +34,50 @@ export const generateCBDFCode = (
     return classification ? classification.qualifier.toString() : "8";
   };
 
-  // 3. SISTEMA VASCULAR (VAS) - Hierarquia: results.vascular.vascularAssessment
+  // 3. SISTEMA VASCULAR (VAS)
   const getVascQual = (): string => {
-    const vasc = results.vascular.vascularAssessment;
+    const vasc = results.vascular?.vascularAssessment;
     if (!vasc) return "8";
     
-    // Certifique-se de que no seu types.ts o nome seja 'venous' e não 'venese'
     const godet = parseInt(vasc.venese?.godet || "0"); 
     const isStemmerPos = vasc.lymphatic?.stemmer === 'Positivo';
     const isPulseAlt = vasc.arterial?.pulse === 'Diminuídos' || vasc.arterial?.pulse === 'Ausentes';
 
-    if (isStemmerPos || godet >= 3) return "3"; // Grave
-    if (godet > 0 || isPulseAlt) return "2";    // Moderada
-    return "0"; // Nenhuma/Leve
+    if (isStemmerPos || godet >= 3) return "3"; 
+    if (godet > 0 || isPulseAlt) return "2";    
+    return "0"; 
   };
 
-  // 4. FADIGABILIDADE (FAD) - Hierarquia: results.fatigabilityScales
+  // 4. FADIGABILIDADE (FAD)
   const getFadQual = (): string => {
-    const borg = results.fatigability?.exercise?.fatigue || 0;
+    // Acessando via 'fatigability'
+    const fatigue = results['fatigability']?.exercise?.fatigue || 0;
     
-    if (borg >= 8) return "4"; // Completa
-    if (borg >= 6) return "3"; // Grave
-    if (borg >= 4) return "2"; // Moderada
-    if (borg >= 2) return "1"; // Leve
-    return "0"; // Nenhuma
+    if (fatigue >= 8) return "4";
+    if (fatigue >= 6) return "3";
+    if (fatigue >= 4) return "2";
+    if (fatigue >= 2) return "1";
+    return "0";
   };
 
-  // 5. CRONOTROPISMO / FC (FC) - Hierarquia: results.aerobic
+  // 5. CRONOTROPISMO / FC (FC)
   const getFCQual = (): string => {
-    const swt = results.aerobic.sixMinuteWalkTest;
-    const hrRest = swt?.restingHR || 0;
-    const hrPeak = swt?.peakHR || 0;
+    // Nota: Verifique se esses campos existem no seu types.ts em AerobicResults
+    // Se não existirem, você precisará adicioná-los.
+    const swt = results.aerobic?.sixMinuteWalkTest;
+    const hrRest = (swt as any)?.restingHR || 0;
+    const hrPeak = (swt as any)?.peakHR || 0;
     
-    if (hrRest === 0 || hrPeak === 0) return "8"; // Não realizado
+    if (hrRest === 0 || hrPeak === 0) return "8";
     
     const delta = hrPeak - hrRest;
     
-    if (delta <= 5) return "4";  // Alteração Completa
-    if (delta <= 10) return "3"; // Alteração Grave
-    if (delta <= 20) return "2"; // Alteração Moderada
-    if (delta <= 30) return "1"; // Alteração Leve
-    return "0"; // Resposta adequada
+    if (delta <= 5) return "4";
+    if (delta <= 10) return "3";
+    if (delta <= 20) return "2";
+    if (delta <= 30) return "1";
+    return "0";
   };
 
-  // Montagem final do código
   return `${prefix}.${structure}.${getCapacityQual()}.${getVascQual()}.${getFadQual()}.${getFCQual()}`;
 };

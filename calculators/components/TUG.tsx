@@ -97,8 +97,13 @@ export const TUG: React.FC = () => {
       angina: {
         type: postAngina && postAngina > 0 ? 'stable' : 'none',
         description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TUG` : 'Sem sintomas anginosos'
-      }
-    });
+      },
+      claudication: {
+    score: (Number.isFinite(postFadiga)) ? 1 : 0, // Substitua 'algumaCondicao' pela lógica do seu teste
+    interpretation: (Number.isFinite(postFadiga)) ? "Presença de claudicação" : "Ausência de claudicação",
+    timestamp: new Date().toISOString()
+  }
+});
 
     setIsSaved(true);
     toast.success("TUG gravado com sucesso!");

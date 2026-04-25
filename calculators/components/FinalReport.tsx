@@ -24,7 +24,7 @@ export const FinalReport: React.FC = () => {
   
   // Extração segura de dados
   const dasi = testResults?.aerobic?.dasi; 
-  const exercise = testResults?.fatigability?.exercise;
+  const exercise = testResults?.['fatigability']?.exercise;
 
   const handlePrint = async () => {
     if (user) await logActivity(user.id, 'Gerou PDF do Relatório Final');

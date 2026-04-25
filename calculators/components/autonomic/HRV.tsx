@@ -4,7 +4,7 @@ import { usePatient } from '../../../context/PatientProvider';
 
 export const HRV: React.FC = () => {
   const { updateTestResults } = usePatient();
-  const [rmssd, setRmssd] = useState<string>('');
+  const [vfc, setVfc] = useState<string>('');
   const [isSaved, setIsSaved] = useState(false);
 
   const getInterpretation = (val: number) => {
@@ -30,13 +30,16 @@ export const HRV: React.FC = () => {
     };
   };
 
-  const rmssdNum = parseFloat(rmssd);
+  const vfcNum = parseFloat(vfc);
 
   const handleSave = () => {
-    if (isNaN(rmssdNum)) return;
-    const interpretation = getInterpretation(rmssdNum);
+    if (isNaN(vfcNum)) return;
+    const interpretation = getInterpretation(vfcNum);
+    
+    // Mantemos a chave 'vfc' para compatibilidade com o backend, 
+    // mas a UI agora trabalha com o termo VFC
     updateTestResults('autonomic', {
-      rmssd: rmssdNum,
+      vfc: vfcNum,
       hrvInterpretation: interpretation.label
     });
     
@@ -47,7 +50,7 @@ export const HRV: React.FC = () => {
     <div className="max-w-2xl mx-auto p-4 space-y-8">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Variabilidade da FC (VFC)</h1>
-        <p className="text-slate-500 text-sm">Avaliação do tônus autonômico através do RMSSD.</p>
+        <p className="text-slate-500 text-sm">Avaliação do tônus autonômico através do índice de variabilidade.</p>
       </header>
 
       <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-8">
@@ -55,18 +58,18 @@ export const HRV: React.FC = () => {
           <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100">
             <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />
             <p className="text-xs text-blue-800 leading-relaxed">
-              O <strong>RMSSD</strong> (Raiz quadrada da média do quadrado das diferenças sucessivas entre intervalos RR) é o principal índice no domínio do tempo para avaliar a atividade parassimpática.
+              A <strong>VFC</strong> é um marcador não invasivo que reflete a capacidade do sistema nervoso autônomo de se adaptar a diferentes estresses. Valores mais altos geralmente indicam melhor resiliência e capacidade de recuperação.
             </p>
           </div>
 
           <div className="space-y-4">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">RMSSD (ms)</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Índice de VFC (ms)</label>
             <div className="relative">
               <input
                 type="number"
-                value={rmssd}
+                value={vfc}
                 onChange={(e) => {
-                  setRmssd(e.target.value);
+                  setVfc(e.target.value);
                   setIsSaved(false);
                 }}
                 placeholder="Ex: 45"
@@ -77,11 +80,11 @@ export const HRV: React.FC = () => {
           </div>
         </div>
 
-        {rmssd && !isNaN(rmssdNum) && (
+        {vfc && !isNaN(vfcNum) && (
           <div className="pt-6 border-t border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="space-y-4">
               {(() => {
-                const interpretation = getInterpretation(rmssdNum);
+                const interpretation = getInterpretation(vfcNum);
                 return (
                   <div className={`rounded-2xl p-6 border-2 shadow-lg ${
                     interpretation.color === 'red' ? 'bg-red-50 border-red-200 text-red-700' : 
@@ -128,11 +131,11 @@ export const HRV: React.FC = () => {
                 <ul className="space-y-3 text-[11px] text-slate-400 leading-relaxed">
                   <li className="flex gap-2">
                     <span className="text-emerald-500 font-bold">•</span>
-                    Valores de RMSSD diminuem naturalmente com a idade.
+                    Valores de VFC diminuem naturalmente com a idade.
                   </li>
                   <li className="flex gap-2">
                     <span className="text-emerald-500 font-bold">•</span>
-                    Fatores como estresse, sono inadequado e overtraining reduzem o RMSSD.
+                    Fatores como estresse, sono inadequado e overtraining reduzem a VFC.
                   </li>
                   <li className="flex gap-2">
                     <span className="text-emerald-500 font-bold">•</span>
