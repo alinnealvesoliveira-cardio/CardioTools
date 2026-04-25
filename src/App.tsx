@@ -5,10 +5,13 @@ import {
   FileBarChart, Search, Zap, ArrowLeft, ArrowRight, User 
 } from 'lucide-react';
 
+// Importações corrigidas
 import { Layout } from './components/layout/Layout';
 import { Login } from './components/Login';
+import { Cadastro } from './calculators/components/Cadastro'; 
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { PatientProvider, usePatient } from './context/PatientProvider';
+// CORREÇÃO: O erro de "Cannot find module" ocorre porque o arquivo deve se chamar PatientProvider
+import { PatientProvider, usePatient } from './context/PatientProvider'; 
 import { CALCULATORS } from './data/registry';
 import { CategoryName } from './types';
 
@@ -23,32 +26,36 @@ interface ClinicalModule {
 const CLINICAL_MODULES: ClinicalModule[] = [
   { id: 'cadastro', name: 'Cadastro Inicial', description: 'Dados do paciente.', icon: <User className="w-8 h-8 text-rose-500" />, category: 'cadastro' },
   { id: 'anamnese', name: 'Anamnese', description: 'Histórico clínico.', icon: <Folder className="w-8 h-8 text-slate-500" />, category: 'anamnese' },
-  { id: 'autonomico', name: 'Função Autonômica', description: 'Delta de Pressão Arterial.', icon: <Activity className="w-8 h-8 text-sky-500" />, category: 'autonomic' },
-  { id: 'aerobico', name: 'Capacidade Aeróbica', description: 'Testes funcionais.', icon: <Zap className="w-8 h-8 text-emerald-500" />, category: 'aerobic' },
+  { id: 'autonomic', name: 'Função Autonômica', description: 'Delta de Pressão Arterial.', icon: <Activity className="w-8 h-8 text-sky-500" />, category: 'autonomic' },
+  { id: 'aerobic', name: 'Capacidade Aeróbica', description: 'Testes funcionais.', icon: <Zap className="w-8 h-8 text-emerald-500" />, category: 'aerobic' },
   { id: 'vascular', name: 'Exame Vascular', description: 'Integridade hemodinâmica.', icon: <Search className="w-8 h-8 text-indigo-500" />, category: 'vascular' },
-  { id: 'fatigabilidade', name: 'Fatigabilidade e Sintomas', description: 'Avaliação integrada.', icon: <Heart className="w-8 h-8 text-amber-500" />, category: 'fatigability' },
+  { id: 'fatigability', name: 'Fatigabilidade', description: 'Avaliação integrada.', icon: <Heart className="w-8 h-8 text-amber-500" />, category: 'fatigability' },
   { id: 'hr-response', name: 'Resposta da FC', description: 'Análise de frequência.', icon: <Activity className="w-8 h-8 text-purple-500" />, category: 'hr-response' },
-  { id: 'relatorio', name: 'Relatório Final', description: 'Consolidação.', icon: <FileBarChart className="w-8 h-8 text-slate-800" />, category: 'final-report' }
+  { id: 'final-report', name: 'Relatório Final', description: 'Consolidação.', icon: <FileBarChart className="w-8 h-8 text-slate-800" />, category: 'final-report' }
 ];
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
-  const { currentStep, nextStep, prevStep, patient } = usePatient();
+  const { currentStep, nextStep, prevStep, patient, setStep } = usePatient();
   const [selectedCalcId, setSelectedCalcId] = useState<string | null>(null);
   
-  // Segurança: Garante que currentModule nunca seja undefined
   const currentModule = useMemo(() => CLINICAL_MODULES[currentStep - 1] || CLINICAL_MODULES[0], [currentStep]);
 
   useEffect(() => {
     setSelectedCalcId(null);
   }, [currentModule]);
 
+  // CORREÇÃO: Forçamos a tipagem aqui para bater com o CategoryName
+  const handleSelectCategory = (category: string) => {
+    const moduleIndex = CLINICAL_MODULES.findIndex(m => m.category === (category as CategoryName));
+    if (moduleIndex !== -1) {
+      setStep(moduleIndex + 1);
+    }
+  };
+
   if (!isAuthenticated) return <Login />;
 
-  // Filtro com segurança: compara o trim e lowercase para evitar erro de digitação (ex: 'Autonomic' vs 'autonomic')
-  const filteredCalculators = CALCULATORS.filter(calc => 
-    calc.category?.toLowerCase() === currentModule.category?.toLowerCase()
-  );
+  const filteredCalculators = CALCULATORS.filter(calc => calc.category === currentModule.category);
 
   const ActiveCalcComponent = useMemo(() => {
     if (!selectedCalcId) return null;
@@ -57,7 +64,7 @@ function AppContent() {
   }, [selectedCalcId]);
 
   return (
-    <Layout selectedCategory={currentModule.category} onSelectCategory={() => {}}>
+    <Layout selectedCategory={currentModule.category} onSelectCategory={handleSelectCategory}>
       <div className="max-w-5xl mx-auto py-8">
         <div className="bg-slate-800 text-white p-4 rounded-xl mb-6 flex justify-between items-center shadow-lg">
           <h1 className="font-bold">Paciente: {patient?.name || "Nenhum selecionado"}</h1>
@@ -71,16 +78,13 @@ function AppContent() {
             </p>
             <h2 className="text-3xl font-black text-slate-900 italic uppercase">{currentModule.name}</h2>
           </div>
-          {currentStep > 1 && !selectedCalcId && (
-            <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition-colors">
-              <ArrowLeft size={16} /> Voltar
-            </button>
-          )}
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div key={selectedCalcId || currentStep} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {selectedCalcId ? (
+          <motion.div key={currentModule.id + (selectedCalcId || '')} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {currentModule.category === 'cadastro' ? (
+              <Cadastro />
+            ) : selectedCalcId ? (
               <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
                 <button onClick={() => setSelectedCalcId(null)} className="mb-6 flex items-center gap-2 text-indigo-600 font-bold hover:underline">
                   <ArrowLeft size={18} /> Voltar para lista
@@ -99,10 +103,8 @@ function AppContent() {
                     ))}
                   </div>
                 ) : (
-                  <div className="p-8 bg-amber-50 rounded-2xl border border-amber-200 text-amber-800">
-                    <h3 className="font-bold">Atenção: Nenhuma calculadora encontrada.</h3>
-                    <p>O sistema tentou buscar pela categoria: <strong>"{currentModule.category}"</strong></p>
-                    <p className="text-xs mt-2 italic">Verifique o arquivo <code>registry.ts</code>. As categorias das calculadoras devem ser idênticas a este nome.</p>
+                  <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 text-slate-600">
+                    <p>Nenhuma ferramenta específica nesta categoria.</p>
                   </div>
                 )}
               </>

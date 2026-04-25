@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { PatientInfo, TestResults, Medications } from '../types';
+import { PatientInfo, TestResults, Medications, AppRoute } from '../types';
 
 // 1. Constantes de Estado Inicial
 const INITIAL_PATIENT: PatientInfo = {
@@ -27,7 +27,9 @@ const INITIAL_MEDICATIONS: Medications = {
   bcc_non_dhp: false
 };
 
+// Garantindo que todos os campos da interface TestResults estejam aqui
 const INITIAL_RESULTS: TestResults = {
+  home: null,
   cadastro: null,
   anamnese: null,
   autonomic: null,
@@ -47,10 +49,12 @@ interface PatientContextType {
   medications: Medications;
   setMedications: React.Dispatch<React.SetStateAction<Medications>>;
   testResults: TestResults;
+  // Usamos keyof TestResults para garantir que só aceite chaves válidas (os IDs do AppRoute)
   updateTestResults: <K extends keyof TestResults>(category: K, updates: Partial<NonNullable<TestResults[K]>>) => void;
   resetData: () => void;
   currentStep: number;
   setCurrentStep: (step: number) => void;
+  setStep: (step: number) => void; 
   nextStep: () => void;
   prevStep: () => void;
 }
@@ -93,6 +97,8 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const nextStep = useCallback(() => setCurrentStep(prev => prev + 1), []);
   const prevStep = useCallback(() => setCurrentStep(prev => Math.max(1, prev - 1)), []);
   
+  const setStep = useCallback((step: number) => setCurrentStep(step), []);
+
   const resetData = useCallback(() => {
     setPatientInfo(INITIAL_PATIENT);
     setMedications(INITIAL_MEDICATIONS);
@@ -112,7 +118,8 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updateTestResults,
       resetData, 
       currentStep, 
-      setCurrentStep, 
+      setCurrentStep,
+      setStep,
       nextStep, 
       prevStep 
     }}>
@@ -121,14 +128,10 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
 };
 
-// 3. Hook corrigido e limpo
 export const usePatient = (): PatientContextType => {
   const context = useContext(PatientContext);
-  
   if (!context) {
     throw new Error('usePatient deve ser usado dentro de um PatientProvider');
   }
-  
-  // Agora não precisa de "as ...", o TypeScript já sabe o tipo pelo createContext
   return context;
 };

@@ -2,14 +2,14 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Activity, ChevronLeft, Home, Settings, Heart, Search, 
+  Activity, ChevronLeft, Home, Heart, Search, 
   FolderHeart, UserPlus, FileBarChart, LogOut, LucideIcon, FileText 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { NavId } from '../../types';
 
 interface SidebarItem {
-  id: NavId;
+  id: NavId | 'Home'; // Garantindo que 'Home' também seja aceito
   label: string;
   icon: LucideIcon;
   section: 'Geral' | 'Paciente' | 'Avaliação' | 'Relatório';
@@ -18,19 +18,20 @@ interface SidebarItem {
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  selectedCategory: NavId;
-  onSelectCategory: (category: NavId) => void;
+  selectedCategory: string; // Mudado para string para aceitar o ID
+  onSelectCategory: (category: any) => void;
 }
 
 const MENU_ITEMS: SidebarItem[] = [
-  { id: 'Home', label: 'Dashboard Principal', icon: Home, section: 'Geral' },
-  { id: 'Cadastro', label: 'Cadastro do Paciente', icon: UserPlus, section: 'Paciente' },
-  { id: 'Anamnese', label: 'Anamnese Detalhada', icon: FileText, section: 'Paciente' },
-  { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart, section: 'Avaliação' },
-  { id: 'Vascular', label: 'Integridade Vascular', icon: FolderHeart, section: 'Avaliação' },
-  { id: 'Capacidade Aeróbica', label: 'Capacidade Aeróbica', icon: Activity, section: 'Avaliação' },
-  { id: 'Avaliação de Sintomas', label: 'Sinais e Sintomas', icon: Search, section: 'Avaliação' },
-  { id: 'Relatório Final', label: 'Relatório Final (CBDF)', icon: FileBarChart, section: 'Relatório' },
+  { id: 'Home', label: 'Dashboard', icon: Home, section: 'Geral' },
+  { id: 'cadastro', label: 'Cadastro do Paciente', icon: UserPlus, section: 'Paciente' },
+  { id: 'anamnese', label: 'Anamnese Detalhada', icon: FileText, section: 'Paciente' },
+  { id: 'autonomic', label: 'Avaliação Autonômica', icon: Heart, section: 'Avaliação' },
+  { id: 'vascular', label: 'Integridade Vascular', icon: FolderHeart, section: 'Avaliação' },
+  { id: 'aerobic', label: 'Capacidade Aeróbica', icon: Activity, section: 'Avaliação' },
+  { id: 'fatigability', label: 'Sinais e Sintomas', icon: Search, section: 'Avaliação' },
+  { id: 'hr-response', label: 'Resposta da FC', icon: Activity, section: 'Avaliação' },
+  { id: 'final-report', label: 'Relatório Final', icon: FileBarChart, section: 'Relatório' },
 ];
 
 export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }: SidebarProps) => {
