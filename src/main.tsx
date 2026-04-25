@@ -3,9 +3,6 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-// Context Providers
-import { PatientProvider } from './context/PatientProvider';
-
 const container = document.getElementById('root');
 
 if (!container) {
@@ -14,10 +11,10 @@ if (!container) {
 
 const root = createRoot(container);
 
+// Mantemos o StrictMode, mas removemos os provedores redundantes
+// pois eles já estão configurados dentro do seu App.tsx
 root.render(
   <React.StrictMode>
-    <PatientProvider>
-      <App />
-    </PatientProvider>
+    <App />
   </React.StrictMode>
 );

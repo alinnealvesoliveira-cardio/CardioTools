@@ -8,26 +8,27 @@ import { CategoryName, NavId } from '../../types';
 const navToCategoryMap: Record<NavId, CategoryName | 'Home'> = {
   'Home': 'Home',
   'Cadastro': 'cadastro',
-  'Anamnese': 'anamnese', // Adicionado aqui
+  'Anamnese': 'anamnese',
   'Avaliação Autonômica': 'autonomic',
   'Vascular': 'vascular',
   'Capacidade Aeróbica': 'aerobic',
-  'Avaliação de Sintomas': 'symptoms',
-  'Relatório Final': 'final-report',
-  'Fatigabilidade': 'fatigability',
+  'Avaliação de Sintomas': 'fatigability', // Corrigido para coincidir com types.ts
+  'Resposta da FC': 'hr-response', // Adicionado para evitar erro
+  'Relatório Final': 'final-report'
 };
 
 // 2. Tradução: Dados (CategoryName) -> UI (NavId)
 const categoryToNavMap: Record<CategoryName | 'Home', NavId> = {
   'Home': 'Home',
   'cadastro': 'Cadastro',
-  'anamnese': 'Anamnese', // Adicionado aqui
+  'anamnese': 'Anamnese',
   'autonomic': 'Avaliação Autonômica',
   'vascular': 'Vascular',
   'aerobic': 'Capacidade Aeróbica',
+  'fatigability': 'Avaliação de Sintomas', // Corrigido
   'symptoms': 'Avaliação de Sintomas',
-  'final-report': 'Relatório Final',
-  'fatigability': 'Fatigabilidade',
+  'hr-response': 'Resposta da FC', // Adicionado
+  'final-report': 'Relatório Final'
 };
 
 const getNavIdFromCategory = (category: CategoryName | 'Home'): NavId => {

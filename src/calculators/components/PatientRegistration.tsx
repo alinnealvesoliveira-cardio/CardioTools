@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Pill, CheckCircle2, User, Heart, Save, Activity, Search, Loader2 } from 'lucide-react';
+import { Pill, CheckCircle2, User, Heart, Save, Activity, Loader2 } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
 import { supabase } from '../../lib/supabase';
 import { Medications } from '../../types';
 import { toast } from 'react-hot-toast';
 
 export const PatientRegistration: React.FC = () => {
-  const { medications, setMedications, patientInfo, updatePatientInfo } = usePatient();
+  const { medications, setMedications, patientInfo, updatePatientInfo, nextStep } = usePatient();
   const [isSaving, setIsSaving] = useState(false);
 
   const toggleMedication = (id: keyof Medications) => {
@@ -16,7 +16,6 @@ export const PatientRegistration: React.FC = () => {
     }));
   };
 
-  // Memoização do cálculo de segurança para performance
   const isUnsafe = useMemo(() => {
     const sisPA = Number(patientInfo.restingPAS) || 0;
     const sao2 = Number(patientInfo.restingSaO2) || 0;
@@ -43,10 +42,15 @@ export const PatientRegistration: React.FC = () => {
       });
 
       if (error) throw error;
+      
       toast.success("Perfil sincronizado com sucesso!");
+      nextStep(); 
+
     } catch (error) {
       console.error("Erro na sincronização:", error);
       toast.error("Erro ao salvar online. Dados mantidos localmente.");
+      // Se quiser que avance mesmo com erro de salvamento, descomente a linha abaixo:
+      // nextStep();
     } finally {
       setIsSaving(false);
     }
@@ -64,7 +68,7 @@ export const PatientRegistration: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-40">
+    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-40 animate-clinical-enter">
       <header className="space-y-2">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic">Anamnese e Perfil</h1>
         <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Configuração inicial e estratificação de risco.</p>
@@ -81,13 +85,12 @@ export const PatientRegistration: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Formulário de Identificação e Hemodinâmica */}
+        {/* Lado Esquerdo: Identificação */}
         <div className="space-y-6">
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-2 text-slate-800 font-black uppercase text-xs tracking-widest">
               <User className="w-4 h-4 text-indigo-500" /> Identificação Básica
             </div>
-
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Nome Completo</label>
@@ -100,7 +103,7 @@ export const PatientRegistration: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Idade</label>
                   <input
@@ -108,26 +111,43 @@ export const PatientRegistration: React.FC = () => {
                     value={patientInfo.age || ''}
                     onChange={(e) => updatePatientInfo({ age: e.target.value })}
                     className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none"
-                    placeholder="Anos"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Sexo Biológico</label>
-                  <select
-                    value={patientInfo.sex || ''}
-                    onChange={(e) => updatePatientInfo({ sex: e.target.value as 'male' | 'female' })}
-                    className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none cursor-pointer"
-                  >
-                    <option value="">Selecionar</option>
-                    <option value="male">Masculino</option>
-                    <option value="female">Feminino</option>
-                  </select>
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Peso (kg)</label>
+                  <input
+                    type="number"
+                    value={patientInfo.weight || ''}
+                    onChange={(e) => updatePatientInfo({ weight: e.target.value })}
+                    className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none"
+                  />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Altura (cm)</label>
+                  <input
+                    type="number"
+                    value={patientInfo.height || ''}
+                    onChange={(e) => updatePatientInfo({ height: e.target.value })}
+                    className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Sexo Biológico</label>
+                <select
+                  value={patientInfo.sex || ''}
+                  onChange={(e) => updatePatientInfo({ sex: e.target.value as 'male' | 'female' })}
+                  className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none cursor-pointer"
+                >
+                  <option value="">Selecionar</option>
+                  <option value="male">Masculino</option>
+                  <option value="female">Feminino</option>
+                </select>
               </div>
             </div>
           </div>
 
-          {/* Hemodinâmica (Painel Escuro) */}
           <div className="bg-slate-900 rounded-[32px] p-6 shadow-xl space-y-4">
             <div className="flex items-center gap-2 text-white font-black uppercase text-xs tracking-widest">
               <Activity className="w-4 h-4 text-indigo-400" /> Repouso Atual
@@ -140,7 +160,6 @@ export const PatientRegistration: React.FC = () => {
                   value={patientInfo.restingPAS || ''}
                   onChange={(e) => updatePatientInfo({ restingPAS: e.target.value })}
                   className="w-full p-4 bg-slate-800 border-none rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 ring-indigo-500"
-                  placeholder="Sistólica"
                 />
               </div>
               <div className="space-y-1">
@@ -150,14 +169,13 @@ export const PatientRegistration: React.FC = () => {
                   value={patientInfo.restingSaO2 || ''}
                   onChange={(e) => updatePatientInfo({ restingSaO2: e.target.value })}
                   className="w-full p-4 bg-slate-800 border-none rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 ring-indigo-500"
-                  placeholder="Saturação"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Medicamentos */}
+        {/* Lado Direito: Medicamentos */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-slate-800 font-black uppercase text-xs tracking-widest px-2">
             <Pill className="w-4 h-4 text-indigo-500" /> Terapia Medicamentosa

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCcw } from 'lucide-react';
-// Importações tipadas do seu arquivo types.ts
 import { ScoreGroup, ScoreOption, ScoreItem } from '../../types';
 
 // ==========================================
@@ -61,7 +60,7 @@ const ScoreItemCard = ({
   <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 space-y-6">
     <p className="font-bold text-slate-800 text-lg leading-tight tracking-tight">{item.question}</p>
     <div className="flex flex-wrap gap-2">
-      {item.options.map((option: ScoreOption, idx: number) => {
+      {item.options.map((option, idx) => {
         const isSelected = selectedScore === option.score;
         return (
           <button
@@ -93,7 +92,7 @@ export const GroupedScoreTemplate: React.FC<GroupedScoreTemplateProps> = ({ titl
   
   const totalScore = useMemo(() => Object.values(scores).reduce((acc, curr) => acc + curr, 0), [scores]);
   
-  const progress = useMemo(() => (Object.keys(scores).length / totalItems) * 100, [scores, totalItems]);
+  const progress = useMemo(() => totalItems > 0 ? (Object.keys(scores).length / totalItems) * 100 : 0, [scores, totalItems]);
   const isComplete = Object.keys(scores).length === totalItems;
   
   const result = useMemo(() => interpretation(totalScore), [totalScore, interpretation]);
@@ -111,15 +110,13 @@ export const GroupedScoreTemplate: React.FC<GroupedScoreTemplateProps> = ({ titl
           {groups.map((group, gIdx) => (
             <section key={gIdx} className="space-y-6">
               <div className="flex items-center gap-3">
-                {/* Tipagem explícita i: ScoreItem */}
-                <div className={`px-2 py-0.5 rounded italic text-[10px] font-black ${group.items.every((i: ScoreItem) => scores[i.id] !== undefined) ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'}`}>
+                <div className={`px-2 py-0.5 rounded italic text-[10px] font-black ${group.items.every((i) => scores[i.id] !== undefined) ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'}`}>
                   G{gIdx + 1}
                 </div>
                 <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">{group.title}</h2>
               </div>
               <div className="space-y-4">
-                {/* Tipagem explícita item: ScoreItem */}
-                {group.items.map((item: ScoreItem) => (
+                {group.items.map((item) => (
                   <ScoreItemCard 
                     key={item.id} 
                     item={item} 
