@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { Medications } from '../../types';
 import { toast } from 'react-hot-toast';
 
-export const PatientRegistration: React.FC = () => {
+export const Cadastro: React.FC = () => {
   const { medications, setMedications, patientInfo, updatePatientInfo } = usePatient();
   const [isSaving, setIsSaving] = useState(false);
 

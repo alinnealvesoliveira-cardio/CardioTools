@@ -1,6 +1,5 @@
 /// <reference types="vite/client" />
 
-// Permite importar arquivos CSS sem erros do TypeScript
 declare module "*.css";
 
 /**

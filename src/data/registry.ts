@@ -6,7 +6,7 @@ import { Calculator } from '../types';
 // ==========================================
 
 // --- GRUPO A: Localizados em src/calculators/components/ ---
-import { PatientRegistration } from '../calculators/components/PatientRegistration';
+import { Cadastro } from '../calculators/components/Cadastro';
 import { TC6M } from '../calculators/components/TC6M';
 import { TD2M } from '../calculators/components/TD2M';
 import { TSL1M } from '../calculators/components/TSL1M';
@@ -43,7 +43,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Cadastro / Anamnese Rápida',
     description: 'Perfil antropométrico, farmacológico e clínico basal.',
     category: 'anamnese',
-    component: PatientRegistration
+    component: Cadastro
   },
   {
     id: 'tc6m',

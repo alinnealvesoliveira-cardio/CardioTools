@@ -3,7 +3,7 @@ import { Calculator } from '../types';
 // ==========================================
 // 1. IMPORTAÇÃO DOS COMPONENTES
 // ==========================================
-import { PatientRegistration } from '../calculators/components/PatientRegistration';
+import { Cadastro } from '../calculators/components/Cadastro';
 // Nota: Quando criar o componente de Anamnese, substitua o placeholder abaixo
 // import { Anamnese } from '../calculators/components/Anamnese'; 
 
@@ -36,7 +36,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Cadastro Inicial',
     description: 'Perfil antropométrico e farmacológico.',
     category: 'cadastro',
-    component: PatientRegistration
+    component: Cadastro
   },
 
   // --- PASSO 2: ANAMNESE ---
@@ -45,7 +45,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Anamnese Clínica',
     description: 'Histórico médico detalhado.',
     category: 'anamnese',
-    component: PatientRegistration // Substitua por 'Anamnese' quando criar o arquivo
+    component: Cadastro // Substitua por 'Anamnese' quando criar o arquivo
   },
 
   // --- PASSO 3: AUTONÔMICA ---

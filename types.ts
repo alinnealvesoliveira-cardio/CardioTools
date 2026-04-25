@@ -1,69 +1,47 @@
 import React from 'react';
 
 // ==========================================
-// 1. NAVEGAÇÃO E UI
+// 1. NAVEGAÇÃO (Fonte Única da Verdade)
 // ==========================================
-export type NavId = 
-  | 'Home' | 'Cadastro' | 'Anamnese' | 'Avaliação Autonômica' | 'Vascular' 
-  | 'Capacidade Aeróbica' | 'Avaliação de Sintomas' | 'Resposta da FC' | 'Relatório Final';
+// Use estes IDs em todo o projeto: Sidebar, Roteamento, State
+export type AppRoute = 
+  | 'home' 
+  | 'cadastro' 
+  | 'anamnese' 
+  | 'autonomic' 
+  | 'vascular' 
+  | 'aerobic' 
+  | 'fatigability' 
+  | 'symptoms' 
+  | 'hr-response' 
+  | 'final-report';
 
-export type CategoryName = 
-  | 'cadastro' | 'anamnese' | 'autonomic' | 'aerobic' | 'vascular' 
-  | 'fatigability' | 'symptoms' | 'hr-response' | 'final-report';
+export type NavId = AppRoute;
+export type CategoryName = AppRoute;
 
-export interface Calculator {
-  id: string;
-  name: string;
-  description: string;
-  category: CategoryName;
-  component: React.ComponentType<any>;
-}
 // ==========================================
-// 2. TIPAGEM DE TEMPLATES (Adicione isso aqui)
+// 2. INTERFACES DE RESULTADOS (MODULARES)
 // ==========================================
-export interface ScoreOption {
-  label: string;
-  score: number; // O componente usa 'score', então precisa ser 'score' aqui
-}
 
-export interface ScoreItem {
-  id: string;
-  question: string; // O componente usa 'item.question'
-  options: ScoreOption[];
-}
-
-export interface ScoreGroup {
-  title: string;
-  items: ScoreItem[]; // O componente percorre 'group.items'
-}
-// ==========================================
-// 3. ESTRUTURAS CIF E AUXILIARES
-// ==========================================
 export interface CIFData {
   qualifier: number | string;
   interpretation?: string; 
   severity?: string;
 }
 
-// ==========================================
-// 4. INTERFACES DE RESULTADOS (MODULARES)
-// ==========================================
-
-// --- Interfaces Genéricas de Apoio ---
 export interface DasiResults {
   percentage: number;
   estimatedMETs?: number;
   interpretation?: string;
   score?: number;
   predictedMETs?: number;
-  cif?: CIFData; // Certifique-se de que CIFData está importado ou definido neste arquivo
+  cif?: CIFData;
 }
 
-// Interface "Coringa" para a maioria dos testes funcionais
 export interface FunctionalTestResult {
-  value?: number;      // Valor genérico
-  count?: number;      // Usado para TD2M, TSL, etc
-  time?: number;       // Usado para SitToStand, TUG
+  value?: number;
+  count?: number;
+  time?: number;
   predicted?: number;
   efficiency?: number;
   percentage?: number;
@@ -74,22 +52,16 @@ export interface FunctionalTestResult {
   interpretation?: string;
 }
 
-export interface SixMinuteWalkResult {
+export interface SixMinuteWalkResult extends FunctionalTestResult {
   distance: number;
-  time: number;
-  hr?: { pre: number; post: number };
-  cif?: CIFData;
-  interpretation?: string;
-  efficiency?: number; // Adicione esta linha
 }
 
-// --- Cadastro ---
+// --- Grupos de Resultados ---
 export interface CadastroResults {
   patientInfo: PatientInfo | null;
   medications: Medications | null;
 }
 
-// --- Autonômica ---
 export interface AutonomicResults {
   orthostaticDrop: {
     supine: { pas: number; pad: number };
@@ -101,7 +73,6 @@ export interface AutonomicResults {
   hrvInterpretation?: string;
 }
 
-// --- Aeróbica ---
 export interface AerobicResults {
   sixMinuteWalkTest?: SixMinuteWalkResult | null;
   td2m?: FunctionalTestResult | null;
@@ -116,16 +87,13 @@ export interface AerobicResults {
   vsaq?: { 
     score?: number; 
     classification?: string;
-    met?: number;            // Novo
-    interpretation?: string; // Novo
-    description?: string;    // Novo
+    met?: number;
+    interpretation?: string;
+    description?: string;
   } | null;
-  
-  dasi?: DasiResults 
-   | null;
+  dasi?: DasiResults | null;
 }
 
-// --- Vascular ---
 export interface VascularResults {
   abi?: number;
   abiAnkleBP?: number;
@@ -137,7 +105,6 @@ export interface VascularResults {
   } | null;
 }
 
-// --- Fatigabilidade e Sintomas ---
 export interface FatigabilityResults {
   rest: { dyspnea?: number; fatigue?: number };
   exercise: { dyspnea?: number; fatigue?: number };
@@ -148,7 +115,6 @@ export interface SymptomResults {
   angina?: { type?: string; description?: string; ccsGrade?: number };
 }
 
-// --- Resposta da Frequência Cardíaca ---
 export interface HRResponseResults {
   restingHR: number;
   peakHR: number;
@@ -158,10 +124,10 @@ export interface HRResponseResults {
 }
 
 // ==========================================
-// 5. INTERFACE PRINCIPAL (O CONTRATO)
+// 3. INTERFACE PRINCIPAL (O CONTRATO)
 // ==========================================
-// Certifique-se de que as chaves aqui batem com o updateTestResults('chave', ...)
 export interface TestResults {
+  home: null; // Dashboard não armazena resultados de teste
   cadastro: CadastroResults | null;
   anamnese: any | null;
   autonomic: AutonomicResults | null;
@@ -174,7 +140,7 @@ export interface TestResults {
 }
 
 // ==========================================
-// 6. PERFIL E FARMACOLOGIA
+// 4. MODELOS DE DADOS
 // ==========================================
 export interface PatientInfo {
   name: string;
