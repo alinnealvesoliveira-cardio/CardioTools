@@ -56,13 +56,12 @@ export const HRR: React.FC = () => {
     const interpretation = getInterpretation(hrr);
     
     // Sincroniza com o Contexto do Paciente
-    updateTestResults('autonomic', {
-      hrr: {
-        peakHR: parseInt(peakHR),
-        recoveryHR: parseInt(recoveryHR),
-        delta: hrr,
-        interpretation: interpretation.label
-      }
+    updateTestResults('hr-response', {
+      restingHR: 0, // Adicione o valor correto ou remova se não estiver usando
+  peakHR: parseInt(peakHR),
+  recoveryHR: parseInt(recoveryHR),
+  delta: hrr,
+  interpretation: interpretation.label
     });
 
     // Log de atividade no Supabase

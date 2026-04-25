@@ -41,7 +41,7 @@ export const VSAQ: React.FC = () => {
     // Atualização alinhada com a interface VSAQResult (types.ts)
     updateTestResults('aerobic', {
       vsaq: {
-        met: selectedMet, // Corrigido para 'met'
+        met: Number(selectedMet),
         interpretation: resultData.label,
         description: resultData.description
       }

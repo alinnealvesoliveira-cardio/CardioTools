@@ -2,29 +2,36 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Activity, ChevronLeft, Home, Settings, Heart, Search, 
-  FolderHeart, UserPlus, FileBarChart, LogOut, Sparkles, LucideIcon, FileText 
+  Activity, ChevronLeft, Home, Heart, Search, 
+  FolderHeart, UserPlus, FileBarChart, LogOut, LucideIcon, FileText 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { NavId } from '../../types';
 
+interface SidebarItem {
+  id: NavId | 'Home'; // Garantindo que 'Home' também seja aceito
+  label: string;
+  icon: LucideIcon;
+  section: 'Geral' | 'Paciente' | 'Avaliação' | 'Relatório';
+}
+
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  selectedCategory: NavId; 
-  onSelectCategory: (category: NavId) => void; 
+  selectedCategory: string; // Mudado para string para aceitar o ID
+  onSelectCategory: (category: any) => void;
 }
 
-// Configuração dos itens de navegação
-const MENU_ITEMS: { id: NavId; label: string; icon: LucideIcon }[] = [
-  { id: 'Home', label: 'Dashboard Principal', icon: Home },
-  { id: 'Cadastro', label: 'Anamnese e Perfil', icon: UserPlus },
-  { id: 'Anamnese', label: 'Anamnese Detalhada', icon: FileText },
-  { id: 'Avaliação Autonômica', label: 'Avaliação Autonômica', icon: Heart },
-  { id: 'Vascular', label: 'Integridade Vascular', icon: FolderHeart },
-  { id: 'Capacidade Aeróbica', label: 'Capacidade Aeróbica', icon: Activity },
-  { id: 'Avaliação de Sintomas', label: 'Sinais e Sintomas', icon: Search },
-  { id: 'Relatório Final', label: 'Relatório Final (CBDF)', icon: FileBarChart },
+const MENU_ITEMS: SidebarItem[] = [
+  { id: 'Home', label: 'Dashboard', icon: Home, section: 'Geral' },
+  { id: 'cadastro', label: 'Cadastro do Paciente', icon: UserPlus, section: 'Paciente' },
+  { id: 'anamnese', label: 'Anamnese Detalhada', icon: FileText, section: 'Paciente' },
+  { id: 'autonomic', label: 'Avaliação Autonômica', icon: Heart, section: 'Avaliação' },
+  { id: 'vascular', label: 'Integridade Vascular', icon: FolderHeart, section: 'Avaliação' },
+  { id: 'aerobic', label: 'Capacidade Aeróbica', icon: Activity, section: 'Avaliação' },
+  { id: 'fatigability', label: 'Sinais e Sintomas', icon: Search, section: 'Avaliação' },
+  { id: 'hr-response', label: 'Resposta da FC', icon: Activity, section: 'Avaliação' },
+  { id: 'final-report', label: 'Relatório Final', icon: FileBarChart, section: 'Relatório' },
 ];
 
 export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }: SidebarProps) => {
@@ -70,83 +77,56 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
                 <div className="w-11 h-11 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
                   <Activity className="w-6 h-6 text-slate-950" />
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-black text-white italic uppercase tracking-tighter leading-none">
-                    Cardio<span className="text-emerald-500">Tools</span>
-                  </span>
-                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1.5">
-                    Premium v2.0
-                  </span>
-                </div>
+                <span className="text-xl font-black text-white italic uppercase tracking-tighter">
+                  Cardio<span className="text-emerald-500">Tools</span>
+                </span>
               </div>
-              <button 
-                onClick={onToggle}
-                className="p-2.5 hover:bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-all active:scale-90"
-              >
+              <button onClick={onToggle} className="p-2.5 hover:bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-all active:scale-90">
                 <ChevronLeft size={20} />
               </button>
             </div>
 
-            {/* Navegação */}
-            <nav className="flex-1 py-8 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
-              <p className="px-4 text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Protocolos Clínicos</p>
-              
-              {MENU_ITEMS.map((item) => {
-                const isActive = selectedCategory === item.id;
-                const Icon = item.icon;
+            {/* Navegação Agrupada */}
+            <nav className="flex-1 py-6 px-4 space-y-6 overflow-y-auto custom-scrollbar">
+              {['Geral', 'Paciente', 'Avaliação', 'Relatório'].map((sectionName) => {
+                const itemsInSection = MENU_ITEMS.filter(item => item.section === sectionName);
                 
                 return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onSelectCategory(item.id);
-                      onToggle(); 
-                    }}
-                    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all group relative ${
-                      isActive 
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                        : 'hover:bg-slate-900 text-slate-500 hover:text-slate-200 border border-transparent'
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.div 
-                        layoutId="activeIndicator"
-                        className="absolute left-0 w-1 h-6 bg-emerald-500 rounded-r-full"
-                      />
-                    )}
-
-                    <Icon size={20} className={`${isActive ? 'text-emerald-400' : 'text-slate-600 group-hover:text-slate-400'}`} />
+                  <div key={sectionName} className="space-y-1">
+                    <p className="px-4 text-[10px] font-black text-slate-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                      <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                      {sectionName}
+                    </p>
                     
-                    <span className={`text-[13px] tracking-tight ${isActive ? 'font-bold' : 'font-semibold'}`}>
-                      {item.label}
-                    </span>
-
-                    {isActive && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="ml-auto"
-                      >
-                        <Sparkles size={12} className="text-emerald-400 animate-pulse" />
-                      </motion.div>
-                    )}
-                  </button>
+                    {itemsInSection.map((item) => {
+                      const isActive = selectedCategory === item.id;
+                      const Icon = item.icon;
+                      
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => { onSelectCategory(item.id); onToggle(); }}
+                          className={`w-full flex items-center gap-4 p-3.5 rounded-2xl transition-all group relative ${
+                            isActive 
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                              : 'hover:bg-slate-900 text-slate-500 hover:text-slate-200'
+                          }`}
+                        >
+                          {isActive && <motion.div layoutId="activeIndicator" className="absolute left-0 w-1 h-6 bg-emerald-500 rounded-r-full" />}
+                          <Icon size={18} className={`${isActive ? 'text-emerald-400' : 'text-slate-600 group-hover:text-slate-400'}`} />
+                          <span className="text-[13px] font-semibold tracking-tight">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })}
             </nav>
 
             {/* Footer Actions */}
             <div className="p-4 bg-slate-900/20 border-t border-slate-800 space-y-1.5">
-              <button className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-900 text-slate-500 hover:text-white transition-all group">
-                <Settings size={18} className="group-hover:rotate-45 transition-transform" />
-                <span className="text-[13px] font-bold">Ajustes</span>
-              </button>
-              
-              <button 
-                onClick={handleLogoutClick}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-rose-500/10 text-slate-600 hover:text-rose-400 transition-all group"
-              >
-                <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+              <button onClick={handleLogoutClick} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-rose-500/10 text-slate-600 hover:text-rose-400 transition-all group">
+                <LogOut size={18} />
                 <span className="text-[13px] font-bold">Encerrar Sessão</span>
               </button>
             </div>

@@ -25,23 +25,26 @@ export const TC6M: React.FC = () => {
 
   // A função agora mapeia corretamente para a interface FunctionalTestResult
   const handleSave = (data: { 
-    time: number; 
-    count: number; 
-    results: InterpretationResult[]; 
-    cif: any; 
-    hr: { pre: number; post: number } 
-  }) => {
-    updateTestResults('aerobic', { 
-      sixMinuteWalkTest: { 
-        distance: data.count,       // Mapeando count para distance (conforme types.ts)
-        time: data.time,
-        hr: data.hr,                // Mapeando hr
-        cif: data.cif ?? undefined, // Mapeando cif
-        interpretation: data.results[0]?.description || "" // Mapeando interpretation
-      } as FunctionalTestResult
-    });
+  time: number; 
+  count: number; 
+  results: InterpretationResult[]; 
+  cif: any; 
+  hr: { pre: number; post: number } 
+}) => {
+  // Apenas monte o objeto respeitando a interface SixMinuteWalkResult
+  const walkResult = {
+    distance: data.count,
+    time: data.time,
+    hr: data.hr,
+    cif: data.cif ?? undefined,
+    interpretation: data.results[0]?.description || ""
   };
 
+  // O TypeScript validará automaticamente que este objeto é um SixMinuteWalkResult
+  updateTestResults('aerobic', { 
+    sixMinuteWalkTest: walkResult
+  });
+};
   const interpretation = (time: number, count: number): InterpretationResult[] => {
     const dist = count; 
     const perc = predictedValue > 0 ? (dist / predictedValue) * 100 : 0;
