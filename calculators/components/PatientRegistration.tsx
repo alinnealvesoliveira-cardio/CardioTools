@@ -6,7 +6,6 @@ import { Medications } from '../../types';
 import { toast } from 'react-hot-toast';
 
 export const PatientRegistration: React.FC = () => {
-  // Adicionamos o nextStep aqui
   const { medications, setMedications, patientInfo, updatePatientInfo, nextStep } = usePatient();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -45,13 +44,13 @@ export const PatientRegistration: React.FC = () => {
       if (error) throw error;
       
       toast.success("Perfil sincronizado com sucesso!");
-      
-      // AQUI ESTÁ O SEGREDO: Avança para o próximo módulo automaticamente
       nextStep(); 
 
     } catch (error) {
       console.error("Erro na sincronização:", error);
       toast.error("Erro ao salvar online. Dados mantidos localmente.");
+      // Se quiser que avance mesmo com erro de salvamento, descomente a linha abaixo:
+      // nextStep();
     } finally {
       setIsSaving(false);
     }
@@ -103,7 +102,8 @@ export const PatientRegistration: React.FC = () => {
                   placeholder="Nome do paciente"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Idade</label>
                   <input
@@ -111,21 +111,39 @@ export const PatientRegistration: React.FC = () => {
                     value={patientInfo.age || ''}
                     onChange={(e) => updatePatientInfo({ age: e.target.value })}
                     className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none"
-                    placeholder="Anos"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Sexo Biológico</label>
-                  <select
-                    value={patientInfo.sex || ''}
-                    onChange={(e) => updatePatientInfo({ sex: e.target.value as 'male' | 'female' })}
-                    className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none cursor-pointer"
-                  >
-                    <option value="">Selecionar</option>
-                    <option value="male">Masculino</option>
-                    <option value="female">Feminino</option>
-                  </select>
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Peso (kg)</label>
+                  <input
+                    type="number"
+                    value={patientInfo.weight || ''}
+                    onChange={(e) => updatePatientInfo({ weight: e.target.value })}
+                    className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none"
+                  />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Altura (cm)</label>
+                  <input
+                    type="number"
+                    value={patientInfo.height || ''}
+                    onChange={(e) => updatePatientInfo({ height: e.target.value })}
+                    className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Sexo Biológico</label>
+                <select
+                  value={patientInfo.sex || ''}
+                  onChange={(e) => updatePatientInfo({ sex: e.target.value as 'male' | 'female' })}
+                  className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold outline-none cursor-pointer"
+                >
+                  <option value="">Selecionar</option>
+                  <option value="male">Masculino</option>
+                  <option value="female">Feminino</option>
+                </select>
               </div>
             </div>
           </div>
