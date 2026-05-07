@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Activity, LayoutDashboard, RotateCcw } from 'lucide-react';
+import { Activity, LayoutDashboard, RotateCcw, Footprints } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -10,6 +10,8 @@ export const TD2M: React.FC = () => {
   const { patientInfo, testResults, updateTestResults } = usePatient();
   const navigate = useNavigate();
 
+  // Estados locais para os inputs
+  const [steps, setSteps] = useState<number>(0);
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
 
@@ -25,6 +27,7 @@ export const TD2M: React.FC = () => {
     const isFemale = sex === 'female' || sex === 'F';
     const bmi = height > 0 ? weight / ((height / 100) ** 2) : 24.5;
 
+    // Fórmula de Rikli & Jones
     const pRikli = !isFemale 
       ? 143.297 - (1.157 * age) - (0.334 * bmi) 
       : 118.773 - (0.832 * age) - (0.472 * bmi);
@@ -50,19 +53,21 @@ export const TD2M: React.FC = () => {
   const handleResetSintomas = () => {
     setPostFadiga(null);
     setPostAngina(null);
+    setSteps(0);
   };
 
-  const interpretation = (_time: number, count: number): InterpretationResult[] => {
-    if (count === 0) return [{ label: "Aguardando", color: "slate", description: "Inicie o teste." }];
+  const interpretation = (_time: number, _count: number): InterpretationResult[] => {
+    // Usamos 'steps' do estado local para o cálculo em tempo real
+    if (steps === 0) return [{ label: "Aguardando", color: "slate", description: "Insira o número de passos." }];
     
     const normative = normativeRange 
-      ? (count >= normativeRange[0] ? (count > normativeRange[1] ? "Acima do Normal" : "Normal") : "Abaixo do Normal")
+      ? (steps >= normativeRange[0] ? (steps > normativeRange[1] ? "Acima do Normal" : "Normal") : "Abaixo do Normal")
       : "Sem dados normativos";
 
     return [{
-      label: count < lin ? "Abaixo do LIN" : normative,
-      color: count < lin ? "red" : (normative === "Normal" || normative === "Acima do Normal" ? "green" : "yellow"),
-      description: count < lin 
+      label: steps < lin ? "Abaixo do LIN" : normative,
+      color: steps < lin ? "red" : (normative === "Normal" || normative === "Acima do Normal" ? "green" : "yellow"),
+      description: steps < lin 
         ? `Abaixo do Limite Inferior (${lin.toFixed(0)} passos).` 
         : `Resultado ${normative.toLowerCase()}.`
     }];
@@ -75,21 +80,16 @@ export const TD2M: React.FC = () => {
     cif: CIFData | null; 
     hr: { pre: number; post: number }; 
   }) => {
-    const efficiency = predictedRikli > 0 ? (data.count / predictedRikli) * 100 : 0;
+    const efficiency = predictedRikli > 0 ? (steps / predictedRikli) * 100 : 0;
 
     const currentScales = testResults?.fatigability || { 
       rest: { dyspnea: 0, fatigue: 0 }, 
       exercise: { dyspnea: 0, fatigue: 0 } 
     };
 
-    const currentSymptoms = testResults?.symptoms || {
-      angina: { type: 'none', description: '' }
-    };
-
-    // Salva o teste no aeróbico
     updateTestResults('aerobic', {
       td2m: {
-        count: data.count,
+        count: steps, // Valor do input manual
         predicted: predictedRikli,
         efficiency: efficiency,
         interpretation: data.results[0]?.label || "Realizado",
@@ -98,25 +98,12 @@ export const TD2M: React.FC = () => {
       } as FunctionalTestResult
     });
 
-    // Salva fadiga
     updateTestResults('fatigability', {
       ...currentScales,
-      exercise: { 
-        ...currentScales.exercise, 
-        fatigue: postFadiga || 0 
-      }
+      exercise: { ...currentScales.exercise, fatigue: postFadiga || 0 }
     });
 
-    // Salva sintomas
-    updateTestResults('symptoms', {  
-      ...currentSymptoms,
-      angina: {
-        type: postAngina && postAngina > 0 ? 'stable' : 'none',
-        description: postAngina && postAngina > 0 ? `Angina Grau ${postAngina} no TD2M` : 'Sem sintomas anginosos'
-      }
-    });
-      
-    toast.success("Teste de Marcha gravado!");
+    toast.success("2MST gravado com sucesso!");
   };
 
   if (!isDataValid) {
@@ -141,6 +128,20 @@ export const TD2M: React.FC = () => {
         onSave={handleGlobalSave}
       >
         <div className="space-y-6 px-4">
+          {/* INPUT DE PASSOS (O que estava faltando) */}
+          <div className="bg-white rounded-[32px] p-8 shadow-sm border-2 border-slate-100 transition-all focus-within:border-indigo-500">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-2">
+              <Footprints size={16} className="text-indigo-500"/> Total de Elevações (Joelho Direito)
+            </label>
+            <input
+              type="number"
+              value={steps || ''}
+              onChange={(e) => setSteps(Number(e.target.value))}
+              placeholder="Ex: 95"
+              className="w-full bg-transparent text-5xl font-black text-slate-900 outline-none placeholder:text-slate-100"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="p-5 bg-emerald-50 rounded-[24px] border border-emerald-100">
               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Predito</p>
@@ -152,15 +153,13 @@ export const TD2M: React.FC = () => {
             </div>
           </div>
 
+          {/* ESCALAS DE SINTOMAS */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center justify-between border-b pb-3">
               <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
                 <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
               </div>
-              <button 
-                onClick={handleResetSintomas}
-                className="text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center gap-1"
-              >
+              <button onClick={handleResetSintomas} className="text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center gap-1">
                 <RotateCcw size={12}/> Limpar
               </button>
             </div>
