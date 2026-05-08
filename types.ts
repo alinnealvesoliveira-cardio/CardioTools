@@ -177,4 +177,19 @@ export interface Calculator {
   description: string;
   category: CategoryName; // Usa o tipo que você já definiu no topo do arquivo
   component: React.ComponentType<any>;
+}// Adicione estas interfaces ao src/types.ts
+export interface ScoreOption {
+  label: string;
+  score: number;
+}
+
+export interface ScoreItem {
+  id: string;
+  question: string;
+  options: ScoreOption[];
+}
+
+export interface ScoreGroup {
+  title: string;
+  items: ScoreItem[];
 }
