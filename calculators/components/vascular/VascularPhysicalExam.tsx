@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Activity as ActivityIcon, CheckCircle2, Thermometer, 
-  Droplets, Fingerprint, Layers, Save, AlertTriangle, Zap 
+  Droplets, Fingerprint, Layers, Save, AlertTriangle, Zap,
+  ArrowLeft, ChevronRight, LayoutDashboard 
 } from 'lucide-react';
 import { usePatient } from '../../../context/PatientProvider';
+import { useNavigate } from 'react-router-dom'; // Importado
 import { toast } from 'react-hot-toast';
 
 type System = 'Arterial' | 'Venoso' | 'Linfático';
 
 export const VascularPhysicalExam: React.FC = () => {
   const { updateTestResults } = usePatient(); 
+  const navigate = useNavigate(); // Hook de navegação
   const [activeSystem, setActiveSystem] = useState<System>('Arterial');
   const [isSaved, setIsSaved] = useState(false);
 
@@ -29,7 +32,6 @@ export const VascularPhysicalExam: React.FC = () => {
   ];
 
   const handleSave = () => {
-    // Lógica de qualificação automática para a CIF (0: s/ deficiência, 1: leve, 2: moderada, 3: grave, 4: completa)
     const artQual = (pulse !== null && pulse >= 2) ? 0 : (pulse === 1 ? 1 : 3);
     const venQual = godet !== null ? (godet > 2 ? 3 : godet) : 0;
     const linQual = stemmer ? 2 : 0;
@@ -63,8 +65,7 @@ export const VascularPhysicalExam: React.FC = () => {
     });
 
     setIsSaved(true);
-    toast.success("Achados Vasculares Sincronizados!");
-    setTimeout(() => setIsSaved(false), 3000);
+    toast.success("Achados Vasculares Gravados!");
   };
 
   return (
@@ -76,7 +77,6 @@ export const VascularPhysicalExam: React.FC = () => {
         <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Exame Físico Periférico e Qualificadores CIF</p>
       </header>
 
-      {/* Tabs Estilo "Switch" */}
       <nav className="flex p-1.5 bg-slate-100 rounded-[28px] gap-2 border border-slate-200/50 shadow-inner">
         {(['Arterial', 'Venoso', 'Linfático'] as System[]).map((sys) => (
           <button
@@ -96,7 +96,6 @@ export const VascularPhysicalExam: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <main className="lg:col-span-8 space-y-6">
           <AnimatePresence mode="wait">
-            {/* SISTEMA ARTERIAL */}
             {activeSystem === 'Arterial' && (
               <motion.div 
                 key="art" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
@@ -108,7 +107,6 @@ export const VascularPhysicalExam: React.FC = () => {
                       <div className="p-3 bg-rose-50 text-rose-500 rounded-2xl"><ActivityIcon size={24} /></div>
                       <h3 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">Palpação de Pulsos</h3>
                     </div>
-                    <span className="text-[9px] font-black bg-slate-900 text-white px-3 py-1 rounded-full italic tracking-widest uppercase">Escala de 0 a 3+</span>
                   </header>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -131,7 +129,6 @@ export const VascularPhysicalExam: React.FC = () => {
               </motion.div>
             )}
 
-            {/* SISTEMA VENOSO */}
             {activeSystem === 'Venoso' && (
               <motion.div 
                 key="ven" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
@@ -154,15 +151,12 @@ export const VascularPhysicalExam: React.FC = () => {
                       }`}
                     >
                       {v === 0 ? '0' : `${v}+`}
-                      <div className={`absolute inset-x-0 bottom-0 h-1 bg-white/20 transition-all ${godet === v ? 'opacity-100' : 'opacity-0'}`} />
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-400 font-medium italic text-center">Pressionar por 5 segundos sobre proeminência óssea (ex: maléolo medial).</p>
               </motion.div>
             )}
 
-            {/* SISTEMA LINFÁTICO */}
             {activeSystem === 'Linfático' && (
               <motion.div 
                 key="lin" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
@@ -170,25 +164,22 @@ export const VascularPhysicalExam: React.FC = () => {
               >
                 <header className="flex items-center gap-3 border-b border-slate-50 pb-6">
                   <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><Fingerprint size={24} /></div>
-                  <h3 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">Sinal de Stemmer (Linfedema)</h3>
+                  <h3 className="font-black text-slate-800 uppercase text-xs tracking-[0.2em]">Sinal de Stemmer</h3>
                 </header>
                 
                 <div className="flex gap-6">
                   {[
-                    { val: true, label: 'Positivo', color: 'border-emerald-500 bg-emerald-50 text-emerald-700', desc: 'Impossibilidade de pinçar a pele da base do 2º pododáctilo.' },
-                    { val: false, label: 'Negativo', color: 'border-slate-900 bg-slate-900 text-white', desc: 'Pele pinçável e móvel sem resistência.' }
+                    { val: true, label: 'Positivo', color: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
+                    { val: false, label: 'Negativo', color: 'border-slate-900 bg-slate-900 text-white' }
                   ].map((btn) => (
                     <button 
                       key={String(btn.val)}
                       onClick={() => { setStemmer(btn.val); setIsSaved(false); }} 
-                      className={`flex-1 p-8 rounded-[32px] font-black border-4 transition-all space-y-2 text-center ${
+                      className={`flex-1 p-8 rounded-[32px] font-black border-4 transition-all ${
                         stemmer === btn.val ? btn.color : 'border-slate-50 bg-slate-50 text-slate-300'
                       }`}
                     >
                       <div className="text-xl uppercase tracking-widest italic">{btn.label}</div>
-                      <div className={`text-[10px] font-medium leading-relaxed italic ${stemmer === btn.val ? 'opacity-80' : 'opacity-0'}`}>
-                        {btn.desc}
-                      </div>
                     </button>
                   ))}
                 </div>
@@ -197,73 +188,75 @@ export const VascularPhysicalExam: React.FC = () => {
           </AnimatePresence>
         </main>
 
-        {/* PAINEL LATERAL DE CIF */}
         <aside className="lg:col-span-4 space-y-6">
-          <div className="bg-slate-900 rounded-[44px] p-8 text-white shadow-2xl relative overflow-hidden group">
-            <Zap className="absolute -right-8 -top-8 w-32 h-32 text-indigo-500/10 rotate-12 group-hover:rotate-45 transition-transform duration-700" />
-            
-            <div className="relative z-10 space-y-8">
+          <div className="bg-slate-900 rounded-[44px] p-8 text-white shadow-2xl relative overflow-hidden">
+            <Zap className="absolute -right-8 -top-8 w-32 h-32 text-indigo-500/10 rotate-12" />
+            <div className="relative z-10 space-y-6">
               <header className="flex items-center gap-2">
                 <div className="w-2 h-8 bg-indigo-500 rounded-full" />
-                <h3 className="text-indigo-400 font-black italic uppercase tracking-widest text-sm">Resumo do Exame</h3>
+                <h3 className="text-indigo-400 font-black italic uppercase tracking-widest text-sm">Resumo</h3>
               </header>
 
-              <div className="space-y-6">
-                <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                  <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase">Arterial</p>
-                    <p className="text-xs font-bold text-slate-300 italic">{pulse !== null ? PULSE_SCALE.find(p => p.val === pulse)?.desc : 'Não avaliado'}</p>
-                  </div>
-                  <span className={`text-2xl font-black italic ${pulse !== null && pulse >= 2 ? 'text-emerald-400' : 'text-rose-500'}`}>
-                    {pulse !== null ? PULSE_SCALE.find(p => p.val === pulse)?.label : '---'}
-                  </span>
+              <div className="space-y-4">
+                <div className="flex justify-between border-b border-white/5 pb-2">
+                  <span className="text-[10px] uppercase text-slate-500">Arterial</span>
+                  <span className="font-black italic text-emerald-400">{pulse !== null ? `${pulse}+` : '---'}</span>
                 </div>
-
-                <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                  <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase">Venoso</p>
-                    <p className="text-xs font-bold text-slate-300 italic">{godet !== null ? (godet > 0 ? 'Edema Detectado' : 'Sem Edema') : 'Não avaliado'}</p>
-                  </div>
-                  <span className={`text-2xl font-black italic ${godet === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {godet !== null ? `${godet}+` : '---'}
-                  </span>
+                <div className="flex justify-between border-b border-white/5 pb-2">
+                  <span className="text-[10px] uppercase text-slate-500">Venoso</span>
+                  <span className="font-black italic text-rose-400">{godet !== null ? `${godet}+` : '---'}</span>
                 </div>
-
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase">Linfático</p>
-                    <p className="text-xs font-bold text-slate-300 italic">Sinal de Stemmer</p>
-                  </div>
-                  <span className={`text-2xl font-black italic ${stemmer === false ? 'text-emerald-400' : (stemmer === true ? 'text-rose-400' : 'text-slate-700')}`}>
-                    {stemmer === null ? '---' : (stemmer ? 'POS' : 'NEG')}
-                  </span>
+                <div className="flex justify-between">
+                  <span className="text-[10px] uppercase text-slate-500">Linfático</span>
+                  <span className="font-black italic text-slate-300">{stemmer === null ? '---' : (stemmer ? 'POS' : 'NEG')}</span>
                 </div>
-              </div>
-
-              <div className="pt-8">
-                 <button
-                    onClick={handleSave}
-                    className={`w-full py-6 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${
-                      isSaved ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {isSaved ? <CheckCircle2 size={18} /> : <Save size={18} className="text-indigo-600" />}
-                    {isSaved ? 'SINCRONIZADO' : 'SALVAR EXAME'}
-                  </button>
               </div>
             </div>
           </div>
 
           <div className="bg-amber-900 rounded-[32px] p-6 text-amber-100 flex gap-4 border-none shadow-lg">
-              <AlertTriangle className="shrink-0 text-amber-400" size={20} />
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 italic text-shadow-sm">Atenção Clínica</p>
-                <p className="text-[11px] leading-relaxed italic font-medium">
-                  Achados de pulsos assimétricos ou Godet `{'>'}` 3+ exigem reavaliação da intensidade do treinamento aeróbico.
-                </p>
-              </div>
-            </div>
+            <AlertTriangle className="shrink-0 text-amber-400" size={20} />
+            <p className="text-[11px] leading-relaxed italic font-medium">
+              Achados assimétricos exigem reavaliação da carga de treino.
+            </p>
+          </div>
         </aside>
+      </div>
+
+      {/* BARRA DE AÇÕES FIXA - PADRÃO UNIFICADO */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
+        <div className="flex gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex-1 bg-white/90 backdrop-blur-md text-slate-500 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+          >
+            <ArrowLeft size={16} /> Voltar
+          </button>
+
+          <button
+            onClick={() => {
+              handleSave();
+              // Navega para o próximo teste (Ex: VFC ou HRV)
+              navigate('/testes/hrv'); 
+            }}
+            className="flex-[2] bg-slate-900 text-white py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+          >
+            <div className="flex flex-col items-start text-left">
+              <span className="text-[11px] uppercase tracking-widest">
+                {isSaved ? 'Gravado' : 'Gravar e Avançar'}
+              </span>
+              <span className="text-[8px] text-slate-400 font-medium lowercase">variabilidade fc</span>
+            </div>
+            <ChevronRight size={18} className="text-emerald-400" />
+          </button>
+        </div>
+
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="w-full py-2 text-slate-400 font-bold text-[9px] uppercase tracking-[0.2em] hover:text-indigo-500 transition-colors"
+        >
+          <LayoutDashboard size={12} className="inline mr-1 mb-1" /> Painel Geral
+        </button>
       </div>
     </div>
   );

@@ -24,7 +24,6 @@ export const Cadastro: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Exemplo de salvamento no Supabase (ajuste a tabela 'patients' conforme seu banco)
       const { error } = await supabase
         .from('patients')
         .upsert({ 
@@ -35,7 +34,7 @@ export const Cadastro: React.FC = () => {
       if (error) throw error;
 
       toast.success('Dados salvos com sucesso!');
-      nextStep(); // Avança para o próximo passo após salvar
+      nextStep(); 
     } catch (error) {
       console.error('Erro ao salvar:', error);
       toast.error('Erro ao salvar dados. Tente novamente.');
@@ -58,7 +57,7 @@ export const Cadastro: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-32">
       {/* Dados Pessoais */}
       <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
@@ -69,6 +68,22 @@ export const Cadastro: React.FC = () => {
             <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
             <input name="name" value={patientInfo.name} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
+          
+          {/* CAMPO ADICIONADO: Sexo (Essencial para os cálculos de METs e TC6M) */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Sexo</label>
+            <select 
+              name="sex" 
+              value={patientInfo.sex} 
+              onChange={handleInputChange} 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 outline-none"
+            >
+              <option value="">Selecione...</option>
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Idade</label>
             <input type="number" name="age" value={patientInfo.age} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 outline-none" />
@@ -97,6 +112,7 @@ export const Cadastro: React.FC = () => {
           {medList.map((med) => (
             <button
               key={med.id}
+              type="button"
               onClick={() => toggleMedication(med.id)}
               className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
                 medications[med.id] 
@@ -111,18 +127,40 @@ export const Cadastro: React.FC = () => {
         </div>
       </section>
 
-      {/* Botão de Salvar */}
-      <div className="flex justify-end pt-4">
+      {/* Botão de Salvar e Avançar Fixo */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999]">
         <button 
           onClick={handleSave}
           disabled={isSaving}
-          className="px-8 py-4 bg-slate-900 text-white rounded-full font-bold flex items-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50"
+          className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-between px-8 transition-all active:scale-95 ${
+            isSaving ? 'bg-slate-700' : 'bg-slate-900 hover:bg-emerald-700'
+          } text-white disabled:opacity-50 group`}
         >
-          {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-          {isSaving ? 'Salvando...' : 'Salvar Cadastro e Continuar'}
-          {!isSaving && <ArrowRight size={20} />}
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${isSaving ? 'bg-slate-600' : 'bg-emerald-500/20'}`}>
+              {isSaving ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Save className="w-5 h-5 text-emerald-400" />
+              )}
+            </div>
+            <div className="flex flex-col items-start text-left">
+              <span className="text-[11px] uppercase tracking-[0.2em]">
+                {isSaving ? 'Salvando...' : 'Gravar Cadastro'}
+              </span>
+              {!isSaving && (
+                <span className="text-[9px] text-slate-400 font-medium">e iniciar avaliação física</span>
+              )}
+            </div>
+          </div>
+          
+          {!isSaving && (
+            <ArrowRight className="w-6 h-6 text-slate-500 group-hover:translate-x-1 transition-transform" />
+          )}
         </button>
       </div>
+
+      <div className="h-20" />
     </div>
   );
 };

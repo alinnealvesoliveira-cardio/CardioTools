@@ -1,29 +1,32 @@
 /**
  * Estratificação de Risco para Reabilitação Cardiovascular
- * Baseado nas diretrizes AACVPR, SBC e AHA.
+ * Alinhado com as diretrizes AACVPR e SBC.
  */
 export const calculateRisk = (patientInfo: any, testResults: any) => {
   // 1. Fração de Ejeção (FEVE)
-  const feve = patientInfo?.ejectionFraction ? parseInt(patientInfo.ejectionFraction) : 60;
+  // Corrigido para 'feve' (conforme usamos no as any do relatório) ou 'ejectionFraction'
+  const feve = parseInt(patientInfo?.feve || patientInfo?.ejectionFraction || '60');
   
   // 2. Capacidade Funcional (METs) 
-  // Prioridade: DASI/VSAQ (mais precisos para METs) > Estimativa por distância
-  const METsFromTests = testResults?.dasi?.estimatedMETs || testResults?.vsaq?.estimatedMETs;
+  // O nó correto é aerobic.vsaq.met ou aerobic.dasi.estimatedMETs
+  const aerobic = testResults?.aerobic;
+  const METsFromTests = aerobic?.vsaq?.met || aerobic?.dasi?.estimatedMETs;
   
+  // 3. Estimativa via Caminhada (6min) caso não tenha questionário
   const distance = testResults?.sixMinuteWalkTest?.distance || 0;
   const estimatedMETsFromDistance = distance > 0 ? (distance * 0.03) / 3.5 : 0; 
   
   const finalMETs = METsFromTests || estimatedMETsFromDistance || 0;
 
-  // 3. Critérios de Instabilidade
+  // 4. Critérios de Instabilidade (Angina e Vascular)
   const hasAngina = testResults?.symptoms?.angina?.type && testResults.symptoms.angina.type !== 'none';
-  const hasLowITB = testResults?.vascularAssessment?.arterial?.itb && parseFloat(testResults.vascularAssessment.arterial.itb) < 0.9;
+  const itbValue = parseFloat(testResults?.vascularAssessment?.arterial?.itb || '1.0');
+  const hasLowITB = itbValue < 0.9;
   const hasStructuralDamage = !!patientInfo?.structureAlteration;
 
-  // --- LÓGICA DE ESTRATIFICAÇÃO (AACVPR / SBC) ---
+  // --- LÓGICA DE ESTRATIFICAÇÃO ---
 
-  // ALTO RISCO (High Risk)
-  // Critérios: FEVE < 40%, METs < 5, Angina ou Isquemia detectada
+  // ALTO RISCO
   if (feve < 40 || (finalMETs > 0 && finalMETs < 5) || hasAngina || hasLowITB) {
     return {
       level: 'ALTO RISCO',
@@ -31,13 +34,12 @@ export const calculateRisk = (patientInfo: any, testResults: any) => {
       color: 'text-rose-600',
       bg: 'bg-rose-50/50',
       border: 'border-rose-200',
-      desc: 'Monitorização contínua (ECG) obrigatória. Alta probabilidade de eventos. Supervisão direta.',
+      desc: 'Monitorização contínua (ECG) obrigatória. Alta probabilidade de eventos.',
       status: 'critical'
     };
   }
 
-  // RISCO MODERADO (Intermediate Risk)
-  // Critérios: FEVE 40-49%, METs 5-7 ou Dano Estrutural sem sintomas agudos
+  // RISCO MODERADO
   if ((feve >= 40 && feve <= 49) || (finalMETs >= 5 && finalMETs <= 7) || hasStructuralDamage) {
     return {
       level: 'RISCO MODERADO',
@@ -45,20 +47,19 @@ export const calculateRisk = (patientInfo: any, testResults: any) => {
       color: 'text-amber-600',
       bg: 'bg-amber-50/50',
       border: 'border-amber-200',
-      desc: 'Monitorização intermitente. Progressão gradual. Sinais vitais a cada troca de fase.',
+      desc: 'Monitorização intermitente. Progressão gradual supervisionada.',
       status: 'warning'
     };
   }
 
-  // BAIXO RISCO (Low Risk)
-  // Critérios: FEVE >= 50% e METs > 7
+  // BAIXO RISCO
   return {
     level: 'BAIXO RISCO',
     qualifier: 'Classe A',
     color: 'text-emerald-600',
     bg: 'bg-emerald-50/50',
     border: 'border-emerald-200',
-    desc: 'Supervisão padrão. Progressão conforme protocolo clínico. Baixo risco de eventos agudos.',
+    desc: 'Supervisão padrão. Baixo risco de eventos agudos durante esforço.',
     status: 'safe'
   };
 };

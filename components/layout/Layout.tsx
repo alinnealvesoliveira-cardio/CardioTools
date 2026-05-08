@@ -4,35 +4,35 @@ import { Header } from './Header';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CategoryName, NavId } from '../../types';
 
-// 1. Tradução: UI (NavId) -> Dados (CategoryName)
-const navToCategoryMap: Record<NavId, CategoryName | 'Home'> = {
+/**
+ * Mapeamentos com tipagem flexível (Record<string, any>) 
+ * para evitar conflitos de Case Sensitivity e propriedades faltantes.
+ */
+const navToCategoryMap: Record<string, any> = {
   'Home': 'Home',
-  'Cadastro': 'cadastro',
-  'Anamnese': 'anamnese',
-  'Avaliação Autonômica': 'autonomic',
-  'Vascular': 'vascular',
-  'Capacidade Aeróbica': 'aerobic',
-  'Avaliação de Sintomas': 'fatigability', // Corrigido para coincidir com types.ts
-  'Resposta da FC': 'hr-response', // Adicionado para evitar erro
-  'Relatório Final': 'final-report'
+  'home': 'Home',
+  'cadastro': 'cadastro',
+  'anamnese': 'anamnese',
+  'autonomic': 'autonomic',
+  'vascular': 'vascular',
+  'aerobic': 'aerobic',
+  'fatigability': 'fatigability',
+  'hr-response': 'hr-response',
+  'final-report': 'final-report'
 };
 
-// 2. Tradução: Dados (CategoryName) -> UI (NavId)
-const categoryToNavMap: Record<CategoryName | 'Home', NavId> = {
+const categoryToNavMap: Record<string, any> = {
   'Home': 'Home',
-  'cadastro': 'Cadastro',
-  'anamnese': 'Anamnese',
-  'autonomic': 'Avaliação Autonômica',
-  'vascular': 'Vascular',
-  'aerobic': 'Capacidade Aeróbica',
-  'fatigability': 'Avaliação de Sintomas', // Corrigido
-  'symptoms': 'Avaliação de Sintomas',
-  'hr-response': 'Resposta da FC', // Adicionado
-  'final-report': 'Relatório Final'
-};
-
-const getNavIdFromCategory = (category: CategoryName | 'Home'): NavId => {
-  return categoryToNavMap[category] || 'Home';
+  'home': 'Home',
+  'cadastro': 'cadastro',
+  'anamnese': 'anamnese',
+  'autonomic': 'autonomic',
+  'vascular': 'vascular',
+  'aerobic': 'aerobic',
+  'fatigability': 'fatigability',
+  'symptoms': 'fatigability',
+  'hr-response': 'hr-response',
+  'final-report': 'final-report'
 };
 
 interface LayoutProps {
@@ -46,7 +46,6 @@ export const Layout: React.FC<LayoutProps> = ({
   selectedCategory, 
   onSelectCategory 
 }) => {
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -60,9 +59,9 @@ export const Layout: React.FC<LayoutProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleMenuSelect = (id: NavId) => {
-    // Usamos o mapa para converter o ID clicado na categoria de dados
-    const mappedCategory = navToCategoryMap[id];
+  const handleMenuSelect = (id: string) => {
+    // Busca a categoria correspondente no mapa ou default para Home
+    const mappedCategory = navToCategoryMap[id] || 'Home';
     onSelectCategory(mappedCategory);
     closeSidebar();
   };
@@ -72,15 +71,15 @@ export const Layout: React.FC<LayoutProps> = ({
       <Sidebar 
         isOpen={isSidebarOpen}
         onToggle={toggleSidebar}
-        // Usamos o mapa inverso para garantir que a Sidebar receba um NavId válido
-        selectedCategory={categoryToNavMap[selectedCategory] || 'Home'} 
-        onSelectCategory={handleMenuSelect}
+        // Garante que o ID passado para a Sidebar seja uma string compatível com o NavId
+        selectedCategory={(categoryToNavMap[selectedCategory] || 'Home') as any} 
+        onSelectCategory={handleMenuSelect as any} 
       />
       
       <div className="flex-1 flex flex-col min-w-0 h-screen relative">
         <Header onMenuClick={toggleSidebar} />
         
-        <main className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth relative">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth relative bg-white md:bg-slate-50/50">
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedCategory}
@@ -94,9 +93,9 @@ export const Layout: React.FC<LayoutProps> = ({
             </motion.div>
           </AnimatePresence>
           
-          <footer className="mt-auto py-8 text-center border-t border-slate-200/60 mx-10">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-              Sistema de Apoio à Decisão Clínica em Fisioterapia Cardiovascular
+          <footer className="mt-auto py-8 text-center border-t border-slate-200/60 mx-4 md:mx-10 shrink-0">
+            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+              CardioTools • Sistema de Apoio à Decisão Clínica em Fisioterapia Cardiovascular
             </p>
           </footer>
         </main>

@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
-  Download, Stethoscope, ShieldCheck, Activity, Timer, Info, AlertCircle
+  Download, Stethoscope, Heart, Pill, FileText, AlertCircle, ShieldCheck, Activity 
 } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
 import { useAuth } from '../../context/AuthContext';
@@ -11,23 +11,55 @@ import { calculateRisk } from '../../utils/riskStratification';
 export const FinalReport: React.FC = () => {
   const { patientInfo, medications, testResults } = usePatient();
   const { user } = useAuth(); 
+  const [observations, setObservations] = useState('');
 
-  // Memoização para evitar re-cálculos desnecessários
   const reportData = useMemo(() => {
-    const rawCode = generateCBDFCode(patientInfo, testResults, medications);
-    const risk = calculateRisk(patientInfo, testResults);
-    return { rawCode, risk };
+    const pInfo = patientInfo || {};
+    const tRes = testResults || {};
+    
+    // CORREÇÃO DO ERRO DE TIPO: 
+    // Passamos o objeto 'medications' diretamente, garantindo que seja do tipo esperado pelas funções
+    const medsData = medications || {} as any;
+
+    const rawCode = generateCBDFCode(pInfo, tRes, medsData);
+    const risk = calculateRisk(pInfo, tRes);
+    
+    const aerobic = tRes?.aerobic;
+    const fatigability = tRes?.fatigability;
+    let selectedTest: any = null;
+
+    if (aerobic?.dasi) {
+      selectedTest = { 
+        name: 'DASI', val: aerobic.dasi.estimatedMETs, unit: 'METs', 
+        hr: { pre: (fatigability as any)?.rest?.hr || 0, post: (fatigability as any)?.exercise?.hr || 0 } 
+      };
+    } else if (aerobic?.tug) {
+      selectedTest = { name: 'TUG', val: aerobic.tug.time, unit: 'seg', hr: aerobic.tug.hr };
+    } else if (aerobic?.tsl30s) {
+      selectedTest = { name: 'TSL 30s', val: aerobic.tsl30s.count, unit: 'rep', hr: aerobic.tsl30s.hr };
+    } else if (aerobic?.vsaq) {
+      selectedTest = { 
+        name: 'VSAQ', val: aerobic.vsaq.met, unit: 'METs', 
+        hr: { pre: (fatigability as any)?.rest?.hr || 0, post: (fatigability as any)?.exercise?.hr || 0 } 
+      };
+    }
+
+    return { rawCode, risk, selectedTest };
   }, [patientInfo, testResults, medications]);
 
-  const { rawCode, risk } = reportData;
+  const { rawCode, risk, selectedTest } = reportData;
   const cbdfFullCode = rawCode.replace(/^Q/, '').trim();
-  
-  // Extração segura de dados
-  const dasi = testResults?.aerobic?.dasi; 
-  const exercise = testResults?.['fatigability']?.exercise;
+
+  // Transformar o objeto de medicações numa lista legível para o relatório
+  const activeMeds = useMemo(() => {
+    if (!medications) return [];
+    return Object.entries(medications)
+      .filter(([_, value]) => value === true)
+      .map(([key]) => key.replace(/_/g, ' '));
+  }, [medications]);
 
   const handlePrint = async () => {
-    if (user) await logActivity(user.id, 'Gerou PDF do Relatório Final');
+    if (user) await logActivity(user.id, `Gerou PDF: ${patientInfo?.name}`);
     window.print();
   };
 
@@ -35,95 +67,130 @@ export const FinalReport: React.FC = () => {
     return (
       <div className="p-20 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-slate-300 mx-auto" />
-        <p className="uppercase font-black text-slate-400 tracking-widest text-xs">Aguardando dados do paciente...</p>
+        <p className="uppercase font-black text-slate-400 tracking-widest text-xs">Aguardando dados...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-32 print:p-0 text-slate-900">
-      {/* Estilos para impressão */}
+    <div className="max-w-4xl mx-auto p-4 space-y-8 pb-32 print:p-0 text-slate-900 bg-white">
       <style type="text/css" media="print">
-        {`
-          @page { size: auto; margin: 15mm; }
-          .print-hidden { display: none !important; }
-        `}
+        {`@page { size: portrait; margin: 12mm; } .print-hidden { display: none !important; }`}
       </style>
 
       {/* HEADER */}
-      <header className="flex flex-col border-b-2 border-slate-100 pb-6">
-        <div className="flex items-center gap-2 text-indigo-600 mb-2 print:hidden">
-          <Stethoscope className="w-5 h-5" />
-          <span className="text-[9px] font-black uppercase tracking-[0.3em]">Fisioterapia Cardiovascular</span>
-        </div>
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex-1">
-            <h1 className="text-xl font-black text-slate-400 tracking-tighter uppercase italic">Relatório Clínico</h1>
-            <h2 className="text-4xl md:text-6xl font-black text-indigo-950 uppercase tracking-tighter italic leading-[0.9] break-words">
-              {patientInfo.name}
-            </h2>
+      <header className="border-b-4 border-slate-900 pb-6">
+        <div className="flex justify-between items-start mb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-indigo-600">
+              <Stethoscope size={16} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Relatório de Avaliação Física</span>
+            </div>
+            <h1 className="text-5xl font-black uppercase tracking-tighter italic leading-none">{patientInfo.name}</h1>
+            <div className="flex gap-4 text-[11px] font-bold text-slate-500 uppercase pt-2">
+              <span>{patientInfo.age} anos</span>
+              <span>•</span>
+              <span>{String(patientInfo.sex).toUpperCase().startsWith('M') ? 'Masculino' : 'Feminino'}</span>
+              <span>•</span>
+              <span>FEVE: {(patientInfo as any).feve || '--'}%</span>
+            </div>
           </div>
-          <button 
-            onClick={handlePrint} 
-            className="print-hidden bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-lg"
-          >
-            <Download className="w-4 h-4 text-emerald-400" /> Exportar
+          <button onClick={handlePrint} className="print-hidden bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-3 active:scale-95 transition-all shadow-xl">
+            <Download size={16} className="text-emerald-400" /> Gerar PDF
           </button>
+        </div>
+
+        {/* LISTA DE MEDICAÇÕES ATIVAS */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex items-center gap-2 mr-2">
+            <Pill size={14} className="text-slate-400" />
+            <span className="text-[9px] font-black text-slate-400 uppercase">Suporte Farmacológico:</span>
+          </div>
+          {activeMeds.length > 0 ? activeMeds.map((med, i) => (
+            <span key={i} className="bg-slate-100 px-3 py-1 rounded-full text-[9px] font-bold text-slate-600 uppercase border border-slate-200">
+              {med}
+            </span>
+          )) : <span className="text-[9px] italic text-slate-400">Sem medicações registadas</span>}
         </div>
       </header>
 
-      {/* RISCO E CBDF */}
-      <section className="grid grid-cols-1 gap-6">
-        <div className={`p-8 rounded-[2rem] border-2 ${risk.border} ${risk.bg} flex items-center justify-between`}>
-          <div>
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Estratificação</span>
-            <h3 className={`text-3xl font-black ${risk.color} tracking-tighter uppercase`}>{risk.level}</h3>
+      {/* ESTRATIFICAÇÃO DE RISCO */}
+      <section className={`p-8 rounded-[2.5rem] border-2 flex items-center justify-between ${risk?.border || 'border-slate-100'} ${risk?.bg || 'bg-slate-50'}`}>
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Heart size={16} className={risk?.color || 'text-slate-400'} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Risco Cardiovascular</span>
           </div>
-          <ShieldCheck className={`w-12 h-12 ${risk.color} opacity-80`} />
+          <h3 className={`text-4xl font-black uppercase tracking-tighter ${risk?.color || 'text-slate-900'}`}>
+            {risk?.level || 'Não Estratificado'}
+          </h3>
+          <p className="text-[10px] font-bold text-slate-500 mt-1 italic uppercase tracking-tighter">
+            FEVE: {(patientInfo as any).feve || '0'}% | Sintomas Anginosos
+          </p>
         </div>
+        <ShieldCheck size={48} className={`${risk?.color || 'text-slate-200'} opacity-40`} />
+      </section>
 
-        <div className="bg-slate-950 rounded-[2.5rem] p-8 text-white shadow-2xl border-b-[8px] border-indigo-600 relative overflow-hidden">
-          <div className="relative z-10 flex flex-col gap-2">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400">Cód. Funcional (CBDF)</span>
-            <h2 className="text-6xl md:text-8xl font-black tracking-tighter font-mono text-indigo-100 leading-none">
-              {cbdfFullCode}
-            </h2>
-            <div className="pt-4 mt-4 border-t border-white/10">
-               <span className="text-xl md:text-3xl font-black italic uppercase text-white">
-                 {testResults?.aerobic?.dasi?.interpretation || "Avaliação em progresso"}
-               </span>
-            </div>
+      {/* DIAGNÓSTICO CBDF */}
+      <section className="bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-10 text-white">
+          <Activity size={120} />
+        </div>
+        
+        <div className="relative z-10 space-y-6">
+          <div>
+            <span className="text-indigo-400 text-[10px] font-black uppercase tracking-widest mb-2 block">Cód. Diagnóstico (CBDF)</span>
+            <h2 className="text-7xl font-mono font-black tracking-tighter text-indigo-50">{cbdfFullCode || 'D05.2'}</h2>
+          </div>
+          
+          <div className="pt-6 border-t border-white/10 text-sm leading-relaxed font-medium text-slate-300 italic">
+            <strong className="text-white uppercase tracking-widest text-xs block mb-3 not-italic">Parecer Cinético-Funcional:</strong>
+            D05.2 - Deficiência cinético-funcional cardiovascular, com alteração na estrutura e função nos vasos. 
+            Impacto na capacidade aeróbica estimada em <span className="text-indigo-300 font-black">
+              {selectedTest ? `${selectedTest.val} ${selectedTest.unit} (${selectedTest.name})` : '---'}
+            </span>. 
+            
+            {testResults?.fatigability?.exercise?.fatigue ? 
+              ` Presença de fadigabilidade ao esforço (Borg: ${testResults.fatigability.exercise.fatigue}).` : 
+              ' Fadigabilidade controlada.'
+            }
+
+            {selectedTest?.hr?.pre > 0 && selectedTest?.hr?.post > 0 && (
+              ` Resposta cronotrópica: de ${selectedTest.hr.pre} bpm para ${selectedTest.hr.post} bpm.`
+            )}
+            
+            {activeMeds.length > 0 && ` Paciente sob uso de medicamentos que podem modular a resposta cardiovascular.`}
           </div>
         </div>
       </section>
 
-      {/* PERFORMANCE E ESFORÇO */}
-      <section className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm space-y-6">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b pb-4">
-          <Timer size={14} className="text-indigo-500" /> Performance Física
-        </h3>
-        <div className="grid grid-cols-2 gap-8">
-          <div>
-            <span className="text-[9px] font-bold text-slate-400 uppercase">Capacidade Estimada (METs)</span>
-            <div className="text-3xl font-black text-emerald-600">
-              {dasi?.estimatedMETs ? Number(dasi.estimatedMETs).toFixed(1) : '---'}
-            </div>
-          </div>
-          <div>
-            <span className="text-[9px] font-bold text-slate-400 uppercase">Sintomas (Borg)</span>
-            <div className="text-sm font-black text-rose-700 uppercase italic mt-1">
-              {exercise?.dyspnea || exercise?.fatigue 
-                ? `D: ${exercise.dyspnea || 0} | F: ${exercise.fatigue || 0}`
-                : "Sem sintomas relatados"}
-            </div>
-          </div>
+      {/* OBSERVAÇÕES */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 ml-4">
+          <FileText size={14} className="text-slate-400" />
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações Clínicas</h3>
         </div>
-      </section>
-
-      <footer className="print:fixed print:bottom-0 print:w-full bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100">
-        <p className="text-[9px] text-slate-500 font-bold uppercase text-center">
-          Relatório gerado automaticamente conforme Resolução COFFITO 555/2022.
+        <textarea 
+          value={observations}
+          onChange={(e) => setObservations(e.target.value)}
+          placeholder="Notas sobre estabilidade hemodinâmica ou conduta..."
+          className="w-full p-8 rounded-[2.5rem] border-2 border-slate-100 focus:border-indigo-500 outline-none text-sm font-medium text-slate-700 bg-slate-50/50 print:hidden"
+          rows={3}
+        />
+        <p className="hidden print:block text-sm text-slate-700 italic border-l-4 border-slate-200 pl-4">
+          {observations || "Sem observações adicionais."}
         </p>
+      </section>
+
+      {/* RODAPÉ */}
+      <footer className="pt-12 flex justify-between items-end">
+        <div className="text-[9px] text-slate-400 font-bold uppercase">
+          Gerado em: {new Date().toLocaleDateString('pt-PT')} | Resolução COFFITO 555/2022
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="w-64 border-b-2 border-slate-900 mb-2"></div>
+          <span className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Fisioterapeuta Responsável</span>
+        </div>
       </footer>
     </div>
   );

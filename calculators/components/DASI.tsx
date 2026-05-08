@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Info, CheckCircle2, Save, AlertCircle,
-  Activity as ActivityIcon, LayoutDashboard, RotateCcw
+  Activity as ActivityIcon, LayoutDashboard, RotateCcw, ArrowLeft, ChevronRight
 } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
 import { useAuth } from '../../context/AuthContext';
@@ -31,7 +31,6 @@ export const DASI: React.FC = () => {
   const [answers, setAnswers] = useState<Record<number, boolean>>({});
   const [isSaved, setIsSaved] = useState(false);
 
-  // Validação de dados (Idade é crucial para o cálculo do predito do DASI)
   const age = parseInt(patientInfo?.age?.toString() || '0');
   const isDataValid = age > 0;
 
@@ -91,12 +90,13 @@ export const DASI: React.FC = () => {
         <AlertCircle className="mx-auto mb-4 text-amber-600" size={48} />
         <h3 className="font-bold text-lg mb-2">Dados do paciente pendentes</h3>
         <p className="text-sm">Para calcular o DASI, preencha a idade do paciente no cadastro.</p>
+        <button onClick={() => navigate(-1)} className="mt-6 text-xs font-black uppercase text-amber-700 underline">Voltar ao Cadastro</button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6 pb-64 relative">
+    <div className="max-w-4xl mx-auto p-4 space-y-6 pb-72 relative"> {/* Aumentado pb para acomodar barra dupla */}
       <div className="bg-white rounded-[40px] shadow-sm overflow-hidden border border-slate-100">
         <div className="bg-slate-900 p-8 flex justify-between items-center">
           <div>
@@ -166,34 +166,45 @@ export const DASI: React.FC = () => {
                   <ActivityIcon size={140} className="absolute -bottom-10 -right-10 text-white/[0.03] rotate-12" />
                 </div>
               )}
-
-              <div className="px-6 py-4 bg-slate-50 rounded-[24px] border border-slate-100">
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Fórmulas Clínicas</p>
-                <p className="text-[9px] text-slate-500 leading-tight italic">
-                  VO2 = (0.43 x Score) + 9.6. MET = VO2 / 3.5. Predito ajustado por idade conforme Hlatky et al.
-                </p>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] space-y-3">
+      {/* BARRA DE AÇÕES FIXA UNIFICADA */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
+        <div className="flex gap-3">
+          {/* Botão Voltar */}
+          <button
+            onClick={() => navigate(-1)}
+            className="flex-1 bg-white/90 backdrop-blur-md text-slate-500 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+          >
+            <ArrowLeft size={16} /> Voltar
+          </button>
+
+          {/* Botão Gravar e Avançar */}
+          <button
+            onClick={() => {
+              handleSave();
+              if (isDataValid) navigate('/testes/tc6m'); // Programe a rota do próximo teste aqui
+            }}
+            className="flex-[2] bg-slate-900 text-white py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+          >
+            <div className="flex flex-col items-start text-left">
+              <span className="text-[11px] uppercase tracking-widest">
+                {isSaved ? 'DASI Gravado' : 'Gravar e Continuar'}
+              </span>
+              <span className="text-[8px] text-slate-400 font-medium lowercase">próxima etapa</span>
+            </div>
+            <ChevronRight size={18} className="text-emerald-400" />
+          </button>
+        </div>
+
         <button
-          onClick={handleSave}
-          className={`w-full py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 ${
-            isSaved ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white'
-          }`}
+          onClick={() => navigate('/dashboard')}
+          className="w-full py-2 text-slate-400 font-bold text-[9px] uppercase tracking-[0.2em] hover:text-indigo-500 transition-colors"
         >
-          {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} className="text-emerald-400" />}
-          <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'DASI SALVO' : 'GRAVAR CAPACIDADE FUNCIONAL'}</span>
-        </button>
-        
-        <button
-          onClick={() => navigate('/dashboard')} 
-          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest"
-        >
-          <LayoutDashboard size={18} /> PAINEL DE MÓDULOS
+          <LayoutDashboard size={12} className="inline mr-1 mb-1" /> Ir para o Painel Geral
         </button>
       </div>
     </div>

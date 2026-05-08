@@ -9,25 +9,30 @@ import { generateCBDFCode } from '../../utils/cbdfGenerator';
 import { calculateRisk } from '../../utils/riskStratification';
 
 export const FinalReport: React.FC = () => {
-  const { patientInfo, medications, testResults } = usePatient();
+  // Fazemos o cast para 'any' para evitar que o TS barre propriedades 
+  // que ainda não foram totalmente mapeadas nas Interfaces globais
+  const { patientInfo, medications, testResults } = usePatient() as any;
   const { user } = useAuth(); 
 
   // Memoização para evitar re-cálculos desnecessários
   const reportData = useMemo(() => {
+    // Verificação básica para não quebrar as funções de utilidade
+    if (!patientInfo) return { rawCode: '', risk: {} as any };
+    
     const rawCode = generateCBDFCode(patientInfo, testResults, medications);
     const risk = calculateRisk(patientInfo, testResults);
     return { rawCode, risk };
   }, [patientInfo, testResults, medications]);
 
   const { rawCode, risk } = reportData;
-  const cbdfFullCode = rawCode.replace(/^Q/, '').trim();
+  const cbdfFullCode = rawCode?.replace(/^Q/, '').trim() || "---";
   
-  // Extração segura de dados
+  // Extração segura de dados com Optional Chaining (?.)
   const dasi = testResults?.aerobic?.dasi; 
-  const exercise = testResults?.['fatigability']?.exercise;
+  const exercise = testResults?.fatigability?.exercise;
 
   const handlePrint = async () => {
-    if (user) await logActivity(user.id, 'Gerou PDF do Relatório Final');
+    if (user?.id) await logActivity(user.id, 'Gerou PDF do Relatório Final');
     window.print();
   };
 
@@ -74,12 +79,14 @@ export const FinalReport: React.FC = () => {
 
       {/* RISCO E CBDF */}
       <section className="grid grid-cols-1 gap-6">
-        <div className={`p-8 rounded-[2rem] border-2 ${risk.border} ${risk.bg} flex items-center justify-between`}>
+        <div className={`p-8 rounded-[2rem] border-2 ${risk?.border || 'border-slate-200'} ${risk?.bg || 'bg-slate-50'} flex items-center justify-between`}>
           <div>
             <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Estratificação</span>
-            <h3 className={`text-3xl font-black ${risk.color} tracking-tighter uppercase`}>{risk.level}</h3>
+            <h3 className={`text-3xl font-black ${risk?.color || 'text-slate-900'} tracking-tighter uppercase`}>
+              {risk?.level || "Não Calculado"}
+            </h3>
           </div>
-          <ShieldCheck className={`w-12 h-12 ${risk.color} opacity-80`} />
+          <ShieldCheck className={`w-12 h-12 ${risk?.color || 'text-slate-300'} opacity-80`} />
         </div>
 
         <div className="bg-slate-950 rounded-[2.5rem] p-8 text-white shadow-2xl border-b-[8px] border-indigo-600 relative overflow-hidden">

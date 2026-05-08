@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { NavId } from '../../types';
 
 interface SidebarItem {
-  id: NavId | 'Home'; // Garantindo que 'Home' também seja aceito
+  id: NavId | 'Home';
   label: string;
   icon: LucideIcon;
   section: 'Geral' | 'Paciente' | 'Avaliação' | 'Relatório';
@@ -18,8 +18,8 @@ interface SidebarItem {
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  selectedCategory: string; // Mudado para string para aceitar o ID
-  onSelectCategory: (category: any) => void;
+  selectedCategory: NavId | 'Home'; // Tipagem estrita
+  onSelectCategory: (id: NavId | 'Home') => void;
 }
 
 const MENU_ITEMS: SidebarItem[] = [
@@ -50,6 +50,7 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
 
   return (
     <>
+      {/* Overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -57,22 +58,23 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onToggle}
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[60]"
           />
         )}
       </AnimatePresence>
 
+      {/* Sidebar */}
       <AnimatePresence>
         {isOpen && (
           <motion.aside
-            initial={{ x: -300 }}
+            initial={{ x: -320 }}
             animate={{ x: 0 }}
-            exit={{ x: -300 }}
+            exit={{ x: -320 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed left-0 top-0 h-full w-[300px] bg-slate-950 text-slate-400 z-50 flex flex-col border-r border-slate-800 shadow-2xl"
+            className="fixed left-0 top-0 h-full w-[300px] bg-slate-950 text-slate-400 z-[70] flex flex-col border-r border-slate-800 shadow-2xl"
           >
             {/* Branding */}
-            <div className="h-24 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900/40">
+            <div className="h-24 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900/40 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
                   <Activity className="w-6 h-6 text-slate-950" />
@@ -81,7 +83,10 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
                   Cardio<span className="text-emerald-500">Tools</span>
                 </span>
               </div>
-              <button onClick={onToggle} className="p-2.5 hover:bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-all active:scale-90">
+              <button 
+                onClick={onToggle} 
+                className="p-2.5 hover:bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-all active:scale-90"
+              >
                 <ChevronLeft size={20} />
               </button>
             </div>
@@ -90,11 +95,12 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
             <nav className="flex-1 py-6 px-4 space-y-6 overflow-y-auto custom-scrollbar">
               {['Geral', 'Paciente', 'Avaliação', 'Relatório'].map((sectionName) => {
                 const itemsInSection = MENU_ITEMS.filter(item => item.section === sectionName);
-                
+                if (itemsInSection.length === 0) return null;
+
                 return (
                   <div key={sectionName} className="space-y-1">
-                    <p className="px-4 text-[10px] font-black text-slate-700 uppercase tracking-widest mb-2 flex items-center gap-2">
-                      <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                    <p className="px-4 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/30"></span>
                       {sectionName}
                     </p>
                     
@@ -109,12 +115,22 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
                           className={`w-full flex items-center gap-4 p-3.5 rounded-2xl transition-all group relative ${
                             isActive 
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                              : 'hover:bg-slate-900 text-slate-500 hover:text-slate-200'
+                              : 'hover:bg-slate-900 text-slate-500 hover:text-slate-200 border border-transparent'
                           }`}
                         >
-                          {isActive && <motion.div layoutId="activeIndicator" className="absolute left-0 w-1 h-6 bg-emerald-500 rounded-r-full" />}
-                          <Icon size={18} className={`${isActive ? 'text-emerald-400' : 'text-slate-600 group-hover:text-slate-400'}`} />
-                          <span className="text-[13px] font-semibold tracking-tight">{item.label}</span>
+                          {isActive && (
+                            <motion.div 
+                              layoutId="activeIndicator" 
+                              className="absolute left-0 w-1 h-6 bg-emerald-500 rounded-r-full" 
+                            />
+                          )}
+                          <Icon 
+                            size={18} 
+                            className={`${isActive ? 'text-emerald-400' : 'text-slate-600 group-hover:text-slate-400'} transition-colors`} 
+                          />
+                          <span className="text-[13px] font-bold tracking-tight uppercase italic">
+                            {item.label}
+                          </span>
                         </button>
                       );
                     })}
@@ -124,10 +140,13 @@ export const Sidebar = ({ isOpen, onToggle, selectedCategory, onSelectCategory }
             </nav>
 
             {/* Footer Actions */}
-            <div className="p-4 bg-slate-900/20 border-t border-slate-800 space-y-1.5">
-              <button onClick={handleLogoutClick} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-rose-500/10 text-slate-600 hover:text-rose-400 transition-all group">
-                <LogOut size={18} />
-                <span className="text-[13px] font-bold">Encerrar Sessão</span>
+            <div className="p-4 bg-slate-900/40 border-t border-slate-800 shrink-0">
+              <button 
+                onClick={handleLogoutClick} 
+                className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-all group"
+              >
+                <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
+                <span className="text-[11px] font-black uppercase tracking-widest">Encerrar Sessão</span>
               </button>
             </div>
           </motion.aside>

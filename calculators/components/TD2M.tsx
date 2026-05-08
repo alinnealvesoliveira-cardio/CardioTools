@@ -1,39 +1,38 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { TimedTestTemplate, InterpretationResult } from '../templates/TimedTestTemplate';
-import { Activity, LayoutDashboard, RotateCcw, Footprints } from 'lucide-react';
+import { Activity, LayoutDashboard, RotateCcw, Footprints, ArrowLeft, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { usePatient } from '../../context/PatientProvider';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { FunctionalTestResult, CIFData } from '../../types';
 
 export const TD2M: React.FC = () => {
-  const { patientInfo, testResults, updateTestResults } = usePatient();
+  const { patientInfo, updateTestResults } = usePatient();
   const navigate = useNavigate();
 
-  // Estados locais para os inputs
+  // Estados locais
   const [steps, setSteps] = useState<number>(0);
   const [postFadiga, setPostFadiga] = useState<number | null>(null);
   const [postAngina, setPostAngina] = useState<number | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
 
   const age = parseInt(patientInfo?.age?.toString() || '0');
   const height = parseFloat(patientInfo?.height?.toString() || '0');
   const weight = parseFloat(patientInfo?.weight?.toString() || '0');
   const isDataValid = age > 0 && height > 0 && weight > 0;
 
+  // Cálculos de Predito (Rikli & Jones) e LIN
   const { predictedRikli, lin, normativeRange } = useMemo(() => {
     if (!isDataValid) return { predictedRikli: 0, lin: 0, normativeRange: null };
 
     const sex = (patientInfo?.sex as string);
-    const isFemale = sex === 'female' || sex === 'F';
-    const bmi = height > 0 ? weight / ((height / 100) ** 2) : 24.5;
+    const isFemale = sex?.toLowerCase().startsWith('f');
+    const bmi = weight / ((height / 100) ** 2);
 
-    // Fórmula de Rikli & Jones
     const pRikli = !isFemale 
       ? 143.297 - (1.157 * age) - (0.334 * bmi) 
       : 118.773 - (0.832 * age) - (0.472 * bmi);
     
-    const epe = 6;
-    const pLin = pRikli - (epe * 1.645);
+    const pLin = pRikli - (6 * 1.645); // EPE aproximado de 6
 
     const getRange = (a: number, female: boolean): [number, number] | null => {
       if (a < 60) return null;
@@ -50,129 +49,115 @@ export const TD2M: React.FC = () => {
     return { predictedRikli: pRikli, lin: pLin, normativeRange: getRange(age, isFemale) };
   }, [patientInfo, age, height, weight, isDataValid]);
 
-  const handleResetSintomas = () => {
-    setPostFadiga(null);
-    setPostAngina(null);
-    setSteps(0);
-  };
-
-  const interpretation = (_time: number, _count: number): InterpretationResult[] => {
-    // Usamos 'steps' do estado local para o cálculo em tempo real
-    if (steps === 0) return [{ label: "Aguardando", color: "slate", description: "Insira o número de passos." }];
+  const interpretation = (): InterpretationResult[] => {
+    if (steps === 0) return [{ label: "Pendente", color: "slate", description: "Insira as elevações." }];
     
     const normative = normativeRange 
       ? (steps >= normativeRange[0] ? (steps > normativeRange[1] ? "Acima do Normal" : "Normal") : "Abaixo do Normal")
-      : "Sem dados normativos";
+      : "Realizado";
 
     return [{
       label: steps < lin ? "Abaixo do LIN" : normative,
       color: steps < lin ? "red" : (normative === "Normal" || normative === "Acima do Normal" ? "green" : "yellow"),
       description: steps < lin 
-        ? `Abaixo do Limite Inferior (${lin.toFixed(0)} passos).` 
-        : `Resultado ${normative.toLowerCase()}.`
+        ? `Desempenho abaixo do Limite Inferior (${lin.toFixed(0)} passos).` 
+        : `Capacidade funcional dentro da normalidade normativa.`
     }];
   };
 
-  const handleGlobalSave = (data: { 
-    time: number; 
-    count: number; 
-    results: InterpretationResult[]; 
-    cif: CIFData | null; 
-    hr: { pre: number; post: number }; 
-  }) => {
-    const efficiency = predictedRikli > 0 ? (steps / predictedRikli) * 100 : 0;
+  const handleGlobalSave = (data: any) => {
+    if (steps <= 0) {
+      toast.error("Insira o total de elevações.");
+      return;
+    }
 
-    const currentScales = testResults?.fatigability || { 
-      rest: { dyspnea: 0, fatigue: 0 }, 
-      exercise: { dyspnea: 0, fatigue: 0 } 
-    };
-
+    // REGRA DE OURO: Atualiza o nó 'aerobic' para que o relatório final pegue este teste
     updateTestResults('aerobic', {
       td2m: {
-        count: steps, // Valor do input manual
+        count: steps,
         predicted: predictedRikli,
-        efficiency: efficiency,
-        interpretation: data.results[0]?.label || "Realizado",
+        efficiency: (steps / predictedRikli) * 100,
+        interpretation: interpretation()[0].label,
         hr: data.hr,
-        cif: data.cif ?? undefined
-      } as FunctionalTestResult
+        cif: data.cif
+      }
     });
 
-    updateTestResults('fatigability', {
-      ...currentScales,
-      exercise: { ...currentScales.exercise, fatigue: postFadiga || 0 }
-    });
+    // Atualiza fadiga se houver
+    if (postFadiga !== null) {
+      updateTestResults('fatigability', {
+        exercise: { fatigue: postFadiga, dyspnea: 0 }
+      });
+    }
 
-    toast.success("2MST gravado com sucesso!");
+    setIsSaved(true);
+    toast.success("TD2M salvo!");
+    setTimeout(() => navigate('/dashboard'), 1500);
   };
 
   if (!isDataValid) {
     return (
-      <div className="p-8 bg-amber-50 border border-amber-200 rounded-3xl text-amber-800 text-center">
-        <h3 className="font-bold text-lg mb-2">Dados antropométricos necessários</h3>
-        <p>Preencha idade, peso e altura no cadastro para calcular o predito do 2MST.</p>
+      <div className="max-w-md mx-auto mt-20 p-8 bg-rose-50 border border-rose-100 rounded-[32px] text-center space-y-4 shadow-sm">
+        <AlertCircle className="mx-auto text-rose-500" size={40} />
+        <h3 className="font-black text-rose-900 uppercase text-xs tracking-widest">Biometria Necessária</h3>
+        <p className="text-xs text-rose-700 leading-relaxed italic">O TD2M exige Idade, Peso e Altura para calcular o predito de Rikli & Jones.</p>
+        <button onClick={() => navigate(-1)} className="pt-2 text-[10px] font-black uppercase text-rose-600 underline">Voltar</button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-60 relative"> 
+    <div className="max-w-4xl mx-auto pb-64 relative"> 
+      <style>{`#template-save-button { display: none !important; }`}</style>
+      
       <TimedTestTemplate
         title="2MST"
-        description="Teste de Marcha Estacionária (2 Minutos)"
+        description="Marcha Estacionária (Rikli & Jones)"
         timerDuration={120}
-        hasCounter={true}
-        counterLabel="Elevações do Joelho"
-        interpretation={interpretation}
         predictedValue={predictedRikli}
+        interpretation={interpretation}
         onSave={handleGlobalSave}
       >
         <div className="space-y-6 px-4">
-          {/* INPUT DE PASSOS (O que estava faltando) */}
-          <div className="bg-white rounded-[32px] p-8 shadow-sm border-2 border-slate-100 transition-all focus-within:border-indigo-500">
+          {/* INPUT GIGANTE DE PASSOS */}
+          <div className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100">
             <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-2">
-              <Footprints size={16} className="text-indigo-500"/> Total de Elevações (Joelho Direito)
+              <Footprints size={16} className="text-indigo-500"/> Elevações (Joelho Direito)
             </label>
-            <input
-              type="number"
-              value={steps || ''}
-              onChange={(e) => setSteps(Number(e.target.value))}
-              placeholder="Ex: 95"
-              className="w-full bg-transparent text-5xl font-black text-slate-900 outline-none placeholder:text-slate-100"
-            />
+            <div className="relative">
+              <input
+                type="number"
+                value={steps || ''}
+                onChange={(e) => { setSteps(Number(e.target.value)); setIsSaved(false); }}
+                placeholder="00"
+                className="w-full bg-transparent text-7xl font-black text-slate-900 outline-none placeholder:text-slate-100"
+              />
+              <span className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-300 font-black text-2xl italic tracking-tighter">passos</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-5 bg-emerald-50 rounded-[24px] border border-emerald-100">
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Predito</p>
-              <p className="text-3xl font-black text-emerald-900">{predictedRikli.toFixed(1)}</p>
+            <div className="p-6 bg-slate-900 rounded-[32px] text-white">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">LIN (Corte)</p>
+              <p className="text-4xl font-black text-emerald-400 italic">{lin.toFixed(0)}</p>
             </div>
-            <div className="p-5 bg-rose-50 rounded-[24px] border border-rose-100">
-              <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Corte (LIN)</p>
-              <p className="text-3xl font-black text-rose-900">{lin.toFixed(0)}</p>
+            <div className="p-6 bg-white rounded-[32px] border border-slate-100">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Média Esperada</p>
+              <p className="text-4xl font-black text-slate-900 italic">{predictedRikli.toFixed(0)}</p>
             </div>
           </div>
 
-          {/* ESCALAS DE SINTOMAS */}
-          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2 font-black text-slate-700 uppercase text-xs tracking-widest">
-                <Activity className="text-indigo-500" size={18}/> Sintomas Pós-Esforço
-              </div>
-              <button onClick={handleResetSintomas} className="text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest flex items-center gap-1">
-                <RotateCcw size={12}/> Limpar
-              </button>
-            </div>
-
+          {/* ESCALAS DE SINTOMAS - COMPACTAS */}
+          <div className="bg-slate-50 rounded-[32px] p-8 space-y-8">
             <div className="space-y-4">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fadiga (Borg 0-10)</label>
-              <div className="grid grid-cols-6 gap-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Fadiga (Borg 0-10)</label>
+              <div className="flex justify-between gap-2">
                 {[0, 2, 4, 6, 8, 10].map(n => (
                   <button
                     key={n}
                     type="button"
                     onClick={() => setPostFadiga(n)}
-                    className={`py-4 rounded-2xl font-black transition-all ${postFadiga === n ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    className={`flex-1 py-4 rounded-2xl font-black text-sm transition-all ${postFadiga === n ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200'}`}
                   >
                     {n}
                   </button>
@@ -181,14 +166,14 @@ export const TD2M: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Angina (CCS 0-4)</label>
-              <div className="grid grid-cols-5 gap-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Dor/Angina (CCS)</label>
+              <div className="flex justify-between gap-2">
                 {[0, 1, 2, 3, 4].map(n => (
                   <button
                     key={n}
                     type="button"
                     onClick={() => setPostAngina(n)}
-                    className={`py-4 rounded-2xl font-black transition-all ${postAngina === n ? 'bg-rose-500 text-white' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    className={`flex-1 py-4 rounded-2xl font-black text-sm transition-all ${postAngina === n ? 'bg-rose-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200'}`}
                   >
                     {n === 0 ? 'Não' : n}
                   </button>
@@ -199,12 +184,36 @@ export const TD2M: React.FC = () => {
         </div>
       </TimedTestTemplate>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999]">
+      {/* BARRA DE AÇÕES FIXA UNIFICADA */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
+        <div className="flex gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex-1 bg-white/90 backdrop-blur-md text-slate-500 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+          >
+            <ArrowLeft size={16} /> Voltar
+          </button>
+
+          <button
+            onClick={() => document.getElementById('save-test-button')?.click()}
+            disabled={steps === 0}
+            className={`flex-[2] py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${
+              steps > 0 ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex flex-col items-start text-left">
+              <span className="text-[11px] uppercase tracking-widest">{isSaved ? 'Gravado' : 'Finalizar Teste'}</span>
+              <span className="text-[8px] text-slate-400 font-medium lowercase italic">salvar e ir para o painel</span>
+            </div>
+            {isSaved ? <CheckCircle2 size={18} className="text-emerald-400" /> : <ChevronRight size={18} className="text-emerald-400" />}
+          </button>
+        </div>
+
         <button
-          onClick={() => navigate('/dashboard')} 
-          className="w-full bg-white/90 backdrop-blur-md text-slate-900 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl flex items-center justify-center gap-3 text-[10px] uppercase tracking-widest"
+          onClick={() => navigate('/dashboard')}
+          className="w-full py-2 text-slate-400 font-bold text-[9px] uppercase tracking-[0.2em] hover:text-indigo-500 transition-colors"
         >
-          <LayoutDashboard size={18} /> PAINEL DE MÓDULOS
+          <LayoutDashboard size={12} className="inline mr-1 mb-1" /> Ir para o Painel Geral
         </button>
       </div>
     </div>
