@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CategoryName, NavId } from '../../types';
+import { CategoryName } from '../../types';
 
 /**
- * Mapeamentos com tipagem flexível (Record<string, any>) 
- * para evitar conflitos de Case Sensitivity e propriedades faltantes.
+ * Mapeamentos corrigidos para evitar erros de Case Sensitivity.
+ * O TypeScript espera 'home' em minúsculo para rotas/IDs.
  */
 const navToCategoryMap: Record<string, any> = {
-  'Home': 'Home',
   'home': 'Home',
   'cadastro': 'cadastro',
   'anamnese': 'anamnese',
@@ -22,15 +21,13 @@ const navToCategoryMap: Record<string, any> = {
 };
 
 const categoryToNavMap: Record<string, any> = {
-  'Home': 'Home',
-  'home': 'Home',
+  'Home': 'home',
   'cadastro': 'cadastro',
   'anamnese': 'anamnese',
   'autonomic': 'autonomic',
   'vascular': 'vascular',
   'aerobic': 'aerobic',
   'fatigability': 'fatigability',
-  'symptoms': 'fatigability',
   'hr-response': 'hr-response',
   'final-report': 'final-report'
 };
@@ -60,8 +57,8 @@ export const Layout: React.FC<LayoutProps> = ({
   }, []);
 
   const handleMenuSelect = (id: string) => {
-    // Busca a categoria correspondente no mapa ou default para Home
-    const mappedCategory = navToCategoryMap[id] || 'Home';
+    // Normaliza para minúsculo antes de buscar no mapa
+    const mappedCategory = navToCategoryMap[id.toLowerCase()] || 'Home';
     onSelectCategory(mappedCategory);
     closeSidebar();
   };
@@ -71,8 +68,8 @@ export const Layout: React.FC<LayoutProps> = ({
       <Sidebar 
         isOpen={isSidebarOpen}
         onToggle={toggleSidebar}
-        // Garante que o ID passado para a Sidebar seja uma string compatível com o NavId
-        selectedCategory={(categoryToNavMap[selectedCategory] || 'Home') as any} 
+        // Usamos o mapeamento para garantir que a Sidebar receba o ID correto
+        selectedCategory={(categoryToNavMap[selectedCategory] || 'home') as any} 
         onSelectCategory={handleMenuSelect as any} 
       />
       
