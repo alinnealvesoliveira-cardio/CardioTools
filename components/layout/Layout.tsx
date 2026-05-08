@@ -2,37 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CategoryName } from '../../types';
+import { CategoryName, NavId } from '../../types';
 
-/**
- * Mapeamentos com asserção 'as any' para forçar o build na Vercel.
- * Isso ignora as inconsistências de minúsculas/maiúsculas que travam o 'npm run build'.
- */
-const navToCategoryMap: Record<string, any> = {
-  'home': 'Home',
+// 1. Tradução: UI (NavId) -> Dados (CategoryName)
+const navToCategoryMap: Record<NavId, CategoryName | 'Home'> = {
   'Home': 'Home',
-  'cadastro': 'cadastro',
-  'anamnese': 'anamnese',
-  'autonomic': 'autonomic',
-  'vascular': 'vascular',
-  'aerobic': 'aerobic',
-  'fatigability': 'fatigability',
-  'hr-response': 'hr-response',
-  'final-report': 'final-report'
-} as any;
+  'Cadastro': 'cadastro',
+  'Anamnese': 'anamnese',
+  'Avaliação Autonômica': 'autonomic',
+  'Vascular': 'vascular',
+  'Capacidade Aeróbica': 'aerobic',
+  'Avaliação de Sintomas': 'fatigability', // Corrigido para coincidir com types.ts
+  'Resposta da FC': 'hr-response', // Adicionado para evitar erro
+  'Relatório Final': 'final-report'
+};
 
-const categoryToNavMap: Record<string, any> = {
-  'Home': 'home',
-  'home': 'home',
-  'cadastro': 'cadastro',
-  'anamnese': 'anamnese',
-  'autonomic': 'autonomic',
-  'vascular': 'vascular',
-  'aerobic': 'aerobic',
-  'fatigability': 'fatigability',
-  'hr-response': 'hr-response',
-  'final-report': 'final-report'
-} as any;
+// 2. Tradução: Dados (CategoryName) -> UI (NavId)
+const categoryToNavMap: Record<CategoryName | 'Home', NavId> = {
+  'Home': 'Home',
+  'cadastro': 'Cadastro',
+  'anamnese': 'Anamnese',
+  'autonomic': 'Avaliação Autonômica',
+  'vascular': 'Vascular',
+  'aerobic': 'Capacidade Aeróbica',
+  'fatigability': 'Avaliação de Sintomas', // Corrigido
+  'symptoms': 'Avaliação de Sintomas',
+  'hr-response': 'Resposta da FC', // Adicionado
+  'final-report': 'Relatório Final'
+};
+
+const getNavIdFromCategory = (category: CategoryName | 'Home'): NavId => {
+  return categoryToNavMap[category] || 'Home';
+};
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -45,6 +46,7 @@ export const Layout: React.FC<LayoutProps> = ({
   selectedCategory, 
   onSelectCategory 
 }) => {
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -58,9 +60,9 @@ export const Layout: React.FC<LayoutProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleMenuSelect = (id: string) => {
-    // Normaliza para minúsculo e busca no mapa flexível
-    const mappedCategory = navToCategoryMap[id.toLowerCase()] || 'Home';
+  const handleMenuSelect = (id: NavId) => {
+    // Usamos o mapa para converter o ID clicado na categoria de dados
+    const mappedCategory = navToCategoryMap[id];
     onSelectCategory(mappedCategory);
     closeSidebar();
   };
@@ -70,15 +72,15 @@ export const Layout: React.FC<LayoutProps> = ({
       <Sidebar 
         isOpen={isSidebarOpen}
         onToggle={toggleSidebar}
-        // Forçamos a saída como 'any' para evitar que o TS reclame de IDs faltando
-        selectedCategory={(categoryToNavMap[selectedCategory] || 'home') as any} 
-        onSelectCategory={handleMenuSelect as any} 
+        // Usamos o mapa inverso para garantir que a Sidebar receba um NavId válido
+        selectedCategory={categoryToNavMap[selectedCategory] || 'Home'} 
+        onSelectCategory={handleMenuSelect}
       />
       
       <div className="flex-1 flex flex-col min-w-0 h-screen relative">
         <Header onMenuClick={toggleSidebar} />
         
-        <main className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth relative bg-white md:bg-slate-50/50">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedCategory}
@@ -92,9 +94,9 @@ export const Layout: React.FC<LayoutProps> = ({
             </motion.div>
           </AnimatePresence>
           
-          <footer className="mt-auto py-8 text-center border-t border-slate-200/60 mx-4 md:mx-10 shrink-0">
-            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-              CardioTools • Sistema de Apoio à Decisão Clínica em Fisioterapia Cardiovascular
+          <footer className="mt-auto py-8 text-center border-t border-slate-200/60 mx-10">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+              Sistema de Apoio à Decisão Clínica em Fisioterapia Cardiovascular
             </p>
           </footer>
         </main>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Activity, CheckCircle2, Save, 
+  Activity, Info, CheckCircle2, Save, 
   ArrowDown, ArrowUp, AlertTriangle, Zap 
 } from 'lucide-react';
 
@@ -10,9 +10,7 @@ import { MedicationAlert } from '../../../components/shared/MedicationAlert';
 import { toast } from 'react-hot-toast';
 
 export const OrthostaticDrop: React.FC = () => {
-  // Casting 'as any' para permitir flexibilidade com propriedades de medicamentos dinâmicas
-  const { medications, updateTestResults } = usePatient() as any;
-  
+  const { medications, updateTestResults } = usePatient();
   const [supinePAS, setSupinePAS] = useState<string>('');
   const [supinePAD, setSupinePAD] = useState<string>('');
   const [standingPAS, setStandingPAS] = useState<string>('');
@@ -20,7 +18,6 @@ export const OrthostaticDrop: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Foco automático no primeiro input ao carregar
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -31,12 +28,11 @@ export const OrthostaticDrop: React.FC = () => {
     const stPAS = parseInt(standingPAS);
     const stPAD = parseInt(standingPAD);
 
-    // Validação mínima para cálculo
     if (isNaN(sPAS) || isNaN(stPAS)) return null;
 
     return { 
       deltaPAS: sPAS - stPAS, 
-      deltaPAD: (isNaN(sPAD) || isNaN(stPAD)) ? 0 : sPAD - stPAD 
+      deltaPAD: isNaN(sPAD) || isNaN(stPAD) ? 0 : sPAD - stPAD 
     };
   };
 
@@ -50,7 +46,7 @@ export const OrthostaticDrop: React.FC = () => {
       bgColor: "bg-rose-50",
       border: "border-rose-200",
       icon: <AlertTriangle className="text-rose-500" />,
-      desc: "Queda crítica de PAS ≥ 20 mmHg ou PAD ≥ 10 mmHg. Risco elevado de síncope e quedas." 
+      desc: "Queda crítica de PAS ≥ 20 mmHg ou PAD ≥ 10 mmHg. Risco elevado de síncope e queda." 
     };
     return { 
       label: "RESPOSTA NORMAL", 
@@ -58,25 +54,25 @@ export const OrthostaticDrop: React.FC = () => {
       bgColor: "bg-emerald-50",
       border: "border-emerald-200",
       icon: <CheckCircle2 className="text-emerald-500" />,
-      desc: "Mecanismos barorreflexos preservados. Variação tensional dentro dos limites fisiológicos." 
+      desc: "Mecanismos barorreflexos preservados. Variação de pressão dentro dos limites fisiológicos." 
     };
   };
 
   const handleSave = () => {
-    if (!delta) return;
+    if (delta === null) return;
     const interpretation = getInterpretation(delta.deltaPAS, delta.deltaPAD);
     
-    updateTestResults('autonomic' as any, {
+    updateTestResults('autonomic',  {
       orthostaticDrop: {
-        supine: { pas: Number(supinePAS), pad: Number(supinePAD) },
-        standing: { pas: Number(standingPAS), pad: Number(standingPAD) },
+        supine: { pas: parseInt(supinePAS), pad: parseInt(supinePAD) },
+        standing: { pas: parseInt(standingPAS), pad: parseInt(standingPAD) },
         delta: delta,
         interpretation: interpretation.label
       }
-    } as any);
+    });
 
     setIsSaved(true);
-    toast.success("Resultado ortostático registrado");
+    toast.success("Teste de inclinação registrado");
   };
 
   return (
@@ -85,24 +81,23 @@ export const OrthostaticDrop: React.FC = () => {
         <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase flex items-center gap-3">
           <ArrowDown className="text-rose-500" size={32} /> Orthostatic Drop
         </h1>
-        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Avaliação de Tolerância à Mudança de Decúbito</p>
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Avaliação de Tolerância Ortostática</p>
       </header>
 
-      {/* Alertas de Medicamentos Moduladores */}
-      <div className="px-2 flex flex-wrap gap-4">
-        <MedicationAlert type="bcc_dhp" active={!!medications?.bcc_dhp} /> 
-        <MedicationAlert type="bcc_non_dhp" active={!!medications?.bcc_non_dhp} />
+      <div className="px-2">
+        <MedicationAlert type="bcc-dhp" active={medications.bcc_dhp} /> 
+        <MedicationAlert type="bcc-non-dhp" active={medications.bcc_non_dhp} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* ENTRADA DE DADOS */}
         <div className="lg:col-span-7 space-y-6">
+          {/* SEÇÃO SUPINO */}
           <section className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
                 <ArrowUp size={24} />
               </div>
-              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest italic">Posição Supina (5 min Repouso)</h2>
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest italic">Posição Supina (Repouso)</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-8">
@@ -115,7 +110,7 @@ export const OrthostaticDrop: React.FC = () => {
                   value={supinePAS}
                   onChange={(e) => { setSupinePAS(e.target.value); setIsSaved(false); }}
                   placeholder="000"
-                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-4xl font-black text-slate-800 focus:ring-4 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-200"
+                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-4xl font-black text-slate-800 focus:ring-4 focus:ring-indigo-100 outline-none transition-all"
                 />
               </div>
               <div className="space-y-4">
@@ -126,18 +121,19 @@ export const OrthostaticDrop: React.FC = () => {
                   value={supinePAD}
                   onChange={(e) => { setSupinePAD(e.target.value); setIsSaved(false); }}
                   placeholder="000"
-                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-4xl font-black text-slate-800 focus:ring-4 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-200"
+                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-4xl font-black text-slate-800 focus:ring-4 focus:ring-indigo-100 outline-none transition-all"
                 />
               </div>
             </div>
           </section>
 
+          {/* SEÇÃO ORTOSTATISMO */}
           <section className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
               <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl">
                 <ArrowDown size={24} />
               </div>
-              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest italic">Ortostatismo (1-3 min Ativo)</h2>
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest italic">Ortostatismo (1-3 min)</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-8">
@@ -149,7 +145,7 @@ export const OrthostaticDrop: React.FC = () => {
                   value={standingPAS}
                   onChange={(e) => { setStandingPAS(e.target.value); setIsSaved(false); }}
                   placeholder="000"
-                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-4xl font-black text-slate-800 focus:ring-4 focus:ring-rose-100 outline-none transition-all placeholder:text-slate-200"
+                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-4xl font-black text-slate-800 focus:ring-4 focus:ring-rose-100 outline-none transition-all"
                 />
               </div>
               <div className="space-y-4">
@@ -160,21 +156,21 @@ export const OrthostaticDrop: React.FC = () => {
                   value={standingPAD}
                   onChange={(e) => { setStandingPAD(e.target.value); setIsSaved(false); }}
                   placeholder="000"
-                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-4xl font-black text-slate-800 focus:ring-4 focus:ring-rose-100 outline-none transition-all placeholder:text-slate-200"
+                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-4xl font-black text-slate-800 focus:ring-4 focus:ring-rose-100 outline-none transition-all"
                 />
               </div>
             </div>
           </section>
         </div>
 
-        {/* RESULTADOS E INTERPRETAÇÃO */}
+        {/* COLUNA DE RESULTADO */}
         <div className="lg:col-span-5">
           <AnimatePresence mode="wait">
             {delta !== null ? (
               <motion.div
                 key="result"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="space-y-6 sticky top-6"
               >
                 <div className="bg-slate-900 rounded-[44px] p-10 shadow-2xl text-center space-y-6">
@@ -182,13 +178,13 @@ export const OrthostaticDrop: React.FC = () => {
                     <div className="space-y-1">
                       <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Δ PAS</div>
                       <div className={`text-6xl font-black tabular-nums italic ${delta.deltaPAS >= 20 ? 'text-rose-500' : 'text-emerald-400'}`}>
-                        {delta.deltaPAS > 0 ? `+${delta.deltaPAS}` : delta.deltaPAS}
+                        {delta.deltaPAS}
                       </div>
                     </div>
                     <div className="space-y-1">
                       <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Δ PAD</div>
                       <div className={`text-6xl font-black tabular-nums italic ${delta.deltaPAD >= 10 ? 'text-rose-500' : 'text-emerald-400'}`}>
-                        {delta.deltaPAD > 0 ? `+${delta.deltaPAD}` : delta.deltaPAD}
+                        {delta.deltaPAD}
                       </div>
                     </div>
                   </div>
@@ -217,26 +213,27 @@ export const OrthostaticDrop: React.FC = () => {
                         : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-xl shadow-indigo-500/20 active:scale-95'
                     }`}
                   >
-                    {isSaved ? <><CheckCircle2 size={20} /> RESULTADO REGISTRADO</> : <><Save size={20} className="text-emerald-400" /> SALVAR NO RELATÓRIO</>}
+                    {isSaved ? <><CheckCircle2 size={20} /> RESULTADO GRAVADO</> : <><Save size={20} className="text-emerald-400" /> SALVAR NO RELATÓRIO</>}
                   </button>
                 </div>
 
+                {/* PÉROLAS CLÍNICAS */}
                 <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-4">
                    <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest italic">
-                     <Zap size={14} fill="currentColor" /> Protocolo Recomendado
+                     <Zap size={14} fill="currentColor" /> Protocolo de Medida
                    </div>
                    <ul className="text-[11px] text-slate-500 space-y-3 font-medium italic leading-relaxed">
                      <li className="flex gap-2">
                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-1.5 shrink-0" />
-                       Avalie a PA após repouso estável em decúbito dorsal.
+                       Meça a PA após 5 minutos em repouso supino.
                      </li>
                      <li className="flex gap-2">
                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-1.5 shrink-0" />
-                       Realize nova medida entre o 1º e o 3º minuto de pé.
+                       Repita a medida no 1º e 3º minuto de ortostatismo.
                      </li>
                      <li className="flex gap-2 text-rose-500">
                        <span className="w-1.5 h-1.5 bg-rose-500 rounded-full mt-1.5 shrink-0" />
-                       Cuidado: Queda súbita aumenta risco de síncope imediata.
+                       Interrompa o teste se houver pré-síncope ou instabilidade.
                      </li>
                    </ul>
                 </div>
@@ -245,7 +242,7 @@ export const OrthostaticDrop: React.FC = () => {
               <div className="bg-slate-50 rounded-[44px] p-12 border-4 border-dashed border-slate-200 text-center flex flex-col items-center justify-center min-h-[400px]">
                 <Activity className="w-16 h-16 text-slate-200 mb-6 animate-pulse" />
                 <h3 className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] leading-relaxed italic">
-                  Aguardando medições <br /> Supina e Ortostática
+                  Aguardando pressões <br /> Supina e em Ortostatismo
                 </h3>
               </div>
             )}

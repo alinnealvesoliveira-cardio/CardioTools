@@ -2,9 +2,9 @@ import React from 'react';
 import { AlertTriangle, Info, Zap, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Ajustado para bater exatamente com as chaves do seu estado global (medications)
+// Agora o tipo suporta a diferenciação clínica dos BCCs
 interface MedicationAlertProps {
-  type: 'betablockers' | 'bcc_dhp' | 'bcc_non_dhp' | 'digitalis';
+  type: 'betablockers' | 'bcc-dhp' | 'bcc-non-dhp' | 'digitalis';
   active: boolean;
 }
 
@@ -14,31 +14,31 @@ export const MedicationAlert: React.FC<MedicationAlertProps> = ({ type, active }
   const alerts = {
     betablockers: {
       title: 'Uso de Betabloqueador Detectado',
-      content: 'O cronotropismo cardíaco está limitado. A FC não é um indicador fidedigno de intensidade.',
-      instruction: 'Ignore FC Máxima teórica. Use obrigatoriamente a Escala de Borg (RPE).',
+      content: 'O cronotropismo cardíaco está farmacologicamente limitado. A FC não é um indicador fidedigno de esforço.',
+      instruction: 'Desconsidere FC Máxima (220-idade). Use obrigatoriamente a Escala de Borg.',
       icon: <Zap size={18} />,
-      color: 'rose' as const
+      color: 'rose'
     },
-    'bcc_dhp': {
+    'bcc-dhp': {
       title: 'BCC Dihidropiridínico (ex: Anlodipino)',
-      content: 'Potente vasodilatação periférica. Risco de hipotensão pós-exercício e edema.',
-      instruction: 'Monitore PA rigorosamente. Evite ortostatismo prolongado pós-esforço.',
+      content: 'Potente vasodilatação periférica. Risco elevado de hipotensão pós-exercício e edema de MMII.',
+      instruction: 'Monitore PA com rigor. Evite mudanças bruscas de posição após o exercício.',
       icon: <AlertTriangle size={18} />,
-      color: 'amber' as const
+      color: 'amber'
     },
-    'bcc_non_dhp': {
+    'bcc-non-dhp': {
       title: 'BCC Não-Dihidropiridínico (ex: Diltiazem)',
-      content: 'Efeito inotrópico e cronotrópico negativo. Mascara a resposta da FC ao esforço.',
-      instruction: 'Conduta similar ao Betabloqueador: Use Borg. Atenção à bradicardia.',
+      content: 'Efeito inotrópico e cronotrópico negativo. Pode mascarar a resposta da FC ao esforço.',
+      instruction: 'Trate como Betabloqueador: Use Escala de Borg. Atenção a sinais de bradicardia.',
       icon: <ShieldAlert size={18} />,
-      color: 'rose' as const
+      color: 'rose'
     },
     digitalis: {
       title: 'Uso de Digitálicos (Inotrópicos)',
-      content: 'Risco de "Efeito Digitálico" no ECG e sinais de toxicidade bradicárdica.',
-      instruction: 'Monitore ritmo cardíaco e náuseas/mal-estar durante o esforço.',
+      content: 'Risco de "Efeito Digitálico" (alteração no ECG) e sinais de toxicidade (bradicardia/náuseas).',
+      instruction: 'Monitore sinais de toxicidade e bradicardia acentuada durante o esforço.',
       icon: <Info size={18} />,
-      color: 'indigo' as const
+      color: 'indigo'
     }
   };
 
@@ -51,16 +51,14 @@ export const MedicationAlert: React.FC<MedicationAlertProps> = ({ type, active }
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       <motion.div
-        key={type}
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 10 }}
-        transition={{ duration: 0.2 }}
-        className={`p-5 rounded-[28px] border-2 flex gap-4 mb-4 shadow-xl ${colors[alert.color]}`}
+        initial={{ opacity: 0, scale: 0.95, y: -20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className={`p-5 rounded-[28px] border-2 flex gap-4 mb-6 shadow-xl ${colors[alert.color as keyof typeof colors]}`}
       >
-        <div className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center bg-white border border-current/10 shadow-sm">
+        <div className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center bg-white border border-current/10 shadow-sm`}>
           {alert.icon}
         </div>
 
@@ -79,7 +77,7 @@ export const MedicationAlert: React.FC<MedicationAlertProps> = ({ type, active }
             {alert.content}
           </p>
 
-          <div className="flex items-center gap-2 bg-white/60 self-start px-3 py-1.5 rounded-xl border border-current/5">
+          <div className="flex items-center gap-2 bg-white/50 self-start px-3 py-1.5 rounded-xl border border-current/5">
             <span className="text-[10px] font-black uppercase italic">Conduta:</span>
             <span className="text-[10px] font-medium italic">{alert.instruction}</span>
           </div>

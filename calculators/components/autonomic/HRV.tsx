@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { Activity, Info, AlertCircle, Heart, Save, CheckCircle2, ArrowLeft, ChevronRight, LayoutDashboard } from 'lucide-react';
+import { Activity, Info, AlertCircle, Heart, Save, CheckCircle2 } from 'lucide-react';
 import { usePatient } from '../../../context/PatientProvider';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
 
 export const HRV: React.FC = () => {
   const { updateTestResults } = usePatient();
-  const navigate = useNavigate();
   const [vfc, setVfc] = useState<string>('');
   const [isSaved, setIsSaved] = useState(false);
 
@@ -36,23 +33,21 @@ export const HRV: React.FC = () => {
   const vfcNum = parseFloat(vfc);
 
   const handleSave = () => {
-    if (isNaN(vfcNum)) {
-        toast.error("Insira um valor válido para VFC");
-        return;
-    }
+    if (isNaN(vfcNum)) return;
     const interpretation = getInterpretation(vfcNum);
     
+    // Mantemos a chave 'vfc' para compatibilidade com o backend, 
+    // mas a UI agora trabalha com o termo VFC
     updateTestResults('autonomic', {
       vfc: vfcNum,
       hrvInterpretation: interpretation.label
     });
     
     setIsSaved(true);
-    toast.success("VFC gravada com sucesso!");
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-8 pb-40"> {/* pb-40 para dar espaço à barra fixa */}
+    <div className="max-w-2xl mx-auto p-4 space-y-8">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Variabilidade da FC (VFC)</h1>
         <p className="text-slate-500 text-sm">Avaliação do tônus autonômico através do índice de variabilidade.</p>
@@ -63,7 +58,7 @@ export const HRV: React.FC = () => {
           <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100">
             <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />
             <p className="text-xs text-blue-800 leading-relaxed">
-              A <strong>VFC</strong> é um marcador não invasivo que reflete a capacidade do sistema nervoso autônomo de se adaptar a diferentes estresses.
+              A <strong>VFC</strong> é um marcador não invasivo que reflete a capacidade do sistema nervoso autônomo de se adaptar a diferentes estresses. Valores mais altos geralmente indicam melhor resiliência e capacidade de recuperação.
             </p>
           </div>
 
@@ -106,6 +101,28 @@ export const HRV: React.FC = () => {
                 );
               })()}
 
+              <button
+                onClick={handleSave}
+                disabled={isSaved}
+                className={`w-full flex items-center justify-center gap-2 p-4 rounded-2xl font-bold transition-all shadow-lg ${
+                  isSaved 
+                    ? 'bg-emerald-100 text-emerald-600 cursor-not-allowed'
+                    : 'bg-slate-900 text-white hover:bg-slate-800'
+                }`}
+              >
+                {isSaved ? (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    Resultado Gravado
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Gravar no Relatório
+                  </>
+                )}
+              </button>
+
               <div className="bg-slate-900 rounded-2xl p-6 text-white space-y-4">
                 <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-widest">
                   <AlertCircle className="w-4 h-4" />
@@ -114,53 +131,21 @@ export const HRV: React.FC = () => {
                 <ul className="space-y-3 text-[11px] text-slate-400 leading-relaxed">
                   <li className="flex gap-2">
                     <span className="text-emerald-500 font-bold">•</span>
-                    Fatores como estresse e sono inadequado reduzem a VFC.
+                    Valores de VFC diminuem naturalmente com a idade.
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-emerald-500 font-bold">•</span>
+                    Fatores como estresse, sono inadequado e overtraining reduzem a VFC.
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-emerald-500 font-bold">•</span>
+                    A tendência longitudinal (baseline do paciente) é mais importante que um valor isolado.
                   </li>
                 </ul>
               </div>
             </div>
           </div>
         )}
-      </div>
-
-      {/* BARRA DE AÇÕES FIXA */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[999] flex flex-col gap-3">
-        <div className="flex gap-3">
-          {/* Botão Voltar */}
-          <button
-            onClick={() => navigate(-1)}
-            className="flex-1 bg-white/90 backdrop-blur-md text-slate-500 py-5 rounded-[24px] font-black border border-slate-200 shadow-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
-          >
-            <ArrowLeft size={16} /> Voltar
-          </button>
-
-          {/* Botão Gravar e Avançar */}
-          <button
-            onClick={() => {
-              handleSave();
-              if (!isNaN(vfcNum)) {
-                // Navega para o próximo passo lógico (ex: Sinais Vitais ou Força)
-                navigate('/testes/vsaq'); 
-              }
-            }}
-            className="flex-[2] bg-slate-900 text-white py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
-          >
-            <div className="flex flex-col items-start text-left">
-              <span className="text-[11px] uppercase tracking-widest">
-                {isSaved ? 'Já Gravado' : 'Gravar e Continuar'}
-              </span>
-              <span className="text-[8px] text-slate-400 font-medium lowercase">próxima etapa</span>
-            </div>
-            <ChevronRight size={18} className="text-emerald-400" />
-          </button>
-        </div>
-
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="w-full py-2 text-slate-400 font-bold text-[9px] uppercase tracking-[0.2em] hover:text-indigo-500 transition-colors"
-        >
-          <LayoutDashboard size={12} className="inline mr-1 mb-1" /> Ir para o Painel Geral
-        </button>
       </div>
     </div>
   );
