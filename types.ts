@@ -170,4 +170,11 @@ export interface Medications {
   statins: boolean;
   antiarrhythmics: boolean;
   others?: string;
+}// Adicione isto ao final do seu arquivo types.ts
+export interface Calculator {
+  id: string;
+  name: string;
+  description: string;
+  category: CategoryName; // Usa o tipo que você já definiu no topo do arquivo
+  component: React.ComponentType<any>;
 }

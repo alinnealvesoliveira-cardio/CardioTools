@@ -45,7 +45,7 @@ export const CALCULATORS: Calculator[] = [
     name: 'Anamnese Clínica',
     description: 'Histórico médico detalhado.',
     category: 'anamnese',
-    component: Cadastro // Substitua por 'Anamnese' quando criar o arquivo
+    component: Cadastro // Substitua por Anamnese quando o arquivo existir
   },
 
   // --- PASSO 3: AUTONÔMICA ---
